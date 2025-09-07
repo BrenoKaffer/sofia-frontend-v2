@@ -1,0 +1,525 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/auth-context';
+import { DashboardLayout } from '@/components/dashboard/layout';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ArrowRight, ArrowUpRight, Clock, Activity, TrendingUp, BarChart3, Target, AlertTriangle, CheckCircle, ChevronRight, Play, Zap, History, Settings } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import { LiveSignals } from '@/components/dashboard/live-signals';
+import { StatsCards } from '@/components/dashboard/stats-cards';
+import { PerformanceChart } from '@/components/dashboard/performance-chart';
+import { RouletteStatus } from '@/components/dashboard/roulette-status';
+import { RecentActivity } from '@/components/dashboard/recent-activity';
+
+// Definição de Tipos para os dados do Backend
+interface GeneratedSignal {
+  id: string;
+  strategy_id: string;
+  table_id: string;
+  bet_numbers: number[];
+  confidence_level: number;
+  expected_return: number;
+  timestamp_generated: string;
+  expires_at: string;
+  status: string;
+  message: string;
+}
+
+interface RouletteSpin {
+  id: string;
+  table_id: string;
+  spin_number: number;
+  spin_timestamp: string;
+}
+
+interface KpiData {
+  strategy_id: string;
+  total_signals_generated: number;
+  successful_signals: number;
+  failed_signals: number;
+  assertiveness_rate_percent: number;
+  total_net_profit_loss: number;
+  last_updated: string;
+}
+
+// Dados de exemplo para o dashboard (serão substituídos por dados reais)
+const motivationalPhrases = [
+  'Disciplina e paciência são as chaves para o sucesso nas apostas.',
+  'Gerencie sua banca com sabedoria. Nunca arrisque mais do que pode perder.',
+  'Estratégias baseadas em dados superam a intuição a longo prazo.',
+  'Mantenha o controle emocional. Decisões racionais trazem melhores resultados.',
+  'Análise constante e adaptação são essenciais para resultados consistentes.',
+  'SOFIA: Atualizações de sistema programadas para amanhã às 03:00.',
+  'Nova estratégia "Fibonacci Avançado" disponível para assinantes Premium.',
+  'Dica: Utilize o simulador para testar novas estratégias sem risco.',
+];
+
+export default function DashboardPage() {
+  const { user, loading, getToken } = useAuth();
+  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
+
+  // Estados para dados reais do backend
+  const [liveSignalsData, setLiveSignalsData] = useState<GeneratedSignal[]>([]);
+  const [latestRouletteSpin, setLatestRouletteSpin] = useState<RouletteSpin | null>(null);
+  const [kpisData, setKpisData] = useState<KpiData[]>([]);
+  const [rouletteHistoryData, setRouletteHistoryData] = useState<RouletteSpin[]>([]);
+  const [activeSignal, setActiveSignal] = useState<GeneratedSignal | null>(null);
+  const [countdown, setCountdown] = useState(0);
+  const [progressValue, setProgressValue] = useState(0);
+  const [loading_data, setLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeRouletteStatus, setActiveRouletteStatus] = useState<{table_id: string, status: string} | null>(null);
+
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+  // Função para buscar KPIs do backend
+  const fetchKpis = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const response = await fetch(`${BACKEND_URL}/api/kpis-estrategias`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Backend não disponível (${response.status})`);
+      }
+      
+      const rawData = await response.json();
+      console.log('✅ Raw KPIs data received:', rawData);
+      
+      // Verificar se os dados estão em uma propriedade 'data' ou diretamente no array
+      const dataArray = Array.isArray(rawData) ? rawData : (rawData.data || []);
+      console.log('✅ Data array extracted:', dataArray);
+      
+      // Transformar os dados do backend para o formato esperado pelo frontend
+      const transformedData: KpiData[] = dataArray.map((item: any) => ({
+        strategy_name: item.strategy_name,
+        total_signals_generated: item.total_activations || 0,
+        successful_signals: item.total_hits || 0,
+        failed_signals: item.total_misses || 0,
+        assertiveness_rate_percent: item.hit_rate || 0,
+        total_net_profit_loss: item.total_net_payout || 0,
+        last_updated: item.last_updated || new Date().toISOString()
+      }));
+      
+      console.log('✅ Transformed KPIs data:', transformedData);
+      setKpisData(transformedData);
+    } catch (error) {
+      console.error('❌ Erro ao buscar KPIs do backend:', error);
+      setError('Não foi possível carregar os dados de KPIs. Verifique a conexão com o backend.');
+      setKpisData([]);
+    }
+  }, [getToken, BACKEND_URL]);
+
+  // Função para buscar histórico da roleta do backend
+  const fetchRouletteHistory = useCallback(async (table_id: string = 'pragmatic-mega-roulette') => {
+    try {
+      const token = await getToken();
+      const response = await fetch(`${BACKEND_URL}/api/roulette-history?table_id=${table_id}&limit=50`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Backend não disponível (${response.status})`);
+      }
+      
+      const data: RouletteSpin[] = await response.json();
+      console.log('✅ Roulette history fetched successfully:', data);
+      setRouletteHistoryData(data);
+      
+      if (data.length > 0) {
+        setLatestRouletteSpin(data[0]);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar histórico da roleta:', error);
+      setError('Não foi possível carregar o histórico da roleta. Verifique a conexão com o backend.');
+      setRouletteHistoryData([]);
+      setLatestRouletteSpin(null);
+    }
+  }, [getToken, BACKEND_URL]);
+
+  // Função para buscar status da roleta ativa
+  const fetchRouletteStatus = useCallback(async () => {
+    try {
+      console.log('🔍 Buscando status da roleta em:', `${BACKEND_URL}/api/roulette-status`);
+      const token = await getToken();
+      console.log('🔑 Token obtido:', token ? 'Sim' : 'Não');
+      
+      const response = await fetch(`${BACKEND_URL}/api/roulette-status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error(`Backend não disponível (${response.status}): ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Roulette status fetched successfully:', data);
+      console.log('📊 Tipo de dados retornados:', typeof data, Array.isArray(data) ? 'Array' : 'Object');
+      
+      // Se retornar array, pegar o primeiro item ativo
+      if (Array.isArray(data) && data.length > 0) {
+        const activeTable = data.find(table => table.status === 'active') || data[0];
+        console.log('🎯 Mesa ativa selecionada:', activeTable);
+        return activeTable;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Erro ao buscar status da roleta:', error);
+      return null;
+    }
+  }, [getToken, BACKEND_URL]);
+
+  // Função para buscar padrões recentes
+  const fetchRecentSignals = useCallback(async () => {
+    console.log('🔍 Iniciando busca de padrões recentes...');
+    try {
+      const token = await getToken();
+      console.log('🔑 Token para padrões obtido:', token ? 'Sim' : 'Não');
+      
+      const response = await fetch(`${BACKEND_URL}/api/signals/recent?limit=50`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+      
+      if (!response.ok) {
+        throw new Error(`Backend não disponível (${response.status})`);
+      }
+      
+      const data: GeneratedSignal[] = await response.json();
+      console.log('✅ Recent signals fetched successfully:', data);
+      console.log('📊 Número de padrões recebidos:', data.length);
+      
+      setLiveSignalsData(data);
+      
+      // Se há padrões, definir o mais recente como ativo
+      if (data.length > 0) {
+        const mostRecentSignal = data[0];
+        setActiveSignal(mostRecentSignal);
+        
+        // Calcular countdown baseado em expires_at
+        if (mostRecentSignal.expires_at) {
+          const now = new Date().getTime();
+          const expiresAt = new Date(mostRecentSignal.expires_at).getTime();
+          const timeLeft = Math.max(0, Math.floor((expiresAt - now) / 1000));
+          setCountdown(timeLeft);
+        } else {
+          setCountdown(0);
+        }
+      } else {
+        setActiveSignal(null);
+        setCountdown(0);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar sinais recentes:', error);
+      setError('Não foi possível carregar os sinais recentes. Verifique a conexão com o backend.');
+      setLiveSignalsData([]);
+      setActiveSignal(null);
+      setCountdown(0);
+    }
+  }, [getToken, BACKEND_URL]);
+
+  // Efeito para carregar dados iniciais e configurar Realtime
+  useEffect(() => {
+    console.log('🔄 useEffect executado!');
+    console.log('👤 User:', user);
+    console.log('🔑 getToken function:', typeof getToken);
+    console.log('⏳ loading:', loading);
+    
+    if (user && getToken) {
+      console.log('✅ Condições atendidas - iniciando carregamento de dados...');
+      const loadInitialData = async () => {
+        setLoadingData(true);
+        setError(null);
+        
+        try {
+          console.log('🚀 Iniciando carregamento de dados iniciais...');
+          console.log('👤 Usuário logado:', user?.email);
+          
+          const [kpisResult, historyResult, signalsResult, rouletteStatusResult] = await Promise.all([
+            fetchKpis(),
+            fetchRouletteHistory(),
+            fetchRecentSignals(),
+            fetchRouletteStatus()
+          ]);
+          
+          // Atualizar status da roleta ativa
+          if (rouletteStatusResult) {
+            setActiveRouletteStatus(rouletteStatusResult);
+          }
+          
+          console.log('✅ Todos os dados iniciais carregados com sucesso!');
+        } catch (error) {
+          console.error('❌ Error loading initial data:', error);
+          setError(`Erro ao carregar dados iniciais: ${error}`);
+        } finally {
+          setLoadingData(false);
+          console.log('🏁 Carregamento finalizado');
+        }
+      };
+
+      loadInitialData();
+
+      // Configurar Supabase Realtime para sinais gerados
+      console.log('🔄 Configurando Supabase Realtime para sinais...');
+      const signalsSubscription = supabase
+        .channel('generated_signals')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'generated_signals'
+        }, (payload) => {
+          console.log('🔴 Realtime Signal INSERT:', payload);
+          const newSignal = payload.new as GeneratedSignal;
+          console.log('🆕 Novo sinal recebido via Realtime:', newSignal);
+          setLiveSignalsData((prev) => [newSignal, ...prev].slice(0, 50));
+          setActiveSignal(newSignal);
+          
+          // Calcular countdown baseado em expires_at
+          if (newSignal.expires_at) {
+            const now = new Date().getTime();
+            const expiresAt = new Date(newSignal.expires_at).getTime();
+            const timeLeft = Math.max(0, Math.floor((expiresAt - now) / 1000));
+            setCountdown(timeLeft);
+          } else {
+            setCountdown(0);
+          }
+        })
+        .subscribe();
+      
+      console.log('📡 Subscription status:', signalsSubscription);
+
+      // Configurar Supabase Realtime para giros da roleta
+      const spinsSubscription = supabase
+        .channel('roulette_spins')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'roulette_spins'
+        }, (payload) => {
+          console.log('Realtime Spin INSERT:', payload);
+          const newSpin = payload.new as RouletteSpin;
+          setLatestRouletteSpin(newSpin);
+          setRouletteHistoryData((prev) => [newSpin, ...prev].slice(0, 50));
+        })
+        .subscribe();
+
+      // Limpeza de subscriptions ao desmontar o componente
+      return () => {
+        console.log('🧹 Limpando subscriptions...');
+        supabase.removeChannel(signalsSubscription);
+        supabase.removeChannel(spinsSubscription);
+      };
+    } else {
+      console.log('❌ Condições não atendidas para carregar dados:');
+      console.log('   - User existe:', !!user);
+      console.log('   - getToken existe:', !!getToken);
+      console.log('   - Loading:', loading);
+    }
+  }, [user, getToken, fetchKpis, fetchRouletteHistory, fetchRecentSignals]);
+
+  // Rotação das frases motivacionais
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentPhraseIndex((prevIndex) =>
+        (prevIndex + 1) % motivationalPhrases.length
+      );
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Contagem regressiva do sinal ativo baseada em expires_at
+  useEffect(() => {
+    if (activeSignal && activeSignal.expires_at) {
+      const updateCountdown = () => {
+        const now = new Date().getTime();
+        const expiresAt = new Date(activeSignal.expires_at).getTime();
+        const createdAt = new Date(activeSignal.created_at).getTime();
+        const timeLeft = Math.max(0, Math.floor((expiresAt - now) / 1000));
+        
+        setCountdown(timeLeft);
+        
+        // Calcular progresso da barra (começa em 100% e diminui até 0%)
+        const totalDuration = expiresAt - createdAt;
+        const remaining = Math.max(0, expiresAt - now);
+        const progress = totalDuration > 0 ? Math.max(0, Math.min(100, (remaining / totalDuration) * 100)) : 0;
+        
+        setProgressValue(progress);
+        
+        if (timeLeft === 0) {
+          setActiveSignal(null);
+          setProgressValue(0);
+        }
+      };
+      
+      updateCountdown();
+      const interval = setInterval(updateCountdown, 1000);
+      
+      return () => clearInterval(interval);
+    } else {
+      setCountdown(0);
+      setProgressValue(0);
+    }
+  }, [activeSignal]);
+
+  // Atualização periódica do status da roleta
+  useEffect(() => {
+    if (user && getToken) {
+      const updateRouletteStatus = async () => {
+        const status = await fetchRouletteStatus();
+        if (status) {
+          setActiveRouletteStatus(status);
+        }
+      };
+      
+      // Atualizar a cada 30 segundos
+      const interval = setInterval(updateRouletteStatus, 30000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [user, getToken, fetchRouletteStatus]);
+
+  if (loading) {
+    return null;
+  }
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight font-heading">Dashboard</h1>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2">
+              <History className="h-4 w-4" />
+              Ver Histórico
+            </Button>
+            <Dialog open={showActivateDialog} onOpenChange={setShowActivateDialog}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Play className="h-4 w-4" />
+                  Ativar Estratégia
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Ativar Nova Estratégia</DialogTitle>
+                  <DialogDescription>
+                    Selecione a estratégia que deseja ativar e configure os parâmetros.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Estratégia</h4>
+                    <Select defaultValue="fibonacci">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma estratégia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {kpisData.map((kpi) => (
+                          <SelectItem key={kpi.strategy_name} value={kpi.strategy_name}>
+                            {kpi.strategy_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowActivateDialog(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={() => setShowActivateDialog(false)}>
+                    Ativar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* Frase Motivacional */}
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
+                <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                {motivationalPhrases[currentPhraseIndex]}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Layout Principal do Dashboard */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Coluna Esquerda - Padrão Ativo e Estatísticas */}
+          <div className="lg:col-span-2 space-y-6">
+            <StatsCards kpisData={kpisData} loading={loading_data} />
+            
+            <LiveSignals 
+              signals={liveSignalsData} 
+              activeSignal={activeSignal} 
+              countdown={countdown} 
+              progressValue={progressValue} 
+              loading={loading_data} 
+            />
+            
+            <PerformanceChart kpisData={kpisData} loading={loading_data} />
+          </div>
+          
+          {/* Coluna Direita - Status da Roleta e Atividade Recente */}
+          <div className="space-y-6">
+            <RouletteStatus 
+              latestSpin={latestRouletteSpin} 
+              activeStatus={activeRouletteStatus} 
+              loading={loading_data} 
+            />
+            
+            <RecentActivity 
+              signals={liveSignalsData} 
+              spins={rouletteHistoryData} 
+              loading={loading_data} 
+            />
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}

@@ -1,0 +1,64 @@
+{
+  "backup_info": {
+    "created_at": "2025-01-18T18:12:00Z",
+    "description": "Backup das frases motivacionais da dashboard",
+    "source_file": "page.tsx",
+    "total_phrases": 33
+  },
+  "motivational_phrases": [
+    "virar a sorte!",
+    "desafiar a roleta!",
+    "girar com ousadia.",
+    "apostar com confiança.",
+    "seguir sua intuição.",
+    "mudar seu destino.",
+    "mostrar quem manda na roleta.",
+    "sentir a adrenalina do giro.",
+    "vencer com estilo.",
+    "confiar na sua sorte.",
+    "testar sua estratégia.",
+    "acertar aquele número premiado.",
+    "dar um show na roleta.",
+    "surpreender a banca!",
+    "girar até ganhar!",
+    "fazer história no jogo.",
+    "mostrar que você domina o jogo.",
+    "buscar aquele giro perfeito.",
+    "deixar a sorte falar mais alto.",
+    "fazer a roleta sorrir pra você.",
+    "dar aquele giro maroto.",
+    "mostrar que número quente é com você.",
+    "dar o famoso \"giro da virada\".",
+    "virar o jogo a seu favor.",
+    "jogar com coragem e estratégia.",
+    "fazer a sorte acontecer.",
+    "transformar giros em vitórias.",
+    "mostrar que ninguém segura sua maré de sorte.",
+    "reinar absoluto na roleta.",
+    "mostrar quem manda na mesa.",
+    "girar como um verdadeiro mestre.",
+    "fazer a banca tremer!",
+    "conquistar a mesa verde."
+  ],
+  "backup_versions": {
+    "original_phrases": [
+      "Disciplina e gestão de banca são fundamentais para o sucesso sustentável",
+      "Análise de padrões históricos aumenta significativamente suas chances",
+      "Nunca aposte mais do que pode perder - preserve seu capital",
+      "Estratégias baseadas em dados superam intuição a longo prazo",
+      "Mantenha controle emocional - decisões racionais geram melhores resultados",
+      "Diversifique suas estratégias para reduzir riscos concentrados",
+      "Acompanhe suas estatísticas para identificar padrões de sucesso",
+      "Paciência é uma virtude - aguarde os melhores momentos para apostar"
+    ],
+    "backup2_phrases": [
+      "Disciplina e paciência são as chaves para o sucesso nas apostas.",
+      "Gerencie sua banca com sabedoria. Nunca arrisque mais do que pode perder.",
+      "Estratégias baseadas em dados superam a intuição a longo prazo.",
+      "Mantenha o controle emocional. Decisões racionais trazem melhores resultados.",
+      "Análise constante e adaptação são essenciais para resultados consistentes.",
+      "SOFIA: Atualizações de sistema programadas para amanhã às 03:00.",
+      "Nova estratégia \"Fibonacci Avançado\" disponível para assinantes Premium."
+    ]
+  }
+}
