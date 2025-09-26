@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -128,25 +128,32 @@ export function LiveSignals({ signals, loading = false, onGoToTable, activeSigna
   }, []);
 
   // Atualizar countdowns a cada segundo (otimizado)
+  // Memoizar cálculos de tempo para evitar recálculos desnecessários
+  const memoizedTimeCalculations = useMemo(() => {
+    return displaySignals.map(signal => ({
+      id: signal.id,
+      timeLeft: getTimeRemaining(signal.expires_at).timeLeft,
+      progress: calculateProgress(signal)
+    }));
+  }, [displaySignals, getTimeRemaining, calculateProgress]);
+
   useEffect(() => {
-    if (displaySignals.length === 0) return;
-    
     const interval = setInterval(() => {
-      setSignalCountdowns(prevCountdowns => {
-        const newCountdowns: {[key: string]: {timeLeft: number, progress: number}} = {};
+      setSignalCountdowns((prevCountdowns: { [key: string]: { timeLeft: number; progress: number } }) => {
+        const newCountdowns: { [key: string]: { timeLeft: number; progress: number } } = {};
         let hasChanges = false;
         
-        displaySignals.forEach(signal => {
-          const timeData = getTimeRemaining(signal.expires_at);
-          const progress = calculateProgress(signal);
-          const prev = prevCountdowns[signal.id];
+        memoizedTimeCalculations.forEach(calc => {
+          const signal = displaySignals.find(s => s.id === calc.id);
+          const timeData = signal ? getTimeRemaining(signal.expires_at) : { timeLeft: 0, progress: 0 };
+          const progress = calc.progress;
           
-          newCountdowns[signal.id] = {
+          newCountdowns[calc.id] = {
             timeLeft: timeData.timeLeft,
             progress: progress
           };
           
-          // Verificar mudanças apenas para este sinal
+          const prev = prevCountdowns[calc.id];
           if (!prev || prev.timeLeft !== timeData.timeLeft || Math.abs(prev.progress - progress) > 2) {
             hasChanges = true;
           }
@@ -159,10 +166,10 @@ export function LiveSignals({ signals, loading = false, onGoToTable, activeSigna
         
         return hasChanges ? newCountdowns : prevCountdowns;
       });
-    }, 2000); // Reduzir frequência para 2 segundos
+    }, 3000); // Aumentar intervalo para 3 segundos para melhor performance
 
     return () => clearInterval(interval);
-  }, [displaySignals.length]); // Dependência otimizada
+  }, [memoizedTimeCalculations, displaySignals, getTimeRemaining]); // Dependências otimizadas
 
   useEffect(() => {
     setDisplaySignals(signals);
@@ -182,23 +189,25 @@ export function LiveSignals({ signals, loading = false, onGoToTable, activeSigna
   };
 
 
-  const getRouletteNumbers = () => {
-    return [
-      0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
-      24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
-    ];
-  };
+  // Memoizar números da roleta para evitar recriação a cada render
+  const rouletteNumbers = useMemo(() => [
+    0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
+    24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
+  ], []);
 
-  const isValidRouletteNumber = (bet: any) => {
+  // Memoizar validação de números da roleta
+  const isValidRouletteNumber = useCallback((bet: any) => {
     const num = Number(bet);
-    return !isNaN(num) && getRouletteNumbers().includes(num);
-  };
+    return !isNaN(num) && rouletteNumbers.includes(num);
+  }, [rouletteNumbers]);
 
-  const getRouletteNumberColor = (number: number): string => {
+  // Memoizar cores dos números da roleta
+  const redNumbers = useMemo(() => [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36], []);
+  
+  const getRouletteNumberColor = useCallback((number: number): string => {
     if (number === 0) return 'bg-green-600';
-    const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
     return redNumbers.includes(number) ? 'bg-red-600' : 'bg-black';
-  };
+  }, [redNumbers]);
 
   const getSignalStatus = (signal: GeneratedSignal) => {
     const timeData = getTimeRemaining(signal.expires_at);
@@ -310,14 +319,7 @@ export function LiveSignals({ signals, loading = false, onGoToTable, activeSigna
   // Garantir que allSignals seja exatamente a soma de recentSignals + olderSignals
   const allSignals = [...recentSignals, ...olderSignals];
   
-  // Debug: verificar consistência das contagens
-  console.log('🔍 Debug contagens:', {
-    total: displaySignals.length,
-    recentes: recentSignals.length,
-    anteriores: olderSignals.length,
-    todos: allSignals.length,
-    soma: recentSignals.length + olderSignals.length
-  });
+  // Verificar consistência das contagens
 
   return (
     <TooltipProvider>
@@ -1195,3 +1197,5 @@ export function LiveSignals({ signals, loading = false, onGoToTable, activeSigna
     </TooltipProvider>
   );
 }
+
+export default LiveSignals;

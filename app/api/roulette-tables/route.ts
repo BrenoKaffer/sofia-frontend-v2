@@ -1,112 +1,165 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth-server';
+
+// Forçar renderização dinâmica
+export const dynamic = 'force-dynamic';
 
 // Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+const SOFIA_BACKEND_URL = process.env.SOFIA_BACKEND_URL || 'http://localhost:3001/api';
+const REQUEST_TIMEOUT = 15000; // 15 segundos
+
+// Interfaces
+interface ApiResponse {
+  data: any[];
+  success: boolean;
+  message: string;
+}
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🚀 Iniciando API de tabelas de roleta...');
-    
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Verificar autenticação
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Token de autorização necessário' },
+        { error: 'Não autorizado' },
         { status: 401 }
       );
     }
 
-    // Buscar tabelas de roleta do backend SOFIA
-    console.log('🔍 Buscando tabelas de roleta do backend SOFIA...');
-    
-    const response = await fetch(`${SOFIA_BACKEND_URL}/roulette-tables`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-    });
+    console.log('🚀 Buscando tabelas de roleta do backend...');
 
-    if (!response.ok) {
-      console.error('❌ Erro ao buscar tabelas do backend:', response.status, response.statusText);
-      throw new Error(`Backend retornou erro: ${response.status}`);
-    }
+    // Configurar timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-    const tablesData = await response.json();
-    console.log('✅ Tabelas recebidas do backend SOFIA:', tablesData);
-    
-    // Garantir que os dados sejam um array
-    const sanitizedData = Array.isArray(tablesData) ? tablesData : [];
-    
-    return NextResponse.json(sanitizedData);
-  } catch (error) {
-    console.error('❌ Erro na API de tabelas de roleta:', error);
-    console.log('⚠️ Usando tabelas padrão (fallback)');
-    
-    // MOCK DATA: Fallback com dados simulados para desenvolvimento
-    const defaultTables = [
-      { 
-        id: 'pragmatic-brazilian-roulette', 
-        name: 'Pragmatic Roleta Brasileira', 
-        status: 'online', 
-        last_updated: new Date().toISOString(),
-        provider: 'Pragmatic Play',
-        players_count: 47,
-        last_number: 23,
-        last_color: 'red'
-      },
-      { 
-        id: 'pragmatic-mega-roulette', 
-        name: 'Pragmatic Mega Roulette', 
-        status: 'online', 
-        last_updated: new Date().toISOString(),
-        provider: 'Pragmatic Play',
-        players_count: 89,
-        last_number: 7,
-        last_color: 'red'
-      },
-      { 
-        id: 'evolution-immersive-roulette', 
-        name: 'Evolution Immersive Roulette', 
-        status: 'online', 
-        last_updated: new Date().toISOString(),
-        provider: 'Evolution Gaming',
-        players_count: 156,
-        last_number: 0,
-        last_color: 'green'
-      },
-      { 
-        id: 'evolution-roleta-ao-vivo', 
-        name: 'Evolution Roleta ao Vivo', 
-        status: 'online', 
-        last_updated: new Date().toISOString(),
-        provider: 'Evolution Gaming',
-        players_count: 73,
-        last_number: 14,
-        last_color: 'red'
-      },
-      { 
-        id: 'playtech-premium-roulette', 
-        name: 'Playtech Premium Roulette', 
-        status: 'maintenance', 
-        last_updated: new Date().toISOString(),
-        provider: 'Playtech',
-        players_count: 0,
-        last_number: null,
-        last_color: null
-      },
-      { 
-        id: 'netent-live-roulette', 
-        name: 'NetEnt Live Roulette', 
-        status: 'online', 
-        last_updated: new Date().toISOString(),
-        provider: 'NetEnt',
-        players_count: 34,
-        last_number: 18,
-        last_color: 'red'
+    try {
+      const response = await fetch(`${SOFIA_BACKEND_URL}/roulette-tables`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.BACKEND_API_KEY}`,
+          'User-Agent': 'Sofia-Frontend/1.0'
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.error(`Erro do backend: ${response.status} ${response.statusText}`);
+        
+        // Fallback para dados mock em caso de erro
+        const defaultTables = [
+          { 
+            id: 'pragmatic-brazilian-roulette', 
+            name: 'Pragmatic Roleta Brasileira',
+            status: 'online', 
+            last_updated: new Date().toISOString(),
+            provider: 'Pragmatic Play',
+            min_bet: 1.0,
+            max_bet: 500.0,
+            currency: 'BRL'
+          },
+          { 
+            id: 'evolution-auto-roulette', 
+            name: 'Evolution Auto Roulette',
+            status: 'online', 
+            last_updated: new Date().toISOString(),
+            provider: 'Evolution Gaming',
+            min_bet: 0.5,
+            max_bet: 1000.0,
+            currency: 'BRL'
+          },
+          { 
+            id: 'playtech-premium-roulette', 
+            name: 'Playtech Premium Roulette',
+            status: 'maintenance', 
+            last_updated: new Date().toISOString(),
+            provider: 'Playtech',
+            min_bet: 2.0,
+            max_bet: 750.0,
+            currency: 'BRL'
+          }
+        ];
+        
+        return NextResponse.json({
+          data: defaultTables,
+          success: false,
+          message: 'Usando dados de fallback devido a erro no backend'
+        });
       }
-    ];
+
+      const tablesData = await response.json();
+      
+      // Validar estrutura da resposta
+      if (tablesData && typeof tablesData === 'object') {
+        if (tablesData.data && Array.isArray(tablesData.data)) {
+          return NextResponse.json({
+            data: tablesData.data,
+            success: true,
+            message: 'Tabelas carregadas com sucesso'
+          });
+        } else if (Array.isArray(tablesData)) {
+          return NextResponse.json({
+            data: tablesData,
+            success: true,
+            message: 'Tabelas carregadas com sucesso'
+          });
+        }
+      }
+      
+      throw new Error('Formato de resposta inválido do backend');
+      
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('Erro ao buscar tabelas:', fetchError);
+      
+      // Fallback para dados mock
+      const defaultTables = [
+        { 
+          id: 'pragmatic-brazilian-roulette', 
+          name: 'Pragmatic Roleta Brasileira',
+          status: 'online', 
+          last_updated: new Date().toISOString(),
+          provider: 'Pragmatic Play',
+          min_bet: 1.0,
+          max_bet: 500.0,
+          currency: 'BRL'
+        },
+        { 
+          id: 'evolution-auto-roulette', 
+          name: 'Evolution Auto Roulette',
+          status: 'online', 
+          last_updated: new Date().toISOString(),
+          provider: 'Evolution Gaming',
+          min_bet: 0.5,
+          max_bet: 1000.0,
+          currency: 'BRL'
+        },
+        { 
+          id: 'playtech-premium-roulette', 
+          name: 'Playtech Premium Roulette',
+          status: 'maintenance', 
+          last_updated: new Date().toISOString(),
+          provider: 'Playtech',
+          min_bet: 2.0,
+          max_bet: 750.0,
+          currency: 'BRL'
+        }
+      ];
+      
+      return NextResponse.json({
+        data: defaultTables,
+        success: false,
+        message: 'Usando dados de fallback devido a erro de conexão'
+      });
+    }
+  } catch (error) {
+    console.error('Erro geral na API de tabelas:', error);
     
-    return NextResponse.json(defaultTables);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
   }
 }

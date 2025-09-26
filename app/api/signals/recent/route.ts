@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth-server';
+import { backendService } from '@/lib/backend-service';
 
-// Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+// Forçar renderização dinâmica
+export const dynamic = 'force-dynamic';
+
+// Interfaces
+interface SignalFilters {
+  limit?: number;
+  table_id?: string;
+}
+
+interface ApiResponse {
+  data: any[];
+  success: boolean;
+  message: string;
+}
 
 // Cache para simular sinais contínuos
 let signalCache: any[] = [];
@@ -108,82 +122,60 @@ function generateMockSignals(limit: number = 50, tableId?: string | null) {
 }
 
 export async function GET(request: NextRequest) {
-  // Extrair parâmetros da query
-  const { searchParams } = new URL(request.url);
-  const limit = parseInt(searchParams.get('limit') || '50');
-  const tableId = searchParams.get('table_id');
-  
   try {
-    console.log('🚀 Iniciando API de sinais recentes...');
-    
-    // Verificar autorização (aceitar token mock para desenvolvimento)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Verificar autenticação
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Token de autorização necessário' },
+        { error: 'Não autorizado' },
         { status: 401 }
       );
     }
-    
-    const token = authHeader.replace('Bearer ', '');
-    // Para desenvolvimento, aceitar token mock
-    if (token !== 'mock-jwt-token-for-demo') {
-      console.log('⚠️ Token inválido, usando dados mock como fallback');
-    }
 
-    // DESENVOLVIMENTO: Usar sempre dados mock para garantir funcionamento
-    console.log('🔧 Modo desenvolvimento: usando dados mock');
-    
-    // MOCK DATA: Dados simulados para desenvolvimento
-    const mockSignals = generateMockSignals(limit, tableId);
-    console.log('✅ Sinais mock gerados:', mockSignals.length);
-    
-    return NextResponse.json(mockSignals);
-    
-    // TODO: Descomentar quando backend estiver funcionando corretamente
-    /*
-    // Buscar sinais recentes do backend SOFIA
-    console.log('🔍 Buscando sinais recentes do backend SOFIA...');
-    
-    const signalsUrl = new URL(`${SOFIA_BACKEND_URL}/signals/recent`);
-    if (limit) {
-      signalsUrl.searchParams.set('limit', limit.toString());
-    }
-    if (tableId) {
-      signalsUrl.searchParams.set('table_id', tableId);
-    }
+    // Extrair parâmetros da query
+    const { searchParams } = new URL(request.url);
+    const filters: SignalFilters = {
+      limit: parseInt(searchParams.get('limit') || '50'),
+      table_id: searchParams.get('table_id') || undefined
+    };
 
-    const response = await fetch(signalsUrl.toString(), {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-    });
+    console.log('🚀 Buscando sinais recentes do backend...');
 
-    if (!response.ok) {
-      console.warn('⚠️ Erro ao buscar sinais do backend:', response.status, response.statusText);
-      console.log('⚠️ Usando sinais mock (fallback)');
+    try {
+      // Tentar buscar dados do backend real
+      const backendResponse = await backendService.getRecentSignals({
+        limit: filters.limit,
+        table_id: filters.table_id
+      });
+
+      console.log('✅ Dados recebidos do backend SOFIA');
+      return NextResponse.json(backendResponse);
+
+    } catch (backendError: any) {
+      console.warn('⚠️ Backend não disponível, usando dados mock:', backendError.message);
       
-      // MOCK DATA: Fallback com dados simulados para desenvolvimento
-      const mockSignals = generateMockSignals(limit, tableId);
-      return NextResponse.json(mockSignals);
+      // Fallback para dados mock
+      const mockSignals = generateMockSignals(filters.limit || 50, filters.table_id);
+      const mockResponse: ApiResponse = {
+        data: mockSignals,
+        success: true,
+        message: 'Dados simulados (backend indisponível)'
+      };
+      
+      return NextResponse.json(mockResponse);
     }
 
-    const signalsData = await response.json();
-    console.log('✅ Sinais recebidos do backend SOFIA:', signalsData?.length || 0);
-
-    // Garantir que os dados sejam um array
-    const sanitizedData = Array.isArray(signalsData) ? signalsData : [];
-
-    return NextResponse.json(sanitizedData);
-    */
-  } catch (error) {
-    console.error('Erro na API de sinais recentes:', error);
-    console.log('⚠️ Usando sinais mock (fallback devido a erro)');
+  } catch (error: any) {
+    // Erro geral na API de sinais recentes
     
-    // MOCK DATA: Fallback com dados simulados em caso de erro
-    const mockSignals = generateMockSignals(limit, tableId);
-    return NextResponse.json(mockSignals);
+    // Fallback final para dados mock
+    const mockSignals = generateMockSignals(50);
+    const mockResponse: ApiResponse = {
+      data: mockSignals,
+      success: false,
+      message: 'Erro interno do servidor'
+    };
+    
+    return NextResponse.json(mockResponse, { status: 500 });
   }
 }

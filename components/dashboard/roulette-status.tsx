@@ -50,15 +50,12 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
         
         if (tablesResponse.ok) {
           const tables = await tablesResponse.json();
-          console.log('🎯 Mesas monitoradas recebidas:', tables.length);
-          console.log('📋 Lista de mesas:', tables.map((t: any) => t.id));
           
           setRouletteTables(tables);
           if (tables.length > 0) {
             setCurrentRouletteDisplay(tables[0]);
           }
         } else {
-          console.error('Erro ao buscar mesas:', tablesResponse.status);
           // Fallback apenas se a API falhar
           const fallbackTables = [
             { id: 'pragmatic-brazilian', name: 'Roleta Brasileira', status: 'online' as const },
@@ -68,7 +65,6 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
           setCurrentRouletteDisplay(fallbackTables[0]);
         }
       } catch (error) {
-        console.error('Erro ao buscar roletas:', error);
         // Fallback para dados padrão
         const fallbackTables = [
           { id: 'pragmatic-brazilian', name: 'Roleta Brasileira', status: 'online' as const },
@@ -339,3 +335,5 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
     </Card>
   );
 }
+
+export default RouletteStatus;

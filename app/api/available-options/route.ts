@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+// Removido: Backend externo não disponível
+// const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,37 +17,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar opções disponíveis do backend SOFIA
-    console.log('🔍 Buscando opções disponíveis do backend SOFIA...');
+    // Retornar dados mock (backend não disponível)
+    console.log('🔍 Retornando opções disponíveis (modo mock)...');
     
-    const optionsResponse = await fetch(`${SOFIA_BACKEND_URL}/available-options`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-    });
-
-    let strategies: string[] = [];
-    let uniqueTableIds: string[] = [];
-    let backendDefaultPreferences: any = null;
-
-    if (optionsResponse.ok) {
-      const optionsData = await optionsResponse.json();
-      strategies = optionsData.strategies || [];
-      uniqueTableIds = (optionsData.tables || []).map((table: any) => table.id || table);
-      backendDefaultPreferences = optionsData.default_preferences;
-      console.log('✅ Opções recebidas do backend SOFIA:', {
-        strategies: strategies.length,
-        tables: uniqueTableIds.length,
-        hasDefaults: !!backendDefaultPreferences
-      });
-    } else {
-      console.warn('⚠️ Erro ao buscar opções do backend, usando fallback');
-      // Fallback para dados padrão
-      strategies = [
-        'Irmãos de Cores',
-        'Terminais Pull',
+    // Dados mock para desenvolvimento
+    const strategies: string[] = [
+      'Irmãos de Cores',
+      'Terminais Pull',
         'Espelho',
         'Onda',
         'As Dúzias (Atrasadas)',
@@ -56,13 +33,19 @@ export async function GET(request: NextRequest) {
         'Sequência de Números',
         'Padrão Fibonacci'
       ];
-      uniqueTableIds = [
-        'pragmatic-brazilian-roulette',
-        'pragmatic-mega-roulette',
-        'evolution-immersive-roulette',
-        'evolution-roleta-ao-vivo'
-      ];
-    }
+    
+    const uniqueTableIds: string[] = [
+      'pragmatic-brazilian-roulette',
+      'pragmatic-mega-roulette',
+      'evolution-immersive-roulette',
+      'evolution-roleta-ao-vivo'
+    ];
+    
+    const backendDefaultPreferences = {
+      strategy: 'Irmãos de Cores',
+      table: 'pragmatic-brazilian-roulette',
+      notifications: true
+    };
 
     // Mapear para formato de roletas com nomes amigáveis - MAPEAMENTO EXPANDIDO PARA TODAS AS 48 MESAS
     const nameMapping: { [key: string]: string } = {
@@ -140,8 +123,8 @@ export async function GET(request: NextRequest) {
     if (backendDefaultPreferences) {
        // Ajustar estrutura de dados do backend para o formato esperado pelo frontend
        default_preferences = {
-         strategies: backendDefaultPreferences.selected_strategies || [],
-         tables: backendDefaultPreferences.selected_tables || []
+         strategies: backendDefaultPreferences.strategy ? [backendDefaultPreferences.strategy] : [],
+         tables: backendDefaultPreferences.table ? [backendDefaultPreferences.table] : []
        };
        console.log('✅ Usando preferências padrão do backend SOFIA');
      } else {

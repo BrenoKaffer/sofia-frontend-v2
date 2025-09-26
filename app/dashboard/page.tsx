@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useUser } from '@/hooks/use-user';
 import { useAuth } from '@/contexts/auth-context';
 import { DashboardLayout } from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,14 +16,24 @@ import { Separator } from '@/components/ui/separator';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowRight, ArrowUpRight, Clock, Activity, TrendingUp, BarChart3, Target, AlertTriangle, CheckCircle, ChevronRight, Play, Zap, History, Settings, ExternalLink } from 'lucide-react';
 import { redirect } from 'next/navigation';
-import { LiveSignals } from '@/components/dashboard/live-signals';
-import { StatsCards } from '@/components/dashboard/stats-cards';
-import { PerformanceChart } from '@/components/dashboard/performance-chart';
-import { RouletteStatus } from '@/components/dashboard/roulette-status';
-import { RecentActivity } from '@/components/dashboard/recent-activity';
-import { RouletteModal } from '@/components/dashboard/roulette-modal';
+
+// Lazy imports para componentes pesados
+import { withLazyLoading } from '@/components/lazy/lazy-component';
+import { usePerformanceMonitoring, useSmartMemo, useDebounce } from '@/hooks/use-performance';
+
+// Componentes lazy
+const LiveSignals = withLazyLoading(() => import('@/components/dashboard/live-signals'));
+const StatsCards = withLazyLoading(() => import('@/components/dashboard/stats-cards'));
+const PerformanceChart = withLazyLoading(() => import('@/components/dashboard/performance-chart'));
+const RouletteStatus = withLazyLoading(() => import('@/components/dashboard/roulette-status'));
+const RecentActivity = withLazyLoading(() => import('@/components/dashboard/recent-activity'));
+const RouletteModal = withLazyLoading(() => import('@/components/dashboard/roulette-modal'));
+const RealTimeMetrics = withLazyLoading(() => import('@/components/dashboard/real-time-metrics'));
+
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { useDashboardPreferences } from '@/hooks/use-dashboard-preferences';
+import { useSignalNotifications } from '@/hooks/use-signal-notifications';
+import { AuthTest } from '@/components/auth/auth-test';
 
 // Definição de Tipos para os dados do Backend
 interface GeneratedSignal {
@@ -72,14 +83,23 @@ interface KpiData {
 
 // Dados dinâmicos baseados no backend
 
-export default function DashboardPage() {
-  const { user, isLoading, getToken } = useAuth();
+function DashboardPage() {
+  const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const { preferences: dashboardPreferences, loading: preferencesLoading } = useDashboardPreferences();
+  const {
+    processSignals,
+    notifyConnectionLost,
+    notifyConnectionRestored,
+    notifyHighActivity,
+    getNotificationStatus
+  } = useSignalNotifications();
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
   const [selectedActiveTable, setSelectedActiveTable] = useState<{ tableId: string; strategyName: string; suggestedBets: (string | number)[] } | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const lastActivityRef = useRef<number>(Date.now());
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Frases motivacionais reais sobre estratégias de roleta
   const motivationalPhrases = [
@@ -154,82 +174,11 @@ export default function DashboardPage() {
   };
 
   // Estados para dados reais do backend
-  const [liveSignalsData, setLiveSignalsData] = useState<GeneratedSignal[]>([
-    // DADOS MOCK TEMPORÁRIOS PARA TESTE
-    {
-      id: "1",
-      strategy_name: "Estratégia Fibonacci Avançada",
-      strategy_id: "fibonacci-advanced",
-      table_id: "evolution-double-ball-roulette",
-      suggested_bets: [7, 14, 21, 28, "Red", "1st-12"],
-      bet_numbers: [7, 14, 21, 28, "Red", "1st-12"],
-      suggested_units: 3,
-      confidence_level: 85,
-      confidence_score: 85,
-      confidence_factors: {
-        strategy_performance: 0.82,
-        table_performance: 0.78,
-        pattern_strength: 0.91,
-        data_volume: 0.88,
-        time_factor: 0.75,
-        consistency: 0.83
-      },
-      timestamp_generated: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 60000).toISOString(), // 1 minuto
-      expected_return: 125.50,
-      is_validated: false,
-      type: "pattern",
-      status: "active",
-      message: "Padrão forte detectado nos últimos 15 giros. Sequência de números pares com alta probabilidade."
-    },
-    {
-      id: "2",
-      strategy_name: "Martingale Modificado",
-      strategy_id: "martingale-modified",
-      table_id: "evolution-lightning-roulette",
-      suggested_bets: [0, 32, 15, "Black"],
-      bet_numbers: [0, 32, 15, "Black"],
-      suggested_units: 2,
-      confidence_level: 65,
-      confidence_score: 65,
-      timestamp_generated: new Date(Date.now() - 30000).toISOString(), // 30 segundos atrás
-      expires_at: new Date(Date.now() + 30000).toISOString(), // 30 segundos
-      expected_return: 89.25,
-      is_validated: false,
-      type: "progression",
-      status: "active",
-      message: "Oportunidade de recuperação identificada. Aposte com cautela."
-    }
-  ]);
+  const [liveSignalsData, setLiveSignalsData] = useState<GeneratedSignal[]>([]);
   const [latestRouletteSpin, setLatestRouletteSpin] = useState<RouletteSpin | null>(null);
   const [kpisData, setKpisData] = useState<KpiData[]>([]);
   const [rouletteHistoryData, setRouletteHistoryData] = useState<RouletteSpin[]>([]);
-  const [activeSignal, setActiveSignal] = useState<GeneratedSignal | null>({
-    id: "1",
-    strategy_name: "Estratégia Fibonacci Avançada",
-    strategy_id: "fibonacci-advanced",
-    table_id: "evolution-double-ball-roulette",
-    suggested_bets: [7, 14, 21, 28, "Red", "1st-12"],
-    bet_numbers: [7, 14, 21, 28, "Red", "1st-12"],
-    suggested_units: 3,
-    confidence_level: 85,
-    confidence_score: 85,
-    confidence_factors: {
-      strategy_performance: 0.82,
-      table_performance: 0.78,
-      pattern_strength: 0.91,
-      data_volume: 0.88,
-      time_factor: 0.75,
-      consistency: 0.83
-    },
-    timestamp_generated: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 60000).toISOString(),
-    expected_return: 125.50,
-    is_validated: false,
-    type: "pattern",
-    status: "active",
-    message: "Padrão forte detectado nos últimos 15 giros. Sequência de números pares com alta probabilidade."
-  });
+  const [activeSignal, setActiveSignal] = useState<GeneratedSignal | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [progressValue, setProgressValue] = useState(0);
   const [loading_data, setLoadingData] = useState(true);
@@ -237,9 +186,27 @@ export default function DashboardPage() {
   const [activeRouletteStatus, setActiveRouletteStatus] = useState<{table_id: string, status: string} | null>(null);
   const [monitoredTables, setMonitoredTables] = useState<string[]>([]); // Roletas monitoradas
   const monitoredTablesRef = useRef<string[]>([]); // Ref para evitar re-renders no Realtime
+  const previousConnectionStatusRef = useRef<'connected' | 'disconnected' | 'reconnecting'>('connected');
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
   const API_BASE_URL = '/api'; // Usar APIs locais do Next.js
+
+  // Monitorar mudanças no status de conexão para notificações
+  useEffect(() => {
+    const previousStatus = previousConnectionStatusRef.current;
+    
+    if (previousStatus !== connectionStatus) {
+      if (previousStatus === 'connected' && connectionStatus === 'disconnected') {
+        // Conexão perdida
+        notifyConnectionLost();
+      } else if (previousStatus !== 'connected' && connectionStatus === 'connected') {
+        // Conexão restaurada
+        notifyConnectionRestored();
+      }
+      
+      previousConnectionStatusRef.current = connectionStatus;
+    }
+  }, [connectionStatus, notifyConnectionLost, notifyConnectionRestored]);
 
   // Função para buscar preferências do usuário (roletas monitoradas)
   const fetchUserPreferences = useCallback(async () => {
@@ -278,7 +245,8 @@ export default function DashboardPage() {
        });
        
        if (response.ok) {
-         const kpisData = await response.json();
+         const responseData = await response.json();
+         const kpisData = responseData.data || [];
          setKpisData(kpisData);
          console.log('🔄 KPIs atualizados');
        }
@@ -640,6 +608,27 @@ export default function DashboardPage() {
       
       setLiveSignalsData(mappedData);
       
+      // Processar notificações para os novos sinais
+      if (mappedData.length > 0) {
+        try {
+          await processSignals(mappedData.map(signal => ({
+            id: signal.id,
+            strategy_id: signal.strategy_id,
+            table_id: signal.table_id,
+            confidence: signal.confidence_level,
+            created_at: signal.timestamp_generated,
+            expires_at: signal.expires_at
+          })));
+          
+          // Notificar alta atividade se muitos sinais
+          if (mappedData.length >= 3) {
+            await notifyHighActivity(mappedData.length);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao processar notificações de sinais:', error);
+        }
+      }
+      
       // Se há padrões, definir o mais recente como ativo
       if (mappedData.length > 0) {
         const mostRecentSignal = mappedData[0];
@@ -710,9 +699,9 @@ export default function DashboardPage() {
   useEffect(() => {
     console.log('🔄 useEffect executado - carregando dados reais!');
     console.log('👤 User:', user);
-    console.log('⏳ isLoading:', isLoading);
+    console.log('⏳ isLoaded:', isLoaded);
     
-    if (user && !isLoading) {
+    if (user && isLoaded) {
       console.log('✅ Condições atendidas - iniciando carregamento de dados reais...');
       const loadInitialData = async () => {
           setLoadingData(true);
@@ -799,7 +788,8 @@ export default function DashboardPage() {
               const signalsResponse = await Promise.race([fetchPromise, timeoutPromise]);
               console.log('🎯 Status da resposta de sinais:', signalsResponse.status);
               if (signalsResponse.ok) {
-                const signalsData = await signalsResponse.json();
+                const responseData = await signalsResponse.json();
+                const signalsData = responseData.data || [];
                 console.log('✅ Sinais carregados:', signalsData);
                 console.log('📊 Número de sinais recebidos:', signalsData.length);
                 setLiveSignalsData(signalsData);
@@ -811,64 +801,70 @@ export default function DashboardPage() {
                   console.log('⚠️ Nenhum sinal encontrado');
                 }
               } else {
-                console.error('❌ Erro ao carregar sinais:', signalsResponse.status, signalsResponse.statusText);
+                // Erro ao carregar sinais
                 const errorText = await signalsResponse.text();
-                console.error('❌ Detalhes do erro:', errorText);
               }
             } catch (signalsError: any) {
               if (signalsError?.message === 'REQUEST_TIMEOUT') {
-                console.log('⏰ Timeout na requisição de sinais - continuando com dados mock');
+                // Timeout na requisição de sinais - continuando com dados mock
               } else if (signalsError?.name === 'AbortError') {
-                console.log('⏰ Requisição cancelada - continuando com dados mock');
+                // Requisição cancelada - continuando com dados mock
               } else {
-                console.warn('⚠️ Erro ao carregar sinais, continuando com dados mock:', signalsError?.message || signalsError);
+                // Erro ao carregar sinais, continuando com dados mock
               }
               // Manter os dados mock em caso de erro
             }
             
             // 3. Carregar dados secundários em paralelo (não bloqueantes)
-            console.log('📊 Carregando dados secundários...');
+            // Carregando dados secundários...
             const secondaryPromises = [
               fetch(`${API_BASE_URL}/kpis`, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-              }).then(res => res.ok ? res.json() : null).then(data => {
-                if (data) {
-                  console.log('✅ KPIs carregados');
-                  setKpisData(data);
+              }).then(res => res.ok ? res.json() : null).then(responseData => {
+                if (responseData) {
+                  // KPIs carregados
+                  const kpisData = responseData.data || [];
+                  setKpisData(kpisData);
                 }
-              }).catch(err => console.warn('⚠️ Erro ao carregar KPIs:', err)),
+              }).catch(err => {
+                // Erro ao carregar KPIs
+              }),
               
               fetch(`${API_BASE_URL}/roulette-history?limit=10`, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
               }).then(res => res.ok ? res.json() : null).then(data => {
                 if (data) {
-                  console.log('✅ Histórico carregado');
+                  // Histórico carregado
                   setRouletteHistoryData(data);
                   if (data.length > 0) setLatestRouletteSpin(data[0]);
                 }
-              }).catch(err => console.warn('⚠️ Erro ao carregar histórico:', err)),
+              }).catch(err => {
+                // Erro ao carregar histórico
+              }),
               
               fetch(`${API_BASE_URL}/roulette-status`, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
               }).then(res => res.ok ? res.json() : null).then(data => {
                 if (data) {
-                  console.log('✅ Status carregado');
+                  // Status carregado
                   setActiveRouletteStatus(data);
                 }
-              }).catch(err => console.warn('⚠️ Erro ao carregar status:', err))
+              }).catch(err => {
+                // Erro ao carregar status
+              })
             ];
             
             // Aguardar dados secundários sem bloquear a interface
             await Promise.allSettled(secondaryPromises);
             
-            console.log('✅ Carregamento otimizado concluído!');
+            // Carregamento otimizado concluído
           } catch (error) {
-            console.error('❌ Erro ao carregar dados do backend:', error);
+            // Erro ao carregar dados do backend
             setError('Erro ao conectar com o servidor. Verifique sua conexão.');
           } finally {
             clearTimeout(timeoutId); // Limpar timeout geral
             setLoadingData(false);
-            console.log('🏁 Carregamento finalizado');
+            // Carregamento finalizado
           }
         };
 
@@ -889,7 +885,8 @@ export default function DashboardPage() {
           });
           
           if (response.ok) {
-            const data = await response.json();
+            const responseData = await response.json();
+            const data = responseData.data || [];
             setLiveSignalsData(data.slice(0, 10));
             
             // Atualizar sinal ativo se houver um mais recente
@@ -954,9 +951,9 @@ export default function DashboardPage() {
     } else {
       console.log('❌ Condições não atendidas para carregar dados:');
       console.log('   - User existe:', !!user);
-      console.log('   - Loading:', isLoading);
+      console.log('   - Loaded:', isLoaded);
     }
-  }, [user, isLoading, getToken]);
+  }, [user, isLoaded]);
 
   // Rotação das frases motivacionais
   useEffect(() => {
@@ -971,7 +968,7 @@ export default function DashboardPage() {
 
   // Atualizações periódicas de dados
   useEffect(() => {
-    if (user && !isLoading) {
+    if (user && isLoaded) {
       // Atualizar KPIs a cada 5 minutos
       const kpisInterval = setInterval(() => {
         updateKPIs();
@@ -987,7 +984,7 @@ export default function DashboardPage() {
         clearInterval(statusInterval);
       };
     }
-  }, [user, isLoading, updateKPIs, updateRouletteStatus]);
+  }, [user, isLoaded, updateKPIs, updateRouletteStatus]);
 
   // Contagem regressiva do sinal ativo baseada em expires_at
   useEffect(() => {
@@ -1049,7 +1046,7 @@ export default function DashboardPage() {
     }
   }, [user, getToken]); // Removida fetchRouletteStatus das dependências
 
-  if (isLoading) {
+  if (!isLoaded) {
     return null;
   }
 
@@ -1130,8 +1127,15 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Tabs de Navegação */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="metrics">Métricas em Tempo Real</TabsTrigger>
+          </TabsList>
 
-        {/* Mostrar skeleton durante carregamento */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Mostrar skeleton durante carregamento */}
         {loading_data ? (
           <DashboardSkeleton />
         ) : (
@@ -1525,6 +1529,13 @@ export default function DashboardPage() {
           </Card>
         )}
 
+        {/* Componente de Teste de Autenticação (apenas para desenvolvimento) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-6">
+            <AuthTest />
+          </div>
+        )}
+
         {/* Layout Principal do Dashboard */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Coluna Esquerda - Padrão Ativo e Estatísticas */}
@@ -1578,6 +1589,12 @@ export default function DashboardPage() {
             </div>
           </>
         )}
+          </TabsContent>
+
+          <TabsContent value="metrics" className="space-y-6">
+            <RealTimeMetrics />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Modal da Roleta */}
@@ -1591,3 +1608,6 @@ export default function DashboardPage() {
     </DashboardLayout>
   );
 }
+
+// Memoização do componente principal para otimização de performance
+export default memo(DashboardPage);

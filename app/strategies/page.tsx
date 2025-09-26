@@ -102,7 +102,6 @@ export default function EstrategiasAtivas() {
         setStrategyDescriptions(response.data as StrategyDescription[])
       }
     } catch (error) {
-      console.error('Erro ao carregar descrições de estratégias:', error)
       toast.error('Erro ao carregar descrições de estratégias')
     } finally {
       setDescriptionsLoading(false)
@@ -150,18 +149,8 @@ export default function EstrategiasAtivas() {
       
       // Buscar opções disponíveis e preferências do usuário
       const [availableResponse, preferencesResponse] = await Promise.all([
-        fetch('/api/available-options', {
-          headers: {
-            'Authorization': 'Bearer mock-token',
-            'Content-Type': 'application/json',
-          },
-        }),
-        fetch('/api/user-preferences', {
-          headers: {
-            'Authorization': 'Bearer mock-token',
-            'Content-Type': 'application/json',
-          },
-        })
+        fetch('/api/available-options'),
+        fetch('/api/user-preferences')
       ])
 
       let availableOptions: AvailableOptions
@@ -193,12 +182,7 @@ export default function EstrategiasAtivas() {
         
         // Buscar mesas de roleta da API real
         try {
-          const tablesResponse = await fetch('/api/roulette-tables', {
-            headers: {
-              'Authorization': 'Bearer mock-token',
-              'Content-Type': 'application/json',
-            },
-          })
+          const tablesResponse = await fetch('/api/roulette-tables')
           
           if (tablesResponse.ok) {
             const tablesData = await tablesResponse.json()
@@ -208,7 +192,7 @@ export default function EstrategiasAtivas() {
             }))
           }
         } catch (error) {
-          console.error('Erro ao buscar mesas de roleta:', error)
+          // Erro silencioso - mesas serão carregadas do fallback
         }
       }
 
@@ -251,7 +235,6 @@ export default function EstrategiasAtivas() {
       setTables(tablesWithState)
       setHasChanges(false)
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
       toast.error('Erro ao carregar configurações')
     } finally {
       setLoading(false)
@@ -292,7 +275,6 @@ export default function EstrategiasAtivas() {
       const response = await fetch('/api/user-preferences', {
         method: 'PUT',
         headers: {
-          'Authorization': 'Bearer mock-token',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(preferences)
@@ -305,7 +287,6 @@ export default function EstrategiasAtivas() {
         throw new Error('Falha ao salvar preferências')
       }
     } catch (error) {
-      console.error('Erro ao salvar preferências:', error)
       toast.error('Erro ao salvar configurações')
     } finally {
       setSaving(false)
@@ -315,12 +296,7 @@ export default function EstrategiasAtivas() {
   const resetToDefaults = async () => {
     try {
       // Buscar preferências padrão curadas da API
-      const response = await fetch('/api/available-options', {
-        headers: {
-          'Authorization': 'Bearer mock-token',
-          'Content-Type': 'application/json',
-        },
-      })
+      const response = await fetch('/api/available-options')
 
       if (response.ok) {
         const data = await response.json()
@@ -348,7 +324,6 @@ export default function EstrategiasAtivas() {
         throw new Error('Falha ao buscar configurações padrão')
       }
     } catch (error) {
-      console.error('Erro ao restaurar configurações:', error)
       toast.error('Erro ao restaurar configurações padrão')
     }
   }

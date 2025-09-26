@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
+import { OnboardingTrigger } from '@/components/onboarding/onboarding-trigger';
 import { motion } from 'framer-motion';
 
 interface DashboardLayoutProps {
@@ -39,6 +40,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </motion.div>
         </main>
       </div>
+      
+      {/* Onboarding Trigger */}
+      <OnboardingTrigger />
     </div>
   );
 }

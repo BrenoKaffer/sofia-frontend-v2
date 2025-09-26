@@ -60,7 +60,7 @@ export function useDashboardPreferences() {
       setPreferences(updatedPreferences);
       return true;
     } catch (err) {
-      console.error('Erro ao salvar preferências do dashboard:', err);
+      // Erro ao salvar preferências do dashboard
       setError(err instanceof Error ? err.message : 'Erro ao salvar');
       return false;
     }

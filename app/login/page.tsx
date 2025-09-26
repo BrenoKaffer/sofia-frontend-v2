@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const supabase = createClientComponentClient();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,14 +34,27 @@ export default function LoginPage() {
     }
 
     try {
-      console.log('Tentando fazer login com:', { email, password: password.length + ' caracteres' });
-      const success = await login(email, password);
-      console.log('Resultado do login:', success);
-      if (success) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Erro no login:', error);
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('Credenciais inválidas. Verifique seu email e senha.');
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.error('Por favor, confirme seu email antes de fazer login.');
+        } else {
+          toast.error(error.message || 'Erro ao fazer login');
+        }
+        return;
+      }
+
+      if (data.user) {
         toast.success('Login realizado com sucesso!');
         router.push('/dashboard');
-      } else {
-        toast.error('Credenciais inválidas. Verifique se a senha tem pelo menos 6 caracteres.');
+        router.refresh();
       }
     } catch (error) {
       console.error('Erro no login:', error);
@@ -61,7 +74,7 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <div className="absolute top-6 right-6">
+          <div className="absolute top-6 right-6 z-50">
             <ThemeToggle />
           </div>
           
@@ -180,15 +193,12 @@ export default function LoginPage() {
             </CardContent>
           </Card>
 
-          <div className="mt-8 text-center">
-            <p className="text-xs text-muted-foreground font-sans">
-              Para teste, use qualquer email e senha válidos
-            </p>
-          </div>
+
+
         </motion.div>
       </div>
 
-      {/* Right side - Marketing/Visual */}
+      {/* Right side - Branding */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1639322537228-f710d846310a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1932&q=80')] bg-cover bg-center opacity-10" />
         

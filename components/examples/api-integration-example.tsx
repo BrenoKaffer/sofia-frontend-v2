@@ -42,10 +42,8 @@ export function ApiIntegrationExample() {
 
   // Exemplo de uso do hook de dados em tempo real personalizado
   const customRealTimeData = useRealTimeData({
-    endpoint: '/custom-endpoint',
+    dataType: 'signals',
     pollingInterval: 10000,
-    enableWebSocket: true,
-    enablePolling: true,
     onData: (data) => {
       console.log('Dados customizados recebidos:', data);
     },

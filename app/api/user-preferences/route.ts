@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+import { auth } from '@/lib/auth-server';
 
 interface UserPreferences {
   strategies: string[];
@@ -68,114 +66,152 @@ function generateMockUserPreferences() {
 // GET - Buscar preferências do usuário
 export async function GET(request: NextRequest) {
   try {
-    console.log('🚀 Iniciando API de preferências do usuário...');
-    
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Verificar autenticação
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Token de autorização necessário' },
+        { error: 'Não autorizado' },
         { status: 401 }
       );
     }
 
-    // Buscar preferências do backend SOFIA
-    console.log('🔍 Buscando preferências do backend SOFIA...');
-    
-    const response = await fetch(`${SOFIA_BACKEND_URL}/user-preferences`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-    });
+    // Construir URL para o backend
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const url = `${backendUrl}/api/user-preferences`;
 
-    if (!response.ok) {
-      console.error('❌ Erro ao buscar preferências do backend:', response.status, response.statusText);
-      console.log('⚠️ Usando preferências mock (fallback)');
+    // Fazer requisição para o backend
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.BACKEND_API_KEY}`,
+          'User-Agent': 'Sofia-Frontend/1.0',
+          'X-User-ID': userId
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.error(`Erro do backend: ${response.status} ${response.statusText}`);
+        
+        // Fallback para dados mock em caso de erro
+        const mockPreferences = generateMockUserPreferences();
+        return NextResponse.json(mockPreferences);
+      }
+
+      const preferencesData = await response.json();
+      return NextResponse.json(preferencesData);
+
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
       
-      // MOCK DATA: Fallback com dados simulados para desenvolvimento
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        // Timeout na requisição para o backend
+      }
+      
+      // Fallback para dados mock em caso de erro
       const mockPreferences = generateMockUserPreferences();
       return NextResponse.json(mockPreferences);
     }
-
-    const preferencesData = await response.json();
-    console.log('✅ Preferências recebidas do backend SOFIA:', preferencesData);
-    
-    console.log('🎯 Mesas monitoradas definidas:', preferencesData.tables || []);
-
-    return NextResponse.json(preferencesData);
   } catch (error) {
-    console.error('Erro ao buscar preferências do usuário:', error);
-    console.log('⚠️ Usando preferências mock (fallback devido a erro)');
+    // Erro no endpoint user-preferences
     
-    // MOCK DATA: Fallback com dados simulados em caso de erro
+    // Fallback para dados mock em caso de erro geral
     const mockPreferences = generateMockUserPreferences();
-    return NextResponse.json(mockPreferences);
+    return NextResponse.json(mockPreferences, { status: 500 });
   }
 }
 
 // PUT - Salvar/atualizar preferências do usuário
 export async function PUT(request: NextRequest) {
+  // Verificar autenticação
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Não autorizado' },
+      { status: 401 }
+    );
+  }
+
   try {
-    console.log('🚀 Iniciando salvamento de preferências do usuário...');
-    
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Token de autorização necessário' },
-        { status: 401 }
-      );
-    }
 
     const body = await request.json();
-    console.log('📝 Dados recebidos para salvar:', body);
 
-    // Salvar preferências no backend SOFIA
-    console.log('💾 Salvando preferências no backend SOFIA...');
-    
-    const response = await fetch(`${SOFIA_BACKEND_URL}/user-preferences`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-      body: JSON.stringify(body),
-    });
+    // Construir URL para o backend
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
+    const url = `${backendUrl}/api/user-preferences`;
 
-    if (!response.ok) {
-      console.error('❌ Erro ao salvar preferências no backend:', response.status, response.statusText);
-      console.log('⚠️ Simulando salvamento com dados mock (fallback)');
+    // Fazer requisição para o backend
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.BACKEND_API_KEY}`,
+          'User-Agent': 'Sofia-Frontend/1.0',
+          'X-User-ID': userId
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.error(`Erro do backend: ${response.status} ${response.statusText}`);
+        
+        // Fallback para simulação de salvamento em caso de erro
+        const mockSavedData = {
+          ...body,
+          user_id: userId,
+          last_updated: new Date().toISOString(),
+          success: true,
+          message: 'Preferências salvas (backend indisponível)'
+        };
+        return NextResponse.json(mockSavedData);
+      }
+
+      const savedData = await response.json();
+      return NextResponse.json(savedData);
+
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
       
-      // MOCK DATA: Simular salvamento bem-sucedido
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error('Timeout na requisição para o backend');
+      }
+      
+      // Fallback para simulação de salvamento em caso de erro
       const mockSavedData = {
         ...body,
-        user_id: 'mock_user_123',
+        user_id: userId,
         last_updated: new Date().toISOString(),
         success: true,
-        message: 'Preferências salvas com sucesso (modo mock)'
+        message: 'Preferências salvas (timeout)'
       };
       return NextResponse.json(mockSavedData);
     }
-
-    const savedData = await response.json();
-    console.log('✅ Preferências salvas no backend SOFIA:', savedData);
-
-    return NextResponse.json(savedData);
   } catch (error) {
-    console.error('Erro ao salvar preferências do usuário:', error);
-    console.log('⚠️ Simulando salvamento com dados mock (fallback devido a erro)');
+    console.error('Erro no endpoint user-preferences:', error);
     
-    // MOCK DATA: Simular salvamento bem-sucedido em caso de erro
+    // Fallback para simulação de salvamento em caso de erro geral
     const body = await request.json().catch(() => ({}));
     const mockSavedData = {
       ...body,
-      user_id: 'mock_user_123',
+      user_id: userId,
       last_updated: new Date().toISOString(),
       success: true,
-      message: 'Preferências salvas com sucesso (modo mock - erro capturado)'
+      message: 'Preferências salvas (erro geral)'
     };
-    return NextResponse.json(mockSavedData);
+    return NextResponse.json(mockSavedData, { status: 500 });
   }
 }

@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth-server';
+import { backendService } from '@/lib/backend-service';
 
 // Forçar renderização dinâmica
 export const dynamic = 'force-dynamic';
 
-// Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+// Interfaces
+interface KpiFilters {
+  table_id?: string;
+}
+
+interface ApiResponse {
+  data: any[];
+  success: boolean;
+  message: string;
+}
 
 // MOCK DATA: Função para gerar KPIs simulados
 function generateMockKPIs(tableId?: string | null) {
@@ -62,72 +72,55 @@ function generateMockKPIs(tableId?: string | null) {
 }
 
 export async function GET(request: NextRequest) {
-  // Extrair parâmetros da query
-  const { searchParams } = new URL(request.url);
-  const tableId = searchParams.get('table_id');
-  
   try {
-    console.log('🚀 Iniciando API de KPIs...');
+    // Obter informações de autenticação do middleware
+    const userId = request.headers.get('x-user-id');
+    const authType = request.headers.get('x-auth-type');
     
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    console.log('🔐 Header de autorização:', authHeader ? 'Presente' : 'Ausente');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ Token de autorização inválido');
-      return NextResponse.json(
-        { error: 'Token de autorização necessário' },
-        { status: 401 }
-      );
-    }
-    
-    console.log('✅ Autorização válida');
-
-    // Buscar KPIs do backend SOFIA
-    console.log('🔍 Buscando KPIs do backend SOFIA...');
-    
-    const kpisUrl = new URL(`${SOFIA_BACKEND_URL}/kpis-estrategias`);
-    if (tableId) {
-      kpisUrl.searchParams.set('table_id', tableId);
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const response = await fetch(kpisUrl.toString(), {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-    });
+    // Extrair parâmetros da query
+    const { searchParams } = new URL(request.url);
+    const filters: KpiFilters = {
+      table_id: searchParams.get('table_id') || undefined
+    };
 
-    if (!response.ok) {
-      console.error('❌ Erro ao buscar KPIs do backend:', response.status, response.statusText);
-      console.log('⚠️ Usando KPIs mock (fallback)');
+    console.log('🚀 Buscando KPIs do backend...');
+
+    try {
+      // Tentar buscar dados do backend real
+      const backendResponse = await backendService.getKpisEstrategias(filters.table_id);
+
+      console.log('✅ KPIs recebidos do backend SOFIA');
+      return NextResponse.json(backendResponse);
+
+    } catch (backendError: any) {
+      console.warn('⚠️ Backend não disponível, usando dados mock:', backendError.message);
       
-      // MOCK DATA: Fallback com dados simulados para desenvolvimento
-      const mockKPIs = generateMockKPIs(tableId);
-      return NextResponse.json(mockKPIs);
+      // Fallback para dados mock em caso de erro
+      const mockKPIs = generateMockKPIs(filters.table_id);
+      const mockResponse: ApiResponse = {
+        data: mockKPIs,
+        success: true,
+        message: 'Dados simulados (backend indisponível)'
+      };
+      
+      return NextResponse.json(mockResponse);
     }
 
-    const kpisData = await response.json();
-    console.log('✅ KPIs recebidos do backend SOFIA:', kpisData);
-
-    // Garantir que os dados numéricos sejam válidos
-    const sanitizedData = Array.isArray(kpisData) ? kpisData.map(item => ({
-      ...item,
-      total_signals_generated: Number(item.total_signals_generated) || 0,
-      successful_signals: Number(item.successful_signals) || 0,
-      failed_signals: Number(item.failed_signals) || 0,
-      assertiveness_rate_percent: Number(item.assertiveness_rate_percent) || 0,
-      total_net_profit_loss: Number(item.total_net_profit_loss) || 0
-    })) : [];
-
-    return NextResponse.json(sanitizedData);
-  } catch (error) {
-    console.error('❌ Erro geral na API de KPIs:', error);
-    console.log('⚠️ Usando KPIs mock (fallback devido a erro)');
+  } catch (error: any) {
+    console.error('Erro geral na API de KPIs:', error);
     
-    // MOCK DATA: Fallback com dados simulados em caso de erro
-    const mockKPIs = generateMockKPIs(tableId);
-    return NextResponse.json(mockKPIs);
+    // Fallback final para dados mock
+    const mockKPIs = generateMockKPIs();
+    const mockResponse: ApiResponse = {
+      data: mockKPIs,
+      success: false,
+      message: 'Erro interno do servidor'
+    };
+    
+    return NextResponse.json(mockResponse, { status: 500 });
   }
 }

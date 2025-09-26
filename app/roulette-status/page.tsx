@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '@/components/dashboard/layout';
+import { MetricsTab } from './metrics-tab';
+import { RouletteHeatmap } from '@/components/analytics/roulette-heatmap';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,7 +34,16 @@ import {
   Users,
   FlipHorizontal,
   GitCompare,
-  EyeOff
+  EyeOff,
+  Zap,
+  Timer,
+  Gauge,
+  AlertTriangle,
+  TrendingDown,
+  Calendar,
+  BarChart2,
+  PieChart,
+  LineChart
 } from 'lucide-react';
 
 // Mock data para demonstração
@@ -109,6 +120,10 @@ export default function RouletteStatusPage() {
   const [hoveredNumber, setHoveredNumber] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState('grid');
   const [lastTabByRoulette, setLastTabByRoulette] = useState<Record<string, string>>({});
+  const [performanceMetrics, setPerformanceMetrics] = useState<Record<string, any>>({});
+  const [realTimeAlerts, setRealTimeAlerts] = useState<any[]>([]);
+  const [spinVelocity, setSpinVelocity] = useState<Record<string, number>>({});
+  const [trendAnalysis, setTrendAnalysis] = useState<Record<string, any>>({});
 
   // Carregar preferências de abas do localStorage na inicialização
   useEffect(() => {
@@ -121,6 +136,115 @@ export default function RouletteStatusPage() {
       }
     }
   }, []);
+
+  // Simulação de métricas em tempo real
+  useEffect(() => {
+    const updateMetrics = () => {
+      const newMetrics: Record<string, any> = {};
+      const newVelocity: Record<string, number> = {};
+      const newTrends: Record<string, any> = {};
+      
+      roulettes.forEach(roulette => {
+        // Métricas de performance
+        newMetrics[roulette.id] = {
+          avgSpinTime: Math.random() * 30 + 15, // 15-45 segundos
+          efficiency: Math.random() * 20 + 80, // 80-100%
+          uptime: Math.random() * 5 + 95, // 95-100%
+          totalSpinsToday: Math.floor(Math.random() * 500) + 200,
+          revenue: Math.random() * 10000 + 5000,
+          playerCount: Math.floor(Math.random() * 50) + 10
+        };
+        
+        // Velocidade de giros (giros por hora)
+        newVelocity[roulette.id] = Math.random() * 40 + 60; // 60-100 giros/hora
+        
+        // Análise de tendências
+        newTrends[roulette.id] = {
+          hotStreak: Math.floor(Math.random() * 10) + 1,
+          coldStreak: Math.floor(Math.random() * 15) + 5,
+          patternDetected: Math.random() > 0.7,
+          volatility: Math.random() * 100,
+          predictability: Math.random() * 100
+        };
+      });
+      
+      setPerformanceMetrics(newMetrics);
+      setSpinVelocity(newVelocity);
+      setTrendAnalysis(newTrends);
+      
+      // Gerar alertas aleatórios
+      if (Math.random() > 0.8) {
+        const alertTypes = ['hot_number', 'cold_streak', 'pattern_detected', 'high_volatility'];
+        const randomAlert = {
+          id: Date.now(),
+          type: alertTypes[Math.floor(Math.random() * alertTypes.length)],
+          rouletteId: roulettes[Math.floor(Math.random() * roulettes.length)].id,
+          message: 'Novo padrão detectado',
+          timestamp: new Date()
+        };
+        setRealTimeAlerts(prev => [randomAlert, ...prev.slice(0, 4)]);
+      }
+    };
+    
+    // Atualizar métricas a cada 5 segundos
+    const interval = setInterval(updateMetrics, 5000);
+    updateMetrics(); // Executar imediatamente
+    
+    return () => clearInterval(interval);
+  }, [roulettes]);
+
+  // Função para filtrar números baseado no limite de spins
+  const getFilteredNumbers = (numbers: number[]) => {
+    const limit = parseInt(lastXSpins);
+    // Se o limite for 500, mostra todos os números disponíveis
+    if (limit >= 500) {
+      return numbers;
+    }
+    return numbers.slice(0, limit);
+  };
+
+  // Processar dados para o mapa de calor
+  const heatmapData = useMemo(() => {
+    if (!selectedRoulette) return [];
+
+    const roulette = roulettes.find(r => r.id === selectedRoulette);
+    if (!roulette || !roulette.lastNumbers) return [];
+
+    // Calcular frequência de cada número
+    const numberFrequency: { [key: number]: number } = {};
+    const numberLastSeen: { [key: number]: string } = {};
+
+    // Inicializar todos os números (0-36) com frequência 0
+    for (let i = 0; i <= 36; i++) {
+      numberFrequency[i] = 0;
+    }
+
+    // Contar frequências dos números filtrados
+    const filteredNumbers = getFilteredNumbers(roulette.lastNumbers);
+    filteredNumbers.forEach((number, index) => {
+      if (number >= 0 && number <= 36) {
+        numberFrequency[number]++;
+        if (!numberLastSeen[number]) {
+          numberLastSeen[number] = `Posição ${filteredNumbers.length - index}`;
+        }
+      }
+    });
+
+    // Determinar cor do número (vermelho, preto ou verde)
+    const getNumberColor = (num: number): 'red' | 'black' | 'green' => {
+      if (num === 0) return 'green';
+      const redNumbers = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+      return redNumbers.includes(num) ? 'red' : 'black';
+    };
+
+    // Converter para formato do componente
+    return Object.entries(numberFrequency).map(([number, frequency]) => ({
+      number: parseInt(number),
+      frequency,
+      lastSeen: numberLastSeen[parseInt(number)] || 'Nunca',
+      color: getNumberColor(parseInt(number))
+    }));
+  }, [selectedRoulette, roulettes, lastXSpins, timeFilter]);
 
   // Salvar preferências de abas no localStorage
   const saveTabPreference = (rouletteId: string, tabValue: string) => {
@@ -233,15 +357,6 @@ export default function RouletteStatusPage() {
     }
     
     return filtered;
-  };
-
-  const getFilteredNumbers = (numbers: number[]) => {
-    const limit = parseInt(lastXSpins);
-    // Se o limite for 500, mostra todos os números disponíveis
-    if (limit >= 500) {
-      return numbers;
-    }
-    return numbers.slice(0, limit);
   };
 
   const getTimeFilteredData = () => {
@@ -450,6 +565,7 @@ export default function RouletteStatusPage() {
               <TabsTrigger value="history" className="transition-all duration-200 hover:bg-primary/10">Histórico Detalhado</TabsTrigger>
               <TabsTrigger value="heatmap" className="transition-all duration-200 hover:bg-primary/10">Mapa de Calor</TabsTrigger>
               <TabsTrigger value="analytics" className="transition-all duration-200 hover:bg-primary/10">Análises</TabsTrigger>
+              <TabsTrigger value="metrics" className="transition-all duration-200 hover:bg-primary/10">Métricas RT</TabsTrigger>
               {compareMode && selectedForComparison.length > 1 && (
                 <TabsTrigger value="comparison" className="transition-all duration-200 hover:bg-primary/10">Comparação ({selectedForComparison.length})</TabsTrigger>
               )}
@@ -824,154 +940,81 @@ export default function RouletteStatusPage() {
           </TabsContent>
 
           <TabsContent value="heatmap" className="mt-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-            <Card>
+            <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />
                   Mapa de Calor das Roletas
                 </CardTitle>
                 <CardDescription>
-                  Visualização da frequência de números por roleta nos últimos {lastXSpins} giros
+                  Selecione uma roleta para visualizar o mapa de calor detalhado
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {displayedRoulettes.map((roulette) => (
-                    <div key={roulette.id} className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">{roulette.name}</h3>
-                        <Badge className={getStatusColor(roulette.status)}>
-                          {getStatusText(roulette.status)}
-                        </Badge>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Selecionar Roleta</Label>
+                    <Select value={selectedRoulette || ""} onValueChange={(value) => {
+                      setSelectedRoulette(value || null);
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Escolha uma roleta..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {displayedRoulettes.map((roulette) => (
+                          <SelectItem key={roulette.id} value={roulette.id}>
+                            <div className="flex items-center gap-2">
+                              <div className={`h-2 w-2 rounded-full ${
+                                roulette.status === 'online' ? 'bg-green-500' : 
+                                roulette.status === 'offline' ? 'bg-red-500' : 'bg-yellow-500'
+                              }`} />
+                              {roulette.name}
+                              {roulette.isMonitored && <Badge variant="outline" className="ml-2 text-xs">Monitorada</Badge>}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {selectedRoulette && (
+                    <div className="flex items-center gap-4 p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <div className={`h-3 w-3 rounded-full ${
+                          roulettes.find(r => r.id === selectedRoulette)?.status === 'online' ? 'bg-green-500' : 
+                          roulettes.find(r => r.id === selectedRoulette)?.status === 'offline' ? 'bg-red-500' : 'bg-yellow-500'
+                        }`} />
+                        <span className="font-medium">{roulettes.find(r => r.id === selectedRoulette)?.name}</span>
                       </div>
-                      
-                      {/* Grade de números da roleta */}
-                      <div className="grid grid-cols-19 gap-1 p-4 bg-muted/30 rounded-lg">
-                        {/* Linha superior: 3, 6, 9, ..., 36 */}
-                        {[3,6,9,12,15,18,21,24,27,30,33,36].map((num) => {
-                          const frequency = getFilteredNumbers(roulette.lastNumbers).filter(n => n === num).length;
-                          const intensity = Math.min(frequency / 3, 1); // Normaliza para 0-1
-                          return (
-                            <div 
-                              key={num}
-                              className={`h-8 w-8 rounded text-xs font-medium flex items-center justify-center text-white relative group cursor-pointer hover:border-2 ${[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 'hover:border-gray-400' : 'hover:border-white/50'} transition-all duration-200`}
-                              style={{
-                                backgroundColor: num === 0 ? '#16a34a' : 
-                                  [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                    `rgba(220, 38, 38, ${0.5 + intensity * 0.5})` : 
-                                    `rgba(0, 0, 0, ${0.3 + intensity * 0.7})`,
-                                border: [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                  '1px solid rgba(220, 38, 38, 0.3)' : '1px solid rgba(255, 255, 255, 0.2)',
-                                boxShadow: [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                  '0 0 8px rgba(220, 38, 38, 0.4)' : 'none'
-                              }}
-                            >
-                              {num}
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                {frequency} aparições
-                              </div>
-                            </div>
-                          );
-                        })}
-                        
-                        {/* Linha do meio: 2, 5, 8, ..., 35 */}
-                        {[2,5,8,11,14,17,20,23,26,29,32,35].map((num) => {
-                          const frequency = getFilteredNumbers(roulette.lastNumbers).filter(n => n === num).length;
-                          const intensity = Math.min(frequency / 3, 1);
-                          return (
-                            <div 
-                              key={num}
-                              className={`h-8 w-8 rounded text-xs font-medium flex items-center justify-center text-white relative group cursor-pointer hover:border-2 ${[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 'hover:border-gray-400' : 'hover:border-white/50'} transition-all duration-200`}
-                              style={{
-                                backgroundColor: num === 0 ? '#16a34a' : 
-                                  [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                    `rgba(220, 38, 38, ${0.5 + intensity * 0.5})` : 
-                                    `rgba(0, 0, 0, ${0.3 + intensity * 0.7})`,
-                                border: [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                  '1px solid rgba(220, 38, 38, 0.3)' : '1px solid rgba(255, 255, 255, 0.2)',
-                                boxShadow: [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                  '0 0 8px rgba(220, 38, 38, 0.4)' : 'none'
-                              }}
-                            >
-                              {num}
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                {frequency} aparições
-                              </div>
-                            </div>
-                          );
-                        })}
-                        
-                        {/* Linha inferior: 1, 4, 7, ..., 34 */}
-                        {[1,4,7,10,13,16,19,22,25,28,31,34].map((num) => {
-                          const frequency = getFilteredNumbers(roulette.lastNumbers).filter(n => n === num).length;
-                          const intensity = Math.min(frequency / 3, 1);
-                          return (
-                            <div 
-                              key={num}
-                              className={`h-8 w-8 rounded text-xs font-medium flex items-center justify-center text-white relative group cursor-pointer hover:border-2 ${[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 'hover:border-gray-400' : 'hover:border-white/50'} transition-all duration-200`}
-                              style={{
-                                backgroundColor: num === 0 ? '#16a34a' : 
-                                  [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                    `rgba(220, 38, 38, ${0.5 + intensity * 0.5})` : 
-                                    `rgba(0, 0, 0, ${0.3 + intensity * 0.7})`,
-                                border: [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                  '1px solid rgba(220, 38, 38, 0.3)' : '1px solid rgba(255, 255, 255, 0.2)',
-                                boxShadow: [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(num) ? 
-                                  '0 0 8px rgba(220, 38, 38, 0.4)' : 'none'
-                              }}
-                            >
-                              {num}
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                {frequency} aparições
-                              </div>
-                            </div>
-                          );
-                        })}
-                        
-                        {/* Zero */}
-                        {(() => {
-                          const frequency = getFilteredNumbers(roulette.lastNumbers).filter(n => n === 0).length;
-                          const intensity = Math.min(frequency / 3, 1);
-                          return (
-                            <div 
-                              className={`h-8 w-8 rounded text-xs font-medium flex items-center justify-center text-white relative group cursor-pointer hover:border-2 hover:border-white/50 transition-all duration-200`}
-                              style={{
-                                backgroundColor: `rgba(22, 163, 74, ${0.3 + intensity * 0.7})`
-                              }}
-                            >
-                              0
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                {frequency} aparições
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                      
-                      {/* Legenda */}
-                      <div className="flex items-center justify-center gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="h-4 w-4 rounded" style={{backgroundColor: 'rgba(220, 38, 38, 0.5)', border: '1px solid rgba(220, 38, 38, 0.8)'}}></div>
-                          <span>Números vermelhos - Baixa frequência</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="h-4 w-4 rounded" style={{backgroundColor: 'rgba(220, 38, 38, 1)', border: '2px solid rgba(220, 38, 38, 0.8)', boxShadow: '0 0 4px rgba(220, 38, 38, 0.4)'}}></div>
-                          <span>Números vermelhos - Alta frequência</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="h-4 w-4 bg-black rounded" style={{border: '1px solid rgba(255, 255, 255, 0.2)'}}></div>
-                          <span>Números pretos</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="h-4 w-4 bg-green-600 rounded"></div>
-                          <span>Zero</span>
-                        </div>
-                      </div>
+                      <Badge className={getStatusColor(roulettes.find(r => r.id === selectedRoulette)?.status || 'offline')}>
+                        {getStatusText(roulettes.find(r => r.id === selectedRoulette)?.status || 'offline')}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {roulettes.find(r => r.id === selectedRoulette)?.totalSpins} giros totais
+                      </span>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
+
+            {selectedRoulette ? (
+              <RouletteHeatmap
+                data={heatmapData}
+                title={`Mapa de Calor - ${roulettes.find(r => r.id === selectedRoulette)?.name}`}
+                description={`Frequência dos números baseada nos últimos ${lastXSpins} giros (filtro: ${timeFilter})`}
+                showStats={true}
+              />
+            ) : (
+              <Card>
+                <CardContent className="flex items-center justify-center py-12">
+                  <div className="text-center text-muted-foreground">
+                    <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Selecione uma roleta acima para visualizar o mapa de calor</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
@@ -1212,6 +1255,16 @@ export default function RouletteStatusPage() {
                 </Card>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="metrics" className="mt-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+            <MetricsTab 
+              roulettes={displayedRoulettes}
+              performanceMetrics={performanceMetrics}
+              spinVelocity={spinVelocity}
+              trendAnalysis={trendAnalysis}
+              realTimeAlerts={realTimeAlerts}
+            />
           </TabsContent>
         </Tabs>
       </div>

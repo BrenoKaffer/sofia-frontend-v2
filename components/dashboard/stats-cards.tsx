@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Target, Zap, DollarSign, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useMemo, memo } from 'react';
 
 // Tipagem para os dados de KPI reais
 interface KpiData {
@@ -22,39 +23,38 @@ interface StatsCardsProps {
   countdown?: number; // Tempo restante do sinal ativo
 }
 
-export function StatsCards({ kpisData, loading = false, activeSignal, countdown }: StatsCardsProps) {
-  console.log('📊 StatsCards - kpisData recebido:', kpisData);
-  console.log('📊 StatsCards - kpisData.length:', kpisData?.length);
+export const StatsCards = memo(function StatsCards({ kpisData, loading = false, activeSignal, countdown }: StatsCardsProps) {
   
-  // Dados de fallback quando não há KPIs disponíveis
-  const fallbackKpisData = [
-    {
-      strategy_id: 'Martingale Clássico',
-      total_signals_generated: 35,
-      successful_signals: 28,
-      failed_signals: 7,
-      assertiveness_rate_percent: 80.0,
-      total_net_profit_loss: 1250.50,
-      last_updated: new Date().toISOString()
-    },
-    {
-      strategy_id: 'Fibonacci Avançado',
-      total_signals_generated: 30,
-      successful_signals: 22,
-      failed_signals: 8,
-      assertiveness_rate_percent: 73.3,
-      total_net_profit_loss: 890.25,
-      last_updated: new Date().toISOString()
-    }
-  ];
+  // Memoizar dados efetivos para evitar recálculos
+  const effectiveKpisData = useMemo(() => {
+    // Dados de fallback quando não há KPIs disponíveis
+    const fallbackKpisData = [
+      {
+        strategy_id: 'Martingale Clássico',
+        total_signals_generated: 35,
+        successful_signals: 28,
+        failed_signals: 7,
+        assertiveness_rate_percent: 80.0,
+        total_net_profit_loss: 1250.50,
+        last_updated: new Date().toISOString()
+      },
+      {
+        strategy_id: 'Fibonacci Avançado',
+        total_signals_generated: 30,
+        successful_signals: 22,
+        failed_signals: 8,
+        assertiveness_rate_percent: 73.3,
+        total_net_profit_loss: 890.25,
+        last_updated: new Date().toISOString()
+      }
+    ];
+    
+    return (kpisData && kpisData.length > 0) ? kpisData : fallbackKpisData;
+  }, [kpisData]);
   
-  // Usar dados de fallback se não há dados reais ou se estão vazios
-  const effectiveKpisData = (kpisData && kpisData.length > 0) ? kpisData : fallbackKpisData;
-  console.log('📊 StatsCards - effectiveKpisData:', effectiveKpisData);
-  
-  // Lógica para calcular os valores dos cartões a partir dos kpisData
-  // Padrões Ativos: conta apenas sinais com tempo para ação > 0
-  const totalActiveSignals = activeSignal && countdown && countdown > 0 ? 1 : 0;
+  // Memoizar cálculos dos stats para otimizar performance
+  const statsCalculations = useMemo(() => {
+    const totalActiveSignals = activeSignal && countdown && countdown > 0 ? 1 : 0;
   
   // Taxa de Acerto: usar a assertividade da estratégia ativa, ou média global se não houver estratégia ativa
   const getHitRate = () => {
@@ -81,14 +81,12 @@ export function StatsCards({ kpisData, loading = false, activeSignal, countdown 
   };
   
   const hitRate = getHitRate();
-  console.log('📊 StatsCards - hitRate calculado:', hitRate);
   
   // Lucro Total: somar todos os lucros/perdas das estratégias
   const totalRoiMensal = effectiveKpisData.reduce((sum, kpi) => {
     const profit = Number(kpi.total_net_profit_loss) || 0;
     return sum + profit;
   }, 0);
-  console.log('📊 StatsCards - totalRoiMensal calculado:', totalRoiMensal);
   
   // Calcular total de sinais para contexto
   const totalSignalsAnalyzed = effectiveKpisData.reduce((sum, kpi) => {
@@ -97,43 +95,51 @@ export function StatsCards({ kpisData, loading = false, activeSignal, countdown 
   }, 0);
   
   const activeStrategiesCount = effectiveKpisData.length; // Ou adicione lógica para contar apenas as realmente "ativas"
+    return {
+      totalActiveSignals,
+      totalAssertiveness: hitRate,
+      totalRoiMensal,
+      activeStrategiesCount,
+      totalSignals: totalSignalsAnalyzed
+    };
+  }, [effectiveKpisData, activeSignal, countdown]);
+
   const stats = [
     {
       title: 'Padrões Ativos',
-      value: loading ? '...' : totalActiveSignals.toString(),
-      change: '+2.5%', // Pode vir de uma comparação histórica no backend
-      trend: 'up',
+      value: loading ? '...' : statsCalculations.totalActiveSignals.toString(),
+      change: '+12%',
+      trend: 'up' as const,
       icon: Zap,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
+      context: countdown && countdown > 0 ? `${countdown}s restantes` : 'Aguardando próximo sinal',
     },
     {
       title: 'Taxa de Acerto',
-      value: loading ? '...' : `${hitRate.toFixed(1)}%`,
-      change: '+1.2%', // Pode vir de uma comparação histórica no backend
-      trend: 'up',
+      value: loading ? '...' : `${statsCalculations.totalAssertiveness.toFixed(1)}%`,
+      change: '+2.1%',
+      trend: statsCalculations.totalAssertiveness >= 70 ? 'up' as const : 'down' as const,
       icon: Target,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
-      context: `Baseado em ${totalSignalsAnalyzed} sinais`,
-      // Nota: Taxa de Acerto mostra a assertividade da estratégia ativa quando disponível,
-      // ou a média ponderada global quando não há estratégia ativa
+      context: `${statsCalculations.totalSignals} sinais analisados`,
     },
     {
-      title: 'Lucro Total (R$)',
-      value: loading ? '...' : `${totalRoiMensal >= 0 ? '+' : ''}${totalRoiMensal.toFixed(2)}`,
-      change: '+5.1%', // Pode vir de uma comparação histórica no backend
-      trend: totalRoiMensal >= 0 ? 'up' : 'down',
+      title: 'ROI Mensal',
+      value: loading ? '...' : `${statsCalculations.totalRoiMensal >= 0 ? '+' : ''}${statsCalculations.totalRoiMensal.toFixed(2)}`,
+      change: '+5.1%',
+      trend: statsCalculations.totalRoiMensal >= 0 ? 'up' as const : 'down' as const,
       icon: DollarSign,
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
-      context: `Baseado em ${activeStrategiesCount} estratégias`,
+      context: `Baseado em ${statsCalculations.activeStrategiesCount} estratégias`,
     },
     {
       title: 'Estratégias Monitoradas',
-      value: loading ? '...' : activeStrategiesCount.toString(),
-      change: '+1', // Pode vir de uma comparação histórica no backend
-      trend: 'up',
+      value: loading ? '...' : statsCalculations.activeStrategiesCount.toString(),
+      change: '+1',
+      trend: 'up' as const,
       icon: BarChart3,
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
@@ -184,4 +190,6 @@ export function StatsCards({ kpisData, loading = false, activeSignal, countdown 
       ))}
     </div>
   );
-}
+});
+
+export default StatsCards;

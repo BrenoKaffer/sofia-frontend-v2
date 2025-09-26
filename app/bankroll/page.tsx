@@ -872,7 +872,7 @@ export default function BankrollPage() {
                       <SelectContent>
                         <SelectItem value="martingale">Martingale</SelectItem>
                         <SelectItem value="fibonacci">Fibonacci</SelectItem>
-                        <SelectItem value="dalembert">D'Alembert</SelectItem>
+                        <SelectItem value="dalembert">D&apos;Alembert</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

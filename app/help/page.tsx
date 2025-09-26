@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Play, BookOpen, MessageSquare, HelpCircle, Video, FileText, Lightbulb, ChevronRight, ExternalLink } from 'lucide-react';
+import { LiveChat } from '@/components/chat/live-chat';
+import { Search, Play, BookOpen, MessageSquare, HelpCircle, Video, FileText, Lightbulb, ChevronRight, ExternalLink, Sparkles } from 'lucide-react';
 
 const faqs = [
   {
@@ -165,6 +166,8 @@ export default function HelpPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentOnboardingStep, setCurrentOnboardingStep] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
 
   const filteredFaqs = faqs.filter(faq => 
     faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -189,10 +192,16 @@ export default function HelpPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight font-urbanist">Central de Ajuda</h1>
-          <Button onClick={startOnboarding} className="gap-2">
-            <Play className="h-4 w-4" />
-            Iniciar Tour Guiado
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={startOnboarding} variant="outline" className="gap-2">
+              <Play className="h-4 w-4" />
+              Tour Rápido
+            </Button>
+            <Button onClick={() => window.location.href = '/onboarding'} className="gap-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600">
+              <Sparkles className="h-4 w-4" />
+              Onboarding Completo
+            </Button>
+          </div>
         </div>
 
         {showOnboarding && (
@@ -373,60 +382,24 @@ export default function HelpPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="border rounded-lg">
-                    <ScrollArea className="h-[300px] p-4">
-                      <div className="space-y-4">
-                        <div className="flex gap-3">
-                          <Avatar>
-                            <AvatarImage src="/sofia-avatar.png" />
-                            <AvatarFallback className="bg-primary text-primary-foreground">IA</AvatarFallback>
-                          </Avatar>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium font-plus-jakarta">Assistente SOFIA</span>
-                              <Badge variant="outline" className="text-xs font-plus-jakarta">IA</Badge>
-                            </div>
-                            <div className="bg-muted p-3 rounded-lg rounded-tl-none font-plus-jakarta">
-                              Olá! Sou o assistente virtual da SOFIA. Como posso ajudar você hoje?
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3 justify-end">
-                          <div className="flex flex-col gap-1 items-end">
-                            <span className="font-medium font-plus-jakarta">Você</span>
-                            <div className="bg-primary text-primary-foreground p-3 rounded-lg rounded-tr-none font-plus-jakarta">
-                              Como faço para ativar uma estratégia?
-                            </div>
-                          </div>
-                          <Avatar>
-                            <AvatarFallback>U</AvatarFallback>
-                          </Avatar>
-                        </div>
-
-                        <div className="flex gap-3">
-                          <Avatar>
-                            <AvatarImage src="/sofia-avatar.png" />
-                            <AvatarFallback className="bg-primary text-primary-foreground">IA</AvatarFallback>
-                          </Avatar>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium font-plus-jakarta">Assistente SOFIA</span>
-                              <Badge variant="outline" className="text-xs font-plus-jakarta">IA</Badge>
-                            </div>
-                            <div className="bg-muted p-3 rounded-lg rounded-tl-none font-plus-jakarta">
-                              Para ativar uma estratégia, acesse a seção &quot;Estratégias&quot; no menu lateral, selecione a estratégia desejada e clique no botão de toggle para ativá-la. Você também pode personalizar parâmetros como valores de aposta e limites de perda/ganho antes de ativar.
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </ScrollArea>
-                    <div className="p-4 border-t flex gap-2">
-                      <Input placeholder="Digite sua pergunta..." className="flex-1 font-plus-jakarta" />
-                      <Button size="icon">
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                  <div className="text-center py-8">
+                    <div className="mb-4">
+                      <Avatar className="h-16 w-16 mx-auto mb-4">
+                        <AvatarImage src="/sofia-avatar.png" />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-lg">IA</AvatarFallback>
+                      </Avatar>
+                      <h3 className="font-medium font-urbanist mb-2">Assistente Virtual SOFIA</h3>
+                      <p className="text-sm text-muted-foreground font-plus-jakarta mb-4">
+                        Disponível 24/7 para ajudar com suas dúvidas sobre estratégias, padrões e funcionalidades da plataforma.
+                      </p>
                     </div>
+                    <Button 
+                      onClick={() => setIsChatOpen(true)}
+                      className="font-plus-jakarta"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Iniciar Conversa
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -450,7 +423,11 @@ export default function HelpPage() {
                           <div className="font-medium font-plus-jakarta">Chat ao Vivo</div>
                           <div className="text-sm text-muted-foreground font-plus-jakarta">Disponível 24/7</div>
                         </div>
-                        <Button variant="outline" className="ml-auto font-plus-jakarta">
+                        <Button 
+                          variant="outline" 
+                          className="ml-auto font-plus-jakarta"
+                          onClick={() => setIsChatOpen(true)}
+                        >
                           Iniciar Chat
                         </Button>
                       </div>
@@ -505,6 +482,13 @@ export default function HelpPage() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      <LiveChat 
+          isOpen={isChatOpen} 
+          minimized={isChatMinimized}
+          onToggle={() => setIsChatOpen(!isChatOpen)}
+          onMinimize={() => setIsChatMinimized(!isChatMinimized)}
+        />
     </DashboardLayout>
   );
 }

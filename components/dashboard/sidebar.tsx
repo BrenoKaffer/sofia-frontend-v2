@@ -36,7 +36,8 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
-  RotateCcw
+  RotateCcw,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/auth-context';
@@ -46,7 +47,7 @@ const navigationSections = [
     title: 'Operação',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { name: 'Histórico de Padrões', href: '/historico-de-padroes', icon: Dices },
+      { name: 'Registros de Padrões', href: '/registros-de-padroes', icon: Dices },
       { name: 'Histórico das Roletas', href: '/roulette-status', icon: History },
       { name: 'Estratégias Ativas', href: '/strategies', icon: Target },
       { name: 'Padrões Personalizados', href: '/custom-signals', icon: Bell },
@@ -69,6 +70,7 @@ const navigationSections = [
       { name: 'Importar Dados', href: '/import', icon: Upload },
       { name: 'Exportar Relatórios', href: '/export', icon: Download },
       { name: 'Log do Sistema', href: '/logs', icon: FileText },
+      { name: 'Métricas de Logs', href: '/logs/metrics', icon: BarChart3 },
       { name: 'Laboratório (Beta)', href: '/lab', icon: TestTubes },
     ]
   },
@@ -76,6 +78,7 @@ const navigationSections = [
     title: 'Conta e Configurações',
     items: [
       { name: 'Configurações', href: '/settings', icon: Settings },
+      { name: 'Backup e Restauração', href: '/backup', icon: Database },
       { name: 'Meu Perfil', href: '/profile', icon: User },
     ]
   },

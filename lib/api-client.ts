@@ -1,6 +1,7 @@
 /**
  * Cliente HTTP para consumo das APIs do SOFIA
  * Centraliza todas as chamadas de API com tratamento de erro e retry logic
+ * Integrado com sistema de autenticação personalizado (client-side)
  */
 
 interface ApiResponse<T = any> {
@@ -16,6 +17,7 @@ interface RequestConfig {
   body?: any;
   timeout?: number;
   retries?: number;
+  skipAuth?: boolean;
 }
 
 class ApiClient {
@@ -26,8 +28,10 @@ class ApiClient {
   private defaultRetries = 3;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    this.publicBaseUrl = process.env.NEXT_PUBLIC_PUBLIC_API_URL || 'http://localhost:3001/api/public';
+    // Configuração para usar o backend SOFIA real
+    const sofiaBackendUrl = process.env.SOFIA_BACKEND_URL || 'http://localhost:3001';
+    this.baseUrl = `${sofiaBackendUrl}/api`;
+    this.publicBaseUrl = `${sofiaBackendUrl}/api/public`;
     this.apiKey = process.env.NEXT_PUBLIC_API_KEY;
   }
 
@@ -51,9 +55,17 @@ class ApiClient {
       ...headers
     };
 
-    // Adicionar API Key se disponível
+    // Adicionar API Key se disponível para endpoints públicos
     if (this.apiKey && url.includes('/public/')) {
       requestHeaders['X-API-Key'] = this.apiKey;
+    }
+
+    // Adicionar token de autenticação para endpoints privados
+    if (!url.includes('/public/')) {
+      const token = await this.getAuthToken();
+      if (token) {
+        requestHeaders['Authorization'] = `Bearer ${token}`;
+      }
     }
 
     const requestConfig: RequestInit = {
@@ -110,49 +122,300 @@ class ApiClient {
   /**
    * Buscar KPIs de performance das estratégias
    */
-  async getKpisEstrategias(tableId?: string) {
-    const params = tableId ? `?table_id=${tableId}` : '';
-    return this.makeRequest(`${this.baseUrl}/kpis-estrategias${params}`);
+  async getKpisEstrategias(tableId?: string, strategyName?: string, dateFrom?: string, dateTo?: string) {
+    const params = new URLSearchParams();
+    if (tableId) params.append('table_id', tableId);
+    if (strategyName) params.append('strategy_name', strategyName);
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    
+    const queryString = params.toString();
+    return this.makeRequest(`${this.baseUrl}/kpis-estrategias${queryString ? `?${queryString}` : ''}`);
   }
 
   /**
    * Buscar histórico de giros da roleta
    */
-  async getRouletteHistory(tableId?: string, limit = 50, offset = 0) {
+  async getRouletteHistory(tableId?: string, limit = 50, offset = 0, dateFrom?: string, dateTo?: string) {
     const params = new URLSearchParams();
     if (tableId) params.append('table_id', tableId);
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
     
     return this.makeRequest(`${this.baseUrl}/roulette-history?${params}`);
   }
 
   /**
-   * Buscar sinais recentes
+   * Buscar sinais recentes (histórico de sinais)
    */
   async getRecentSignals(tableId?: string, limit = 20, confidenceMin?: number) {
     const params = new URLSearchParams();
     if (tableId) params.append('table_id', tableId);
     params.append('limit', limit.toString());
-    if (confidenceMin) params.append('confidence_min', confidenceMin.toString());
+    if (confidenceMin) params.append('confidence_level', confidenceMin.toString());
     
-    return this.makeRequest(`${this.baseUrl}/signals/recent?${params}`);
+    return this.makeRequest(`${this.baseUrl}/signals-history?${params}`);
+  }
+
+  // Método para buscar sinais de IA
+  async getAISignals(params: {
+    limit?: number;
+    table_id?: string;
+    strategy?: string;
+    confidence_threshold?: number;
+  } = {}) {
+    const urlParams = new URLSearchParams();
+    
+    if (params.limit) urlParams.append('limit', params.limit.toString());
+    if (params.table_id) urlParams.append('table_id', params.table_id);
+    if (params.strategy) urlParams.append('strategy', params.strategy);
+    if (params.confidence_threshold) urlParams.append('confidence_threshold', params.confidence_threshold.toString());
+    
+    const url = `/ai-signals${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
+    return this.makeRequest(url, { method: 'GET' });
+  }
+
+
+
+
+
+
+
+  // Método para processar spin da roleta
+  async processSpin(spinData: any) {
+    return this.makeRequest('/process-spin', {
+      method: 'POST',
+      body: JSON.stringify(spinData)
+    });
+  }
+
+  // === MÉTODOS DE AUTENTICAÇÃO ===
+
+  // Login
+  async login(credentials: {
+    email: string;
+    password: string;
+    remember_me?: boolean;
+  }): Promise<any> {
+    return this.makeRequest('/api/auth/login', {
+      method: 'POST',
+      body: credentials,
+      skipAuth: true // Login não precisa de auth
+    });
+  }
+
+  // Logout
+  async logout(): Promise<any> {
+    return this.makeRequest('/api/auth/logout', {
+      method: 'POST'
+    });
+  }
+
+  // Registro
+  async register(userData: {
+    email: string;
+    password: string;
+    confirm_password: string;
+    name?: string;
+  }): Promise<any> {
+    return this.makeRequest('/api/auth/register', {
+      method: 'POST',
+      body: userData,
+      skipAuth: true // Registro não precisa de auth
+    });
+  }
+
+  // Verificar sessão
+  async checkSession(): Promise<any> {
+    return this.makeRequest('/api/auth/session', {
+      method: 'GET'
+    });
+  }
+
+  // === MÉTODOS DE ADMINISTRAÇÃO DE USUÁRIOS ===
+
+  // Listar usuários (admin)
+  async getUsers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+  }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.set('page', params.page.toString());
+    if (params?.limit) queryParams.set('limit', params.limit.toString());
+    if (params?.search) queryParams.set('search', params.search);
+    if (params?.role) queryParams.set('role', params.role);
+
+    const url = `${this.baseUrl}/admin/users${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.makeRequest(url);
+  }
+
+  // Criar usuário (admin)
+  async createUser(userData: {
+    email: string;
+    password: string;
+    name?: string;
+    role_id?: string;
+  }): Promise<any> {
+    return this.makeRequest(`${this.baseUrl}/admin/users`, {
+      method: 'POST',
+      body: userData
+    });
+  }
+
+  // Atualizar usuário (admin)
+  async updateUser(userData: {
+    user_id: string;
+    name?: string;
+    role_id?: string;
+    is_active?: boolean;
+  }): Promise<any> {
+    return this.makeRequest(`${this.baseUrl}/admin/users`, {
+      method: 'PUT',
+      body: userData
+    });
+  }
+
+  // Deletar usuário (admin)
+  async deleteUser(userId: string): Promise<any> {
+    return this.makeRequest(`${this.baseUrl}/admin/users?user_id=${userId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // === MÉTODOS DE ADMINISTRAÇÃO DE ROLES ===
+
+  // Listar roles (admin)
+  async getRoles(includeUsers = false): Promise<any> {
+    const url = `${this.baseUrl}/admin/roles${includeUsers ? '?include_users=true' : ''}`;
+    return this.makeRequest(url);
+  }
+
+  // Criar role (admin)
+  async createRole(roleData: {
+    id: string;
+    name: string;
+    description?: string;
+    level: number;
+    permissions?: string[];
+  }): Promise<any> {
+    return this.makeRequest(`${this.baseUrl}/admin/roles`, {
+      method: 'POST',
+      body: roleData
+    });
+  }
+
+  // Atualizar role (admin)
+  async updateRole(roleData: {
+    role_id: string;
+    name?: string;
+    description?: string;
+    level?: number;
+    permissions?: string[];
+  }): Promise<any> {
+    return this.makeRequest(`${this.baseUrl}/admin/roles`, {
+      method: 'PUT',
+      body: roleData
+    });
+  }
+
+  // Deletar role (admin)
+  async deleteRole(roleId: string): Promise<any> {
+    return this.makeRequest(`${this.baseUrl}/admin/roles?role_id=${roleId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // ===== WEBSOCKET =====
+  
+  // Obter informações do WebSocket
+  async getWebSocketInfo(): Promise<ApiResponse<{
+    websocket_url: string;
+    available_channels: string[];
+    current_stats: any;
+    connection_info: any;
+  }>> {
+    return this.makeRequest(`${this.baseUrl}/websocket`);
+  }
+
+  // Enviar mensagem via WebSocket (admin only)
+  async sendWebSocketMessage(data: {
+    channel: string;
+    data: any;
+    target_user?: string;
+  }): Promise<ApiResponse<{ message: string }>> {
+    return this.makeRequest(`${this.baseUrl}/websocket`, {
+      method: 'POST',
+      body: data
+    });
+  }
+
+  // Broadcast para todos os usuários conectados (admin only)
+  async broadcastMessage(channel: string, data: any): Promise<ApiResponse<{ message: string }>> {
+    return this.sendWebSocketMessage({ channel, data });
+  }
+
+  // Enviar notificação para usuário específico (admin only)
+  async sendUserNotification(userId: string, notification: {
+    title: string;
+    message: string;
+    type?: 'info' | 'success' | 'warning' | 'error';
+    action?: { label: string; url: string };
+  }): Promise<ApiResponse<{ message: string }>> {
+    return this.sendWebSocketMessage({
+      channel: 'user_notifications',
+      data: {
+        id: `notif_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        read: false,
+        ...notification
+      },
+      target_user: userId
+    });
+  }
+
+  // Enviar alerta do sistema (admin only)
+  async sendSystemAlert(alert: {
+    level: 'info' | 'warning' | 'critical';
+    title: string;
+    message: string;
+    affectedSystems?: string[];
+  }): Promise<ApiResponse<{ message: string }>> {
+    return this.sendWebSocketMessage({
+      channel: 'system_status',
+      data: {
+        id: `alert_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        type: 'alert',
+        ...alert
+      }
+    });
   }
 
   /**
-   * Buscar atributos de sinais (para filtros)
+   * Buscar todas as estratégias disponíveis
    */
-  async getSignalAttributes() {
-    return this.makeRequest(`${this.baseUrl}/signal-attributes`);
+  async getAllStrategies() {
+    return this.makeRequest(`${this.baseUrl}/all-strategies`);
+  }
+
+
+
+  /**
+   * Buscar opções disponíveis (mesas, estratégias, etc.)
+   */
+  async getAvailableOptions() {
+    return this.makeRequest(`${this.baseUrl}/available-options`);
   }
 
   /**
    * Buscar preferências do usuário
    */
   async getUserPreferences() {
-    return this.makeRequest(`${this.baseUrl}/user-preferences`, {
-      headers: { 'Authorization': `Bearer ${this.getAuthToken()}` }
-    });
+    return this.makeRequest(`${this.baseUrl}/user-preferences`);
   }
 
   /**
@@ -165,17 +428,9 @@ class ApiClient {
     dashboard_layout?: any;
   }) {
     return this.makeRequest(`${this.baseUrl}/user-preferences`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${this.getAuthToken()}` },
+      method: 'POST',
       body: preferences
     });
-  }
-
-  /**
-   * Buscar configurações disponíveis
-   */
-  async getAvailableOptions() {
-    return this.makeRequest(`${this.baseUrl}/available-options`);
   }
 
   /**
@@ -183,12 +438,13 @@ class ApiClient {
    */
   async getSignalsHistory(filters: {
     table_id?: string;
-    strategy?: string;
-    confidence_min?: number;
+    strategy_name?: string;
+    confidence_level?: number;
+    is_validated?: boolean;
     date_from?: string;
     date_to?: string;
-    page?: number;
     limit?: number;
+    offset?: number;
   } = {}) {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -197,7 +453,85 @@ class ApiClient {
       }
     });
     
-    return this.makeRequest(`${this.baseUrl}/signals/history?${params}`);
+    return this.makeRequest(`${this.baseUrl}/signals-history?${params}`);
+  }
+
+  // === Processamento de Spins ===
+
+  /**
+   * Enviar novo spin da roleta para processamento
+   */
+  async processNewSpin(spinData: {
+    number: number;
+    table_id: string;
+    timestamp?: string;
+    color?: string;
+    sector?: string;
+  }) {
+    return this.makeRequest('/new-spin-event', {
+      method: 'POST',
+      body: JSON.stringify(spinData)
+    });
+  }
+
+  /**
+   * Buscar histórico da roleta com filtros avançados
+   */
+  async getRouletteHistoryAdvanced(filters: {
+    table_id?: string;
+    limit?: number;
+    offset?: number;
+    date_from?: string;
+    date_to?: string;
+    number_filter?: number;
+    color_filter?: string;
+  } = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined) {
+        params.append(key, value.toString());
+      }
+    });
+    
+    return this.makeRequest(`${this.baseUrl}/roulette-history-advanced?${params}`);
+  }
+
+  // === APIs de Machine Learning ===
+
+  /**
+   * Inicializar sistema de Machine Learning
+   */
+  async initializeML() {
+    return this.makeRequest(`${this.baseUrl}/ml/initialize`, {
+      method: 'POST'
+    });
+  }
+
+  /**
+   * Buscar predições do sistema ML
+   */
+  async getMLPredictions(tableId: string, limit = 10) {
+    const params = new URLSearchParams();
+    params.append('table_id', tableId);
+    params.append('limit', limit.toString());
+    
+    return this.makeRequest(`${this.baseUrl}/ml/predictions?${params}`);
+  }
+
+  /**
+   * Buscar status do sistema ML
+   */
+  async getMLStatus() {
+    return this.makeRequest(`${this.baseUrl}/ml/status`);
+  }
+
+  /**
+   * Retreinar sistema ML
+   */
+  async retrainML() {
+    return this.makeRequest(`${this.baseUrl}/ml/retrain`, {
+      method: 'POST'
+    });
   }
 
   // === API Pública ===
@@ -312,6 +646,13 @@ class ApiClient {
   }
 
   /**
+   * Health check direto do sistema
+   */
+  async getSystemHealth() {
+    return this.makeRequest(`${this.publicBaseUrl}/system/health`);
+  }
+
+  /**
    * Estatísticas de uso da API (API Pública)
    */
   async getPublicSystemUsage() {
@@ -341,12 +682,22 @@ class ApiClient {
   // === Métodos Auxiliares ===
 
   /**
-   * Obter token de autenticação (implementar conforme sistema de auth)
+   * Obter token de autenticação do sistema personalizado (client-side only)
    */
-  private getAuthToken(): string {
-    // TODO: Implementar lógica de obtenção do token
-    // Pode ser do localStorage, cookies, context, etc.
-    return localStorage.getItem('auth_token') || '';
+  private async getAuthToken(): Promise<string | null> {
+    try {
+      // Para uso no cliente (Client Components)
+      if (typeof window !== 'undefined') {
+        // Buscar token do localStorage ou contexto de autenticação
+        const token = localStorage.getItem('auth_token');
+        return token;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Erro ao obter token de autenticação:', error);
+      return null;
+    }
   }
 
   /**
@@ -363,6 +714,23 @@ class ApiClient {
     this.baseUrl = baseUrl;
     this.publicBaseUrl = publicBaseUrl;
   }
+
+  // Métodos públicos para HTTP
+  async get<T>(url: string, config?: Omit<RequestConfig, 'method'>) {
+    return this.makeRequest<T>(url, { ...config, method: 'GET' });
+  }
+
+  async post<T>(url: string, body?: any, config?: Omit<RequestConfig, 'method' | 'body'>) {
+    return this.makeRequest<T>(url, { ...config, method: 'POST', body });
+  }
+
+  async put<T>(url: string, body?: any, config?: Omit<RequestConfig, 'method' | 'body'>) {
+    return this.makeRequest<T>(url, { ...config, method: 'PUT', body });
+  }
+
+  async delete<T>(url: string, config?: Omit<RequestConfig, 'method'>) {
+    return this.makeRequest<T>(url, { ...config, method: 'DELETE' });
+  }
 }
 
 // Instância singleton do cliente API
@@ -370,3 +738,4 @@ export const apiClient = new ApiClient();
 
 // Exportar tipos para uso em outros arquivos
 export type { ApiResponse, RequestConfig };
+export type { ApiClient };

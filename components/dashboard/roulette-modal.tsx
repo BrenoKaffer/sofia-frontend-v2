@@ -126,3 +126,5 @@ export function RouletteModal({
     </Dialog>
   );
 }
+
+export default RouletteModal;

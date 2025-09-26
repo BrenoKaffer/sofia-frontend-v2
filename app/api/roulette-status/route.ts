@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+import { backendService } from '@/lib/backend-service';
 
 // MOCK DATA: Função para gerar status das roletas simulados
 function generateMockRouletteStatus() {
@@ -78,41 +76,30 @@ function generateMockRouletteStatus() {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🚀 Iniciando API de status das roletas...');
+    // Obter informações de autenticação do middleware
+    const userId = request.headers.get('x-user-id');
+    const authType = request.headers.get('x-auth-type');
     
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Token de autorização necessário' },
-        { status: 401 }
-      );
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Buscar status das roletas do backend SOFIA
     console.log('🔍 Buscando status das roletas do backend SOFIA...');
     
-    const response = await fetch(`${SOFIA_BACKEND_URL}/roulette-status`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-    });
+    try {
+      // Tentar buscar dados do backend real
+      const backendResponse = await backendService.getRouletteStatus();
 
-    if (!response.ok) {
-      console.warn('⚠️ Erro ao buscar status do backend:', response.status, response.statusText);
-      console.log('⚠️ Usando status mock (fallback)');
+      console.log('✅ Status das roletas recebido do backend SOFIA');
+      return NextResponse.json(backendResponse);
+
+    } catch (backendError: any) {
+      console.warn('⚠️ Backend não disponível, usando dados mock:', backendError.message);
       
       // MOCK DATA: Fallback com dados simulados para desenvolvimento
       const mockStatus = generateMockRouletteStatus();
       return NextResponse.json(mockStatus);
     }
-
-    const statusData = await response.json();
-    console.log('✅ Status das roletas recebido do backend SOFIA:', statusData);
-
-    return NextResponse.json(statusData);
   } catch (error) {
     console.error('Erro na API de status da roleta:', error);
     console.log('⚠️ Usando status mock (fallback devido a erro)');

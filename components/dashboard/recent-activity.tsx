@@ -304,3 +304,5 @@ export function RecentActivity({ signals, spins, loading = false }: RecentActivi
     </Card>
   );
 }
+
+export default RecentActivity;

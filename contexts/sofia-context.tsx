@@ -5,9 +5,55 @@
 
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { useRealTimeSignals, useRealTimeKPIs } from '@/hooks/use-real-time-data';
+import { useErrorMonitoring, useApiMonitoring } from '@/hooks/use-error-monitoring';
+
+// Interfaces para tipos específicos
+interface SignalHistoryItem {
+  id: string;
+  strategy: string;
+  table_id: string;
+  confidence: number;
+  prediction: number | string;
+  timestamp: string;
+  status: 'active' | 'completed' | 'expired';
+  result?: number;
+  profit?: number;
+}
+
+interface PerformanceDataItem {
+  strategy: string;
+  date: string;
+  accuracy: number;
+  roi: number;
+  profit: number;
+  signals_count: number;
+}
+
+interface RouletteHistoryItem {
+  id: string;
+  table_id: string;
+  number: number;
+  color: 'red' | 'black' | 'green';
+  timestamp: string;
+  spin_time: number;
+}
+
+interface SignalsHistoryFilters {
+  strategy?: string;
+  table_id?: string;
+  start_date?: string;
+  end_date?: string;
+  status?: 'active' | 'completed' | 'expired';
+  min_confidence?: number;
+}
+
+interface ApiResponseData {
+  strategies?: string[];
+  tables?: Table[];
+}
 
 // Tipos de dados
 interface Signal {
@@ -78,9 +124,9 @@ interface SofiaState {
   
   // Cache
   cache: {
-    signals_history: any[];
-    performance_data: any[];
-    roulette_history: any[];
+    signals_history: SignalHistoryItem[];
+    performance_data: PerformanceDataItem[];
+    roulette_history: RouletteHistoryItem[];
   };
 }
 
@@ -95,7 +141,7 @@ type SofiaAction =
   | { type: 'SET_USER_PREFERENCES'; payload: UserPreferences }
   | { type: 'SET_AVAILABLE_STRATEGIES'; payload: string[] }
   | { type: 'SET_AVAILABLE_TABLES'; payload: Table[] }
-  | { type: 'UPDATE_CACHE'; payload: { key: keyof SofiaState['cache']; data: any[] } }
+  | { type: 'UPDATE_CACHE'; payload: { key: keyof SofiaState['cache']; data: SignalHistoryItem[] | PerformanceDataItem[] | RouletteHistoryItem[] } }
   | { type: 'CLEAR_CACHE' }
   | { type: 'SET_LAST_UPDATE'; payload: Date };
 
@@ -196,8 +242,8 @@ interface SofiaContextType {
   actions: {
     refreshData: () => Promise<void>;
     updateUserPreferences: (preferences: Partial<UserPreferences>) => Promise<void>;
-    getSignalsHistory: (filters?: any) => Promise<any[]>;
-    getRouletteHistory: (tableId?: string, limit?: number) => Promise<any[]>;
+    getSignalsHistory: (filters?: SignalsHistoryFilters) => Promise<SignalHistoryItem[]>;
+    getRouletteHistory: (tableId?: string, limit?: number) => Promise<RouletteHistoryItem[]>;
     clearCache: () => void;
     setError: (error: string | null) => void;
   };
@@ -212,28 +258,42 @@ interface SofiaProviderProps {
 
 export function SofiaProvider({ children }: SofiaProviderProps) {
   const [state, dispatch] = useReducer(sofiaReducer, initialState);
+  
+  // Hooks de monitoramento de erros e API
+  const { captureError, captureMessage } = useErrorMonitoring();
+  const { trackApiCall } = useApiMonitoring();
+
+  // Callbacks otimizados para evitar re-renders
+  const handleSignalsData = useCallback((data: Signal[]) => {
+    if (Array.isArray(data)) {
+      dispatch({ type: 'UPDATE_SIGNALS', payload: data });
+    }
+  }, []);
+
+  const handleKpisData = useCallback((data: KPI[]) => {
+    if (Array.isArray(data)) {
+      dispatch({ type: 'UPDATE_KPIS', payload: data });
+    }
+  }, []);
+
+  const handleError = useCallback((error: Error) => {
+    // Capturar erro no Sentry
+    captureError(error, {
+      component: 'SofiaProvider',
+      action: 'real-time-data'
+    });
+    dispatch({ type: 'SET_ERROR', payload: error.message });
+  }, [captureError]);
 
   // Hooks para dados em tempo real
   const signalsRealTime = useRealTimeSignals({
-    onData: (data) => {
-      if (Array.isArray(data)) {
-        dispatch({ type: 'UPDATE_SIGNALS', payload: data });
-      }
-    },
-    onError: (error) => {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
-    }
+    onData: handleSignalsData,
+    onError: handleError
   });
 
   const kpisRealTime = useRealTimeKPIs({
-    onData: (data) => {
-      if (Array.isArray(data)) {
-        dispatch({ type: 'UPDATE_KPIS', payload: data });
-      }
-    },
-    onError: (error) => {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
-    }
+    onData: handleKpisData,
+    onError: handleError
   });
 
   // Atualizar estado de conexão
@@ -252,45 +312,58 @@ export function SofiaProvider({ children }: SofiaProviderProps) {
     });
   }, [signalsRealTime.isLoading, kpisRealTime.isLoading]);
 
-  // Carregar dados iniciais
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  // Função para carregar dados iniciais
-  const loadInitialData = async () => {
+  // Função para carregar dados iniciais (otimizada)
+  const loadInitialData = useCallback(async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
       // Carregar opções disponíveis
-      const optionsResponse = await apiClient.getAvailableOptions();
+      const optionsResponse = await trackApiCall(
+        () => apiClient.getAvailableOptions(),
+        'getAvailableOptions'
+      );
       if (optionsResponse.success) {
-        const { strategies, tables } = optionsResponse.data as { strategies?: any[], tables?: any[] };
+        const { strategies, tables } = optionsResponse.data as ApiResponseData;
         dispatch({ type: 'SET_AVAILABLE_STRATEGIES', payload: strategies || [] });
         dispatch({ type: 'SET_AVAILABLE_TABLES', payload: tables || [] });
       }
 
       // Carregar preferências do usuário
-      const preferencesResponse = await apiClient.getUserPreferences();
+      const preferencesResponse = await trackApiCall(
+        () => apiClient.getUserPreferences(),
+        'getUserPreferences'
+      );
       if (preferencesResponse.success) {
         dispatch({ type: 'SET_USER_PREFERENCES', payload: preferencesResponse.data as UserPreferences });
       }
 
       // Carregar mesas públicas
-      const tablesResponse = await apiClient.getPublicTables();
+      const tablesResponse = await trackApiCall(
+        () => apiClient.getPublicTables(),
+        'getPublicTables'
+      );
       if (tablesResponse.success) {
-        dispatch({ type: 'UPDATE_TABLES', payload: (tablesResponse.data as any[]) || [] });
+        dispatch({ type: 'UPDATE_TABLES', payload: (tablesResponse.data as Table[]) || [] });
       }
 
     } catch (error) {
+      captureError(error as Error, {
+        component: 'SofiaProvider',
+        action: 'loadInitialData'
+      });
       dispatch({ type: 'SET_ERROR', payload: 'Erro ao carregar dados iniciais' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  };
+  }, [trackApiCall, captureError]);
 
-  // Ações do contexto
-  const actions = {
+  // Carregar dados iniciais
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  // Ações do contexto (otimizadas)
+  const actions = useMemo(() => ({
     refreshData: async () => {
       await loadInitialData();
       signalsRealTime.refresh();
@@ -322,28 +395,44 @@ export function SofiaProvider({ children }: SofiaProviderProps) {
 
         const updatedPrefs = { ...currentPrefs, ...preferences };
         
-        const response = await apiClient.updateUserPreferences(updatedPrefs);
+        const response = await trackApiCall(
+          () => apiClient.updateUserPreferences(updatedPrefs),
+          'updateUserPreferences'
+        );
         if (response.success) {
           dispatch({ type: 'SET_USER_PREFERENCES', payload: updatedPrefs });
         } else {
           throw new Error(response.error || 'Erro ao atualizar preferências');
         }
       } catch (error) {
+        captureError(error as Error, {
+          component: 'SofiaProvider',
+          action: 'updateUserPreferences',
+          metadata: { preferences }
+        });
         dispatch({ type: 'SET_ERROR', payload: (error as Error).message });
         throw error;
       }
     },
 
-    getSignalsHistory: async (filters = {}) => {
+    getSignalsHistory: async (filters: SignalsHistoryFilters = {}) => {
       try {
-        const response = await apiClient.getSignalsHistory(filters);
+        const response = await trackApiCall(
+          () => apiClient.getSignalsHistory(filters),
+          'getSignalsHistory'
+        );
         if (response.success) {
-          const data = (response.data as any[]) || [];
+          const data = (response.data as SignalHistoryItem[]) || [];
           dispatch({ type: 'UPDATE_CACHE', payload: { key: 'signals_history', data } });
           return data;
         }
         throw new Error(response.error || 'Erro ao buscar histórico de sinais');
       } catch (error) {
+        captureError(error as Error, {
+          component: 'SofiaProvider',
+          action: 'getSignalsHistory',
+          metadata: { filters }
+        });
         dispatch({ type: 'SET_ERROR', payload: (error as Error).message });
         return [];
       }
@@ -351,14 +440,22 @@ export function SofiaProvider({ children }: SofiaProviderProps) {
 
     getRouletteHistory: async (tableId?: string, limit = 100) => {
       try {
-        const response = await apiClient.getRouletteHistory(tableId, limit);
+        const response = await trackApiCall(
+          () => apiClient.getRouletteHistory(tableId, limit),
+          'getRouletteHistory'
+        );
         if (response.success) {
-          const data = (response.data as any[]) || [];
+          const data = (response.data as RouletteHistoryItem[]) || [];
           dispatch({ type: 'UPDATE_CACHE', payload: { key: 'roulette_history', data } });
           return data;
         }
         throw new Error(response.error || 'Erro ao buscar histórico da roleta');
       } catch (error) {
+        captureError(error as Error, {
+          component: 'SofiaProvider',
+          action: 'getRouletteHistory',
+          metadata: { tableId, limit }
+        });
         dispatch({ type: 'SET_ERROR', payload: (error as Error).message });
         return [];
       }
@@ -371,12 +468,13 @@ export function SofiaProvider({ children }: SofiaProviderProps) {
     setError: (error: string | null) => {
       dispatch({ type: 'SET_ERROR', payload: error });
     }
-  };
+  }), [loadInitialData, signalsRealTime.refresh, kpisRealTime.refresh, state.userPreferences, trackApiCall, captureError]);
 
-  const contextValue: SofiaContextType = {
+  // Context value otimizado
+  const contextValue: SofiaContextType = useMemo(() => ({
     state,
     actions
-  };
+  }), [state, actions]);
 
   return (
     <SofiaContext.Provider value={contextValue}>
@@ -394,36 +492,36 @@ export function useSofia() {
   return context;
 }
 
-// Hooks específicos para facilitar o uso
+// Hooks específicos otimizados para facilitar o uso
 export function useSofiaSignals() {
   const { state } = useSofia();
-  return state.signals;
+  return useMemo(() => state.signals, [state.signals]);
 }
 
 export function useSofiaKPIs() {
   const { state } = useSofia();
-  return state.kpis;
+  return useMemo(() => state.kpis, [state.kpis]);
 }
 
 export function useSofiaTables() {
   const { state } = useSofia();
-  return state.tables;
+  return useMemo(() => state.tables, [state.tables]);
 }
 
 export function useSofiaPreferences() {
   const { state, actions } = useSofia();
-  return {
+  return useMemo(() => ({
     preferences: state.userPreferences,
     updatePreferences: actions.updateUserPreferences
-  };
+  }), [state.userPreferences, actions.updateUserPreferences]);
 }
 
 export function useSofiaConnection() {
   const { state } = useSofia();
-  return {
+  return useMemo(() => ({
     isConnected: state.isConnected,
     isLoading: state.isLoading,
     error: state.error,
     lastUpdate: state.lastUpdate
-  };
+  }), [state.isConnected, state.isLoading, state.error, state.lastUpdate]);
 }

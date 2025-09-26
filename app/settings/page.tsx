@@ -14,10 +14,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { User, Settings, Bell, Moon, Sun, Globe, Key, Shield, Upload, Trash2, Save, AlertTriangle, LayoutDashboard } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
+import { User, Settings, Bell, Moon, Sun, Globe, Key, Shield, Upload, Trash2, Save, AlertTriangle, LayoutDashboard, TrendingUp, DollarSign, Target, AlertCircle, Phone } from 'lucide-react';
+import { useUser } from '@/hooks/use-user';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useDashboardPreferences } from '@/hooks/use-dashboard-preferences';
+import { NotificationSettings } from '@/components/notifications/notification-settings';
+import ApiKeyManager from '@/components/auth/ApiKeyManager';
 
 interface UserSettings {
   notifications: {
@@ -50,6 +52,36 @@ interface UserSettings {
     showRouletteStatus: boolean;
     showRecentActivity: boolean;
   };
+  trading: {
+    riskManagement: {
+      maxBetPercentage: number;
+      stopLossPercentage: number;
+      takeProfitPercentage: number;
+      dailyLossLimit: number;
+      maxConsecutiveLosses: number;
+    };
+    autoTrading: {
+      enabled: boolean;
+      minConfidence: number;
+      maxBetsPerHour: number;
+      pauseOnLoss: boolean;
+      pauseOnProfit: boolean;
+    };
+    strategies: {
+      defaultStrategy: string;
+      customStrategies: Array<{
+        name: string;
+        description: string;
+        parameters: Record<string, any>;
+      }>;
+    };
+    bankroll: {
+      initialAmount: number;
+      currentAmount: number;
+      targetAmount: number;
+      reinvestProfits: boolean;
+    };
+  };
 }
 
 const defaultSettings: UserSettings = {
@@ -73,7 +105,7 @@ const defaultSettings: UserSettings = {
     strategies: ['Fibonacci Reversal', 'Hot Numbers'],
   },
   integration: {
-    apiKey: 'sk_live_51NxXXXXXXXXXXXXXXXXXXXXX',
+    apiKey: '', // Chave deve ser configurada pelo usuário
     webhookUrl: 'https://webhook.site/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
   },
   dashboard: {
@@ -83,17 +115,48 @@ const defaultSettings: UserSettings = {
     showRouletteStatus: true,
     showRecentActivity: true,
   },
+  trading: {
+    riskManagement: {
+      maxBetPercentage: 5,
+      stopLossPercentage: 20,
+      takeProfitPercentage: 50,
+      dailyLossLimit: 100,
+      maxConsecutiveLosses: 3,
+    },
+    autoTrading: {
+      enabled: false,
+      minConfidence: 80,
+      maxBetsPerHour: 10,
+      pauseOnLoss: true,
+      pauseOnProfit: false,
+    },
+    strategies: {
+      defaultStrategy: 'Fibonacci Reversal',
+      customStrategies: [],
+    },
+    bankroll: {
+      initialAmount: 1000,
+      currentAmount: 1000,
+      targetAmount: 2000,
+      reinvestProfits: true,
+    },
+  },
 };
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const { preferences: dashboardPreferences, updatePreferences } = useDashboardPreferences();
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [isEditing, setIsEditing] = useState(false);
   const [userProfile, setUserProfile] = useState({
-    name: user?.name || 'Usuário SOFIA',
-    email: user?.email || 'usuario@exemplo.com',
+    name: user?.firstName || 'Usuário SOFIA',
+    email: user?.emailAddresses?.[0]?.emailAddress || 'usuario@exemplo.com',
     bio: 'Trader e entusiasta de estratégias para roleta online.',
+    // Campos de telefone adicionados
+    phoneCountryCode: '+55',
+    phoneAreaCode: '',
+    phoneNumber: '',
+    phoneFormatted: '', // Campo calculado para exibição
   });
 
   const handleSettingChange = (category: keyof UserSettings, setting: string, value: any) => {
@@ -106,8 +169,43 @@ export default function SettingsPage() {
     });
   };
 
+  // Função para formatar telefone em tempo real
+  const formatPhoneNumber = (countryCode: string, areaCode: string, number: string) => {
+    if (!countryCode || !areaCode || !number) return '';
+    
+    // Formatação específica para Brasil
+    if (countryCode === '+55' && number.length === 9) {
+      return `${countryCode} ${areaCode} ${number.substring(0, 5)}-${number.substring(5)}`;
+    } else if (countryCode === '+55' && number.length === 8) {
+      return `${countryCode} ${areaCode} ${number.substring(0, 4)}-${number.substring(4)}`;
+    } else {
+      return `${countryCode} ${areaCode} ${number}`;
+    }
+  };
+
+  // Atualizar telefone formatado quando os campos mudarem
+  const handlePhoneChange = (field: string, value: string) => {
+    const updatedProfile = { ...userProfile, [field]: value };
+    
+    // Atualizar campo formatado
+    updatedProfile.phoneFormatted = formatPhoneNumber(
+      updatedProfile.phoneCountryCode,
+      updatedProfile.phoneAreaCode,
+      updatedProfile.phoneNumber
+    );
+    
+    setUserProfile(updatedProfile);
+  };
+
   const saveChanges = () => {
     // Aqui seria implementada a lógica para salvar as alterações no backend
+    // Incluindo os novos campos de telefone
+    console.log('Salvando perfil com telefone:', {
+      ...userProfile,
+      phoneCountryCode: userProfile.phoneCountryCode,
+      phoneAreaCode: userProfile.phoneAreaCode,
+      phoneNumber: userProfile.phoneNumber,
+    });
     setIsEditing(false);
   };
 
@@ -132,6 +230,10 @@ export default function SettingsPage() {
               <TabsTrigger value="preferences" className="gap-2 font-sans">
                 <Settings className="h-4 w-4" />
                 Preferências
+              </TabsTrigger>
+              <TabsTrigger value="trading" className="gap-2 font-sans">
+                <TrendingUp className="h-4 w-4" />
+                Trading
               </TabsTrigger>
               <TabsTrigger value="dashboard" className="gap-2 font-sans">
                 <LayoutDashboard className="h-4 w-4" />
@@ -160,7 +262,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="flex flex-col items-center gap-2">
                     <Avatar className="h-24 w-24">
-                      <AvatarImage src={user?.avatar} alt={userProfile.name} />
+                      <AvatarImage src={user?.imageUrl} alt={userProfile.name} />
                       <AvatarFallback className="text-2xl">
                         {userProfile.name?.split(' ').map(n => n[0]).join('').toUpperCase()}
                       </AvatarFallback>
@@ -191,6 +293,71 @@ export default function SettingsPage() {
                         />
                       </div>
                     </div>
+
+                    {/* SEÇÃO DE TELEFONE ADICIONADA */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        <Label className="font-sans font-medium">Telefone</Label>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="phoneCountryCode" className="font-sans text-sm">Código do País</Label>
+                          <Select 
+                            value={userProfile.phoneCountryCode} 
+                            onValueChange={(value) => handlePhoneChange('phoneCountryCode', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="País" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="+55">🇧🇷 +55 (Brasil)</SelectItem>
+                              <SelectItem value="+1">🇺🇸 +1 (EUA)</SelectItem>
+                              <SelectItem value="+44">🇬🇧 +44 (Reino Unido)</SelectItem>
+                              <SelectItem value="+33">🇫🇷 +33 (França)</SelectItem>
+                              <SelectItem value="+49">🇩🇪 +49 (Alemanha)</SelectItem>
+                              <SelectItem value="+34">🇪🇸 +34 (Espanha)</SelectItem>
+                              <SelectItem value="+39">🇮🇹 +39 (Itália)</SelectItem>
+                              <SelectItem value="+351">🇵🇹 +351 (Portugal)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="phoneAreaCode" className="font-sans text-sm">
+                            {userProfile.phoneCountryCode === '+55' ? 'DDD' : 'Código de Área'}
+                          </Label>
+                          <Input
+                            id="phoneAreaCode"
+                            placeholder={userProfile.phoneCountryCode === '+55' ? 'Ex: 11' : 'Ex: 212'}
+                            value={userProfile.phoneAreaCode}
+                            onChange={(e) => handlePhoneChange('phoneAreaCode', e.target.value.replace(/\D/g, '').slice(0, 3))}
+                            maxLength={3}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="phoneNumber" className="font-sans text-sm">Número</Label>
+                          <Input
+                            id="phoneNumber"
+                            placeholder={userProfile.phoneCountryCode === '+55' ? '987654321' : 'Número'}
+                            value={userProfile.phoneNumber}
+                            onChange={(e) => handlePhoneChange('phoneNumber', e.target.value.replace(/\D/g, '').slice(0, 15))}
+                            maxLength={15}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Prévia do telefone formatado */}
+                      {userProfile.phoneFormatted && (
+                        <div className="p-3 bg-muted rounded-lg">
+                          <Label className="font-sans text-sm text-muted-foreground">Telefone formatado:</Label>
+                          <p className="font-mono text-sm font-medium">{userProfile.phoneFormatted}</p>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="bio" className="font-sans">Bio</Label>
                       <Textarea
@@ -506,97 +673,21 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="notifications" className="mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferências de Notificação</CardTitle>
-                <CardDescription>
-                  Controle quais notificações você deseja receber
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Notificações por Email</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receba atualizações importantes por email
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.notifications.email}
-                    onCheckedChange={(value) => handleSettingChange('notifications', 'email', value)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Notificações Push</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receba alertas no navegador ou dispositivo móvel
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.notifications.push}
-                    onCheckedChange={(value) => handleSettingChange('notifications', 'push', value)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Alertas de Padrões</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Seja notificado quando novos padrões forem gerados
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.notifications.signals}
-                    onCheckedChange={(value) => handleSettingChange('notifications', 'signals', value)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Atualizações do Sistema</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receba informações sobre atualizações e manutenções
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.notifications.system}
-                    onCheckedChange={(value) => handleSettingChange('notifications', 'system', value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <NotificationSettings />
           </TabsContent>
 
           <TabsContent value="integrations" className="mt-0 space-y-4">
+            {/* Gerenciador de API Keys */}
+            <ApiKeyManager />
+
             <Card>
               <CardHeader>
-                <CardTitle>API e Integrações</CardTitle>
+                <CardTitle>Webhooks e Integrações</CardTitle>
                 <CardDescription>
-                  Gerencie suas chaves de API e conexões com serviços externos
+                  Configure webhooks e outras integrações externas
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="apiKey">Chave de API</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="apiKey"
-                      value={settings.integration.apiKey}
-                      onChange={(e) => handleSettingChange('integration', 'apiKey', e.target.value)}
-                      type="password"
-                      className="font-mono"
-                    />
-                    <Button variant="outline" size="icon">
-                      <Key className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Use esta chave para acessar a API da SOFIA em suas aplicações
-                  </p>
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="webhookUrl">URL do Webhook</Label>
                   <Input
@@ -604,6 +695,7 @@ export default function SettingsPage() {
                     value={settings.integration.webhookUrl}
                     onChange={(e) => handleSettingChange('integration', 'webhookUrl', e.target.value)}
                     className="font-mono"
+                    placeholder="https://seu-site.com/webhook"
                   />
                   <p className="text-sm text-muted-foreground">
                     Receba notificações em tempo real de eventos da plataforma

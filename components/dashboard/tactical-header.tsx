@@ -27,7 +27,7 @@ export function TacticalHeader({
   useEffect(() => {
     setTimeLeft(countdown)
     setProgress(100)
-  }, [countdown])
+  }, [countdown, timeLeft])
 
   useEffect(() => {
     if (timeLeft > 0) {

@@ -19,6 +19,7 @@ import {
   Cell
 } from 'recharts';
 import { BarChart3, TrendingUp } from 'lucide-react';
+import { useMemo, memo } from 'react';
 
 // Tipagem para os dados de KPI e histórico de spins
 interface KpiData {
@@ -74,9 +75,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function PerformanceChart({ kpisData, loading = false }: PerformanceChartProps) {
-  // Criar dados para o gráfico de lucro baseado nos KPIs
-  const generateProfitHistory = () => {
+export const PerformanceChart = memo(function PerformanceChart({ kpisData, loading = false }: PerformanceChartProps) {
+  // Memoizar dados de lucro para evitar recálculos desnecessários
+  const profitData = useMemo(() => {
     if (!kpisData || kpisData.length === 0) {
       return [];
     }
@@ -124,41 +125,43 @@ export function PerformanceChart({ kpisData, loading = false }: PerformanceChart
     }
     
     return dataPoints;
-  };
+  }, [kpisData]);
 
-  const profitData = generateProfitHistory();
+  // Memoizar dados de estratégias
+  const strategyData = useMemo(() => {
+    return kpisData && kpisData.length > 0 
+      ? kpisData.map(kpi => ({
+          name: kpi.strategy_id,
+          wins: kpi.successful_signals,
+          losses: kpi.failed_signals,
+          profit: kpi.total_net_profit_loss,
+        }))
+      : [];
+  }, [kpisData]);
 
-  // Dados para o gráfico de Estratégias (vitórias/derrotas por estratégia)
-  const strategyData = kpisData && kpisData.length > 0 
-    ? kpisData.map(kpi => ({
-        name: kpi.strategy_id,
-        wins: kpi.successful_signals,
-        losses: kpi.failed_signals,
-        profit: kpi.total_net_profit_loss,
-      }))
-    : [];
+  // Memoizar dados de distribuição
+  const distributionData = useMemo(() => {
+    const totalSuccessful = kpisData && kpisData.length > 0 
+      ? kpisData.reduce((sum, kpi) => {
+          const successful = Number(kpi.successful_signals) || 0;
+          return sum + successful;
+        }, 0)
+      : 0;
+      
+    const totalFailed = kpisData && kpisData.length > 0
+      ? kpisData.reduce((sum, kpi) => {
+          const failed = Number(kpi.failed_signals) || 0;
+          return sum + failed;
+        }, 0)
+      : 0;
+      
+    const totalSignalsForDistribution = totalSuccessful + totalFailed;
 
-  // Dados para o gráfico de Distribuição (Vitórias/Perdas Globais)
-  const totalSuccessful = kpisData && kpisData.length > 0 
-    ? kpisData.reduce((sum, kpi) => {
-        const successful = Number(kpi.successful_signals) || 0;
-        return sum + successful;
-      }, 0)
-    : 0;
-    
-  const totalFailed = kpisData && kpisData.length > 0
-    ? kpisData.reduce((sum, kpi) => {
-        const failed = Number(kpi.failed_signals) || 0;
-        return sum + failed;
-      }, 0)
-    : 0;
-    
-  const totalSignalsForDistribution = totalSuccessful + totalFailed;
-
-  const distributionData = [
-    { name: 'Vitórias', value: totalSignalsForDistribution > 0 ? parseFloat(((totalSuccessful / totalSignalsForDistribution) * 100).toFixed(1)) : 76.2, color: '#10B981' },
-    { name: 'Perdas', value: totalSignalsForDistribution > 0 ? parseFloat(((totalFailed / totalSignalsForDistribution) * 100).toFixed(1)) : 23.8, color: '#EF4444' },
-  ];
+    return [
+      { name: 'Vitórias', value: totalSignalsForDistribution > 0 ? parseFloat(((totalSuccessful / totalSignalsForDistribution) * 100).toFixed(1)) : 76.2, color: '#10B981' },
+      { name: 'Perdas', value: totalSignalsForDistribution > 0 ? parseFloat(((totalFailed / totalSignalsForDistribution) * 100).toFixed(1)) : 23.8, color: '#EF4444' },
+    ];
+  }, [kpisData]);
 
   const totalProfitForHeader = kpisData && kpisData.length > 0
     ? kpisData.reduce((sum, kpi) => {
@@ -218,7 +221,7 @@ export function PerformanceChart({ kpisData, loading = false }: PerformanceChart
           <TabsContent value="profit" className="mt-6">
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={profitData}>
+                <AreaChart data={profitData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <defs>
                     <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
@@ -254,7 +257,7 @@ export function PerformanceChart({ kpisData, loading = false }: PerformanceChart
           <TabsContent value="strategies" className="mt-6">
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={strategyData} layout="horizontal">
+                <BarChart data={strategyData} layout="horizontal" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
                     type="number"
@@ -363,4 +366,6 @@ export function PerformanceChart({ kpisData, loading = false }: PerformanceChart
       </CardContent>
     </Card>
   );
-}
+});
+
+export default PerformanceChart;

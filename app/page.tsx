@@ -2,30 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/use-user';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
   const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !hasRedirected) {
+    if (isLoaded && !hasRedirected) {
       setHasRedirected(true);
       
       // Usar setTimeout para evitar problemas de hidratação
       const timer = setTimeout(() => {
-        if (user) {
+        if (isSignedIn) {
           router.replace('/dashboard');
         } else {
-          router.replace('/login');
+          router.replace('/sign-in');
         }
       }, 100);
       
       return () => clearTimeout(timer);
     }
-  }, [user, isLoading, router, hasRedirected]);
+  }, [isSignedIn, isLoaded, router, hasRedirected]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/5">

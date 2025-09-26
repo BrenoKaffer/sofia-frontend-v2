@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+import { auth } from '@/lib/auth-server';
+import { backendService } from '@/lib/backend-service';
 
 // MOCK DATA: Função para gerar histórico de sinais simulados
 function generateMockSignalsHistory(searchParams: URLSearchParams) {
@@ -72,92 +71,128 @@ function generateMockSignalsHistory(searchParams: URLSearchParams) {
   return mockHistory.slice(offset, offset + limit);
 }
 
-/**
- * API para buscar histórico completo de sinais gerados
- * Suporta filtros, paginação e ordenação
- */
+// Interface para os filtros de histórico de sinais
+interface SignalsHistoryFilters {
+  table_id?: string;
+  strategy?: string;
+  confidence_min?: number;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  limit?: number;
+}
+
+// Interface para resposta da API
+interface ApiResponse {
+  data: any[];
+  pagination: {
+    current_page: number;
+    total_pages: number;
+    total_items: number;
+    returned_count: number;
+    items_per_page: number;
+  };
+  success: boolean;
+  message?: string;
+}
+
 export async function GET(request: NextRequest) {
-  // Extrair parâmetros da URL (fora do try/catch para estar disponível no catch)
-  const { searchParams } = new URL(request.url);
-  
   try {
-    console.log('🚀 Iniciando API de histórico de sinais...');
-    
-    // Verificar autorização
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Verificar autenticação
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Token de autorização necessário' },
+        { error: 'Não autorizado' },
         { status: 401 }
       );
     }
-    
-    // Buscar histórico de sinais do backend SOFIA
-    console.log('🔍 Buscando histórico de sinais do backend SOFIA...');
-    
-    const historyUrl = new URL(`${SOFIA_BACKEND_URL}/signals-history`);
-    
-    // Repassar todos os parâmetros de query para o backend
-    searchParams.forEach((value, key) => {
-      historyUrl.searchParams.set(key, value);
-    });
 
-    const response = await fetch(historyUrl.toString(), {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-    });
+    // Extrair parâmetros da query string
+    const { searchParams } = new URL(request.url);
+    const filters: SignalsHistoryFilters = {
+      table_id: searchParams.get('table_id') || undefined,
+      strategy: searchParams.get('strategy') || undefined,
+      confidence_min: searchParams.get('confidence_min') ? Number(searchParams.get('confidence_min')) : undefined,
+      date_from: searchParams.get('date_from') || undefined,
+      date_to: searchParams.get('date_to') || undefined,
+      page: searchParams.get('page') ? Number(searchParams.get('page')) : 1,
+      limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : 20
+    };
+    
+    console.log('🚀 Buscando histórico de sinais do backend...');
 
-    if (!response.ok) {
-      console.warn('⚠️ Erro ao buscar histórico de sinais do backend:', response.status, response.statusText);
-      console.log('⚠️ Usando histórico mock (fallback)');
+    try {
+      // Tentar buscar dados do backend real
+      const backendResponse = await backendService.getSignalsHistory(filters);
+
+      console.log('✅ Histórico de sinais recebido do backend SOFIA');
+      return NextResponse.json(backendResponse);
+
+    } catch (backendError: any) {
+      console.warn('⚠️ Backend não disponível, usando dados mock:', backendError.message);
       
-      // MOCK DATA: Fallback com dados simulados para desenvolvimento
+      // Fallback para dados mock em caso de erro
       const mockHistory = generateMockSignalsHistory(searchParams);
-      return NextResponse.json(mockHistory);
+      const mockResponse: ApiResponse = {
+        data: mockHistory,
+        pagination: {
+          current_page: filters.page || 1,
+          total_pages: Math.ceil(500 / (filters.limit || 20)),
+          total_items: 500,
+          returned_count: mockHistory.length,
+          items_per_page: filters.limit || 20
+        },
+        success: true,
+        message: 'Dados simulados (backend indisponível)'
+      };
+      
+      return NextResponse.json(mockResponse);
     }
 
-    const historyData = await response.json();
-    console.log('✅ Histórico de sinais recebido do backend SOFIA:', historyData?.length || 0);
-
-    // Garantir que os dados sejam um array
-    const sanitizedData = Array.isArray(historyData) ? historyData : [];
-
-    return NextResponse.json(sanitizedData);
-    
   } catch (error) {
-    console.error('❌ Erro na API de histórico de sinais:', error);
-    console.log('⚠️ Usando histórico mock (fallback devido a erro)');
+    console.error('Erro no endpoint signals-history:', error);
     
-    // MOCK DATA: Fallback com dados simulados em caso de erro
+    // Fallback para dados mock em caso de erro geral
+    const { searchParams } = new URL(request.url);
     const mockHistory = generateMockSignalsHistory(searchParams);
-    return NextResponse.json(mockHistory);
+    const mockResponse: ApiResponse = {
+      data: mockHistory,
+      pagination: {
+        current_page: 1,
+        total_pages: Math.ceil(500 / 20),
+        total_items: 500,
+        returned_count: mockHistory.length,
+        items_per_page: 20
+      },
+      success: false,
+      message: error instanceof Error 
+        ? error.message
+        : 'Erro interno do servidor - usando dados simulados'
+    };
+    
+    return NextResponse.json(mockResponse, { status: 500 });
   }
 }
 
-/**
- * Endpoint de informações sobre a API
- */
-export async function OPTIONS(request: NextRequest) {
+// Endpoint OPTIONS para informações da API
+export async function OPTIONS() {
   return NextResponse.json({
-    message: 'API de Histórico de Sinais da SOFIA',
-    endpoint: '/api/signals-history',
-    method: 'GET',
-    description: 'Busca histórico completo de sinais com filtros e paginação',
+    methods: ['GET'],
+    description: 'Endpoint para buscar histórico de sinais com filtros e paginação',
     parameters: {
-      limit: 'Número de registros por página (máximo 100, padrão 50)',
-      offset: 'Número de registros para pular (padrão 0)',
-      strategy_name: 'Filtrar por nome da estratégia (busca parcial)',
-      table_id: 'Filtrar por ID da mesa (busca exata)',
-      confidence_level: 'Filtrar por nível de confiança (HIGH, MEDIUM, LOW)',
-      is_validated: 'Filtrar por status de validação (true/false)'
+      table_id: 'string - ID da mesa para filtrar',
+      strategy: 'string - Nome da estratégia para filtrar',
+      confidence_min: 'number - Confiança mínima (0-100)',
+      date_from: 'string - Data inicial (YYYY-MM-DD)',
+      date_to: 'string - Data final (YYYY-MM-DD)',
+      page: 'number - Página atual (padrão: 1)',
+      limit: 'number - Itens por página (padrão: 20)'
     },
     response_format: {
-      data: 'Array de sinais encontrados',
-      pagination: 'Informações de paginação',
-      filters: 'Filtros aplicados na consulta'
+      data: 'array - Lista de sinais',
+      pagination: 'object - Informações de paginação',
+      success: 'boolean - Status da operação',
+      message: 'string - Mensagem opcional'
     }
   });
 }
