@@ -225,7 +225,7 @@ export default function CheckoutPage() {
 
   // Validações
   const validateForm = () => {
-    const newValidations = {};
+    const newValidations: Record<string, string> = {};
 
     // Validação de email
     if (!formData.email) {
@@ -482,9 +482,11 @@ export default function CheckoutPage() {
 
   // Copiar código PIX
   const copyPixCode = () => {
-    navigator.clipboard.writeText(pixData.qr_code_url);
-    // Aqui você poderia mostrar um toast de sucesso
-    console.log('Código PIX copiado:', pixData.qr_code_url);
+    if (pixData) {
+      navigator.clipboard.writeText(pixData.qr_code_url);
+      // Aqui você poderia mostrar um toast de sucesso
+      console.log('Código PIX copiado:', pixData.qr_code_url);
+    }
   };
 
   if (success && paymentMethod === 'credit_card') {

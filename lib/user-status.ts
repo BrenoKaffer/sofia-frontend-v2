@@ -14,7 +14,9 @@ export enum AccountStatus {
   SUSPENDED = 'suspended', // ❌ Usuário suspenso (acesso negado)
   BANNED = 'banned',      // ❌ Usuário banido (acesso negado)
   INACTIVE = 'inactive',  // ⏸️ Usuário inativo (acesso limitado)
-  PENDING = 'pending'     // ⏳ Usuário pendente de verificação
+  PENDING = 'pending',    // ⏳ Usuário pendente de verificação
+  ADMIN = 'admin',        // 👑 Administrador (acesso completo)
+  SUPERADMIN = 'superadmin' // 👑 Super administrador (acesso total)
 }
 
 /**
@@ -330,7 +332,9 @@ export function isValidStatusTransition(
     [AccountStatus.BLOCKED]: [AccountStatus.ACTIVE, AccountStatus.FREE, AccountStatus.SUSPENDED, AccountStatus.BANNED],
     [AccountStatus.SUSPENDED]: [AccountStatus.ACTIVE, AccountStatus.FREE, AccountStatus.BLOCKED, AccountStatus.BANNED],
     [AccountStatus.INACTIVE]: [AccountStatus.ACTIVE, AccountStatus.FREE, AccountStatus.BLOCKED],
-    [AccountStatus.BANNED]: [] // Banimento é permanente
+    [AccountStatus.BANNED]: [], // Banimento é permanente
+    [AccountStatus.ADMIN]: [AccountStatus.ACTIVE, AccountStatus.FREE, AccountStatus.PREMIUM, AccountStatus.BLOCKED, AccountStatus.SUSPENDED, AccountStatus.SUPERADMIN],
+    [AccountStatus.SUPERADMIN]: [AccountStatus.ADMIN, AccountStatus.ACTIVE, AccountStatus.FREE, AccountStatus.PREMIUM, AccountStatus.BLOCKED, AccountStatus.SUSPENDED, AccountStatus.BANNED]
   };
 
   return transitions[from]?.includes(to) || false;

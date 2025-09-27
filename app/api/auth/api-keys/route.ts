@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiAuth, requireAuth } from '@/lib/api-auth';
+import { edgeApiAuth, requireAuth } from '@/lib/api-auth-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const apiKeys = await apiAuth.getUserApiKeys(authResult.userId!);
+    const apiKeys = await edgeApiAuth.getUserApiKeys(authResult.userId!);
     
     // Remover dados sensíveis antes de retornar
     const safeApiKeys = apiKeys.map(key => ({
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { key, keyData } = await apiAuth.generateApiKey(
+    const { key, keyData } = await edgeApiAuth.generateApiKey(
       authResult.userId!,
       name,
       permissions,
@@ -134,7 +134,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const success = await apiAuth.revokeApiKey(keyId, authResult.userId!);
+    const success = await edgeApiAuth.revokeApiKey(keyId, authResult.userId!);
 
     if (!success) {
       return NextResponse.json(

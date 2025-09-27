@@ -38,7 +38,6 @@ export default function CheckoutPagarMePage() {
           }}
           onSuccess={handleSuccess}
           onError={handleError}
-          encryptionKey={process.env.NEXT_PUBLIC_PAGARME_ENCRYPTION_KEY || "ek_test_your_encryption_key_here"}
         />
       </div>
     </div>

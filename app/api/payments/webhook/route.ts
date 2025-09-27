@@ -12,7 +12,9 @@ export async function POST(request: NextRequest) {
     if (webhookSecret) {
       const isValid = pagarmeService.validateWebhook(signature, body, webhookSecret);
       if (!isValid) {
-        logger.warn('Webhook inválido recebido', { signature });
+        logger.warn('Webhook inválido recebido', { 
+          metadata: { signature } 
+        });
         return NextResponse.json({ error: 'Webhook inválido' }, { status: 401 });
       }
     }
@@ -21,9 +23,11 @@ export async function POST(request: NextRequest) {
     
     // Log do webhook recebido
     logger.info('Webhook recebido do Pagar.me', {
-      event: webhookData.type,
-      order_id: webhookData.data?.id,
-      status: webhookData.data?.status,
+      metadata: {
+        event: webhookData.type,
+        order_id: webhookData.data?.id,
+        status: webhookData.data?.status,
+      }
     });
 
     // Processar diferentes tipos de eventos
@@ -50,7 +54,9 @@ export async function POST(request: NextRequest) {
       
       default:
         logger.info('Evento de webhook não processado', {
-          event: webhookData.type,
+          metadata: {
+            event: webhookData.type,
+          }
         });
     }
 
@@ -60,8 +66,10 @@ export async function POST(request: NextRequest) {
     console.error('Erro ao processar webhook:', error);
     
     logger.error('Erro ao processar webhook', {
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : undefined,
+      metadata: {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined,
+      }
     });
 
     return NextResponse.json(
@@ -74,9 +82,11 @@ export async function POST(request: NextRequest) {
 async function handleOrderPaid(orderData: any) {
   try {
     logger.info('Pedido pago com sucesso', {
-      order_id: orderData.id,
-      amount: orderData.amount,
-      customer_email: orderData.customer?.email,
+      metadata: {
+        order_id: orderData.id,
+        amount: orderData.amount,
+        customer_email: orderData.customer?.email,
+      }
     });
 
     // Aqui você pode implementar a lógica específica para quando um pedido é pago
@@ -88,8 +98,10 @@ async function handleOrderPaid(orderData: any) {
 
   } catch (error) {
     logger.error('Erro ao processar pedido pago', {
-      order_id: orderData.id,
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      metadata: {
+        order_id: orderData.id,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      }
     });
   }
 }
@@ -97,8 +109,10 @@ async function handleOrderPaid(orderData: any) {
 async function handleOrderPaymentFailed(orderData: any) {
   try {
     logger.warn('Falha no pagamento do pedido', {
-      order_id: orderData.id,
-      customer_email: orderData.customer?.email,
+      metadata: {
+        order_id: orderData.id,
+        customer_email: orderData.customer?.email,
+      }
     });
 
     // Implementar lógica para falha de pagamento
@@ -110,8 +124,10 @@ async function handleOrderPaymentFailed(orderData: any) {
 
   } catch (error) {
     logger.error('Erro ao processar falha de pagamento', {
-      order_id: orderData.id,
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      metadata: {
+        order_id: orderData.id,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      }
     });
   }
 }
@@ -119,8 +135,10 @@ async function handleOrderPaymentFailed(orderData: any) {
 async function handleOrderCanceled(orderData: any) {
   try {
     logger.info('Pedido cancelado', {
-      order_id: orderData.id,
-      customer_email: orderData.customer?.email,
+      metadata: {
+        order_id: orderData.id,
+        customer_email: orderData.customer?.email,
+      }
     });
 
     // Implementar lógica para cancelamento
@@ -132,8 +150,10 @@ async function handleOrderCanceled(orderData: any) {
 
   } catch (error) {
     logger.error('Erro ao processar cancelamento', {
-      order_id: orderData.id,
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      metadata: {
+        order_id: orderData.id,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      }
     });
   }
 }
@@ -141,17 +161,21 @@ async function handleOrderCanceled(orderData: any) {
 async function handleChargePaid(chargeData: any) {
   try {
     logger.info('Cobrança paga com sucesso', {
-      charge_id: chargeData.id,
-      amount: chargeData.amount,
-      payment_method: chargeData.payment_method,
+      metadata: {
+        charge_id: chargeData.id,
+        amount: chargeData.amount,
+        payment_method: chargeData.payment_method,
+      }
     });
 
     // Implementar lógica específica para cobrança paga
 
   } catch (error) {
     logger.error('Erro ao processar cobrança paga', {
-      charge_id: chargeData.id,
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      metadata: {
+        charge_id: chargeData.id,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      }
     });
   }
 }
@@ -159,16 +183,20 @@ async function handleChargePaid(chargeData: any) {
 async function handleChargePaymentFailed(chargeData: any) {
   try {
     logger.warn('Falha na cobrança', {
-      charge_id: chargeData.id,
-      payment_method: chargeData.payment_method,
+      metadata: {
+        charge_id: chargeData.id,
+        payment_method: chargeData.payment_method,
+      }
     });
 
     // Implementar lógica para falha de cobrança
 
   } catch (error) {
     logger.error('Erro ao processar falha de cobrança', {
-      charge_id: chargeData.id,
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      metadata: {
+        charge_id: chargeData.id,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      }
     });
   }
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimitMiddleware } from './lib/rate-limit-middleware';
 import { auth } from './lib/auth-server';
-import { apiAuth } from './lib/api-auth';
+import { edgeApiAuth } from './lib/api-auth-server';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { userHasAccess, userIsBlocked, userIsAdmin, userIsSuperAdmin, AccountStatus } from '@/lib/user-status';
 
@@ -118,7 +118,7 @@ export default async function middleware(request: NextRequest) {
     // Verifica autenticação para APIs protegidas
     if (isProtectedApiRoute(request.nextUrl.pathname)) {
       try {
-        const authResult = await apiAuth.authenticateRequest(request);
+        const authResult = await edgeApiAuth.authenticateRequest(request);
         
         if (!authResult.success) {
           return NextResponse.json(

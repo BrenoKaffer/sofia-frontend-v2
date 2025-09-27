@@ -16,9 +16,11 @@ export async function POST(request: NextRequest) {
 
     // Log da tentativa de pagamento
     logger.info('Iniciando processamento de pagamento', {
-      customer_email: body.customer.email,
-      payment_method: body.payments[0]?.payment_method,
-      amount: body.items.reduce((sum: number, item: any) => sum + (item.amount * item.quantity), 0)
+      metadata: {
+        customer_email: body.customer.email,
+        payment_method: body.payments[0]?.payment_method,
+        amount: body.items.reduce((sum: number, item: any) => sum + (item.amount * item.quantity), 0)
+      }
     });
 
     // Criar pedido no Pagar.me
@@ -50,9 +52,11 @@ export async function POST(request: NextRequest) {
 
     // Log do sucesso
     logger.info('Pagamento processado com sucesso', {
-      order_id: result.id,
-      status: result.status,
-      customer_email: body.customer.email,
+      metadata: {
+        order_id: result.id,
+        status: result.status,
+        customer_email: body.customer.email,
+      }
     });
 
     return NextResponse.json({
@@ -79,8 +83,10 @@ export async function POST(request: NextRequest) {
     
     // Log do erro
     logger.error('Erro ao processar pagamento', {
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
-      stack: error instanceof Error ? error.stack : undefined,
+      metadata: {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : undefined,
+      }
     });
 
     return NextResponse.json(
@@ -119,7 +125,9 @@ export async function GET(request: NextRequest) {
     console.error('Erro ao buscar pagamentos:', error);
     
     logger.error('Erro ao buscar pagamentos', {
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      metadata: {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      }
     });
 
     return NextResponse.json(

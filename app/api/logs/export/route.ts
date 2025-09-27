@@ -83,11 +83,20 @@ export async function GET(request: NextRequest) {
       id: log.id,
       level: log.level,
       message: log.message,
-      context: log.context,
+      timestamp: log.created_at,
+      context: typeof log.context === 'string' ? log.context : JSON.stringify(log.context),
+      source: log.source || undefined,
       user_id: log.user_id,
       session_id: log.session_id,
-      timestamp: log.created_at,
-      details: log.details
+      details: log.details || {},
+      stack_trace: log.stack_trace || undefined,
+      request_id: log.request_id || undefined,
+      environment: 'production',
+      version: log.version || undefined,
+      ip_address: log.ip_address || undefined,
+      user_agent: log.user_agent || undefined,
+      created_at: log.created_at,
+      updated_at: log.updated_at || log.created_at
     }));
 
     // Configurar opções de exportação

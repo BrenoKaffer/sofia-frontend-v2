@@ -15,15 +15,19 @@ const SaaSCheckout = () => {
   });
   
   const [paymentMethod, setPaymentMethod] = useState('credit_card'); // 'credit_card' ou 'pix'
-  const [pixData, setPixData] = useState(null);
+  const [pixData, setPixData] = useState<{
+    qr_code: string;
+    qr_code_url: string;
+    expires_at: string;
+  } | null>(null);
   const [showCoupon, setShowCoupon] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [validations, setValidations] = useState({});
+  const [validations, setValidations] = useState<Record<string, string>>({});
 
   // Formatação de cartão de crédito
-  const formatCardNumber = (value) => {
+  const formatCardNumber = (value: string) => {
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
     const matches = v.match(/\d{4,16}/g);
     const match = matches && matches[0] || '';
@@ -39,7 +43,7 @@ const SaaSCheckout = () => {
   };
 
   // Formatação de data de expiração
-  const formatExpiryDate = (value) => {
+  const formatExpiryDate = (value: string) => {
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
     if (v.length >= 2) {
       return v.substring(0, 2) + '/' + v.substring(2, 4);
@@ -48,14 +52,14 @@ const SaaSCheckout = () => {
   };
 
   // Formatação de CPF
-  const formatCPF = (value) => {
+  const formatCPF = (value: string) => {
     const v = value.replace(/\D/g, '');
     return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   };
 
   // Validações
   const validateForm = () => {
-    const newValidations = {};
+    const newValidations: Record<string, string> = {};
     
     if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
       newValidations.email = 'Email válido é obrigatório';
@@ -89,7 +93,7 @@ const SaaSCheckout = () => {
   };
 
   // Handler para mudanças no formulário
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: string, value: string) => {
     let formattedValue = value;
     
     if (field === 'cardNumber') {
@@ -195,7 +199,7 @@ const SaaSCheckout = () => {
       }
       
     } catch (err) {
-      setError(err.message || 'Erro ao processar pagamento. Tente novamente.');
+      setError(err instanceof Error ? err.message : 'Erro ao processar pagamento. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -230,8 +234,10 @@ const SaaSCheckout = () => {
 
   // Copiar código PIX
   const copyPixCode = () => {
-    navigator.clipboard.writeText(pixData.qr_code_url);
-    // Aqui você poderia mostrar um toast de sucesso
+    if (pixData) {
+      navigator.clipboard.writeText(pixData.qr_code_url);
+      // Aqui você poderia mostrar um toast de sucesso
+    }
   };
 
   if (success && paymentMethod === 'credit_card') {
@@ -541,7 +547,7 @@ const SaaSCheckout = () => {
                             validations.cardNumber ? 'border-red-300' : 'border-gray-300'
                           }`}
                           placeholder="1234 5678 9012 3456"
-                          maxLength="19"
+                          maxLength={19}
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                           <CardIcons />
@@ -566,7 +572,7 @@ const SaaSCheckout = () => {
                             validations.expiryDate ? 'border-red-300' : 'border-gray-300'
                           }`}
                           placeholder="MM/AA"
-                          maxLength="5"
+                          maxLength={5}
                         />
                         {validations.expiryDate && (
                           <p className="mt-1 text-sm text-red-600">{validations.expiryDate}</p>
@@ -584,7 +590,7 @@ const SaaSCheckout = () => {
                             validations.cvv ? 'border-red-300' : 'border-gray-300'
                           }`}
                           placeholder="123"
-                          maxLength="4"
+                          maxLength={4}
                         />
                         {validations.cvv && (
                           <p className="mt-1 text-sm text-red-600">{validations.cvv}</p>

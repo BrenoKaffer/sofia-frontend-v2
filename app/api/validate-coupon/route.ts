@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const couponCode = coupon.toUpperCase().trim();
-    const couponData = VALID_COUPONS[couponCode];
+    const couponData = VALID_COUPONS[couponCode as keyof typeof VALID_COUPONS];
 
     if (!couponData) {
       return NextResponse.json(
