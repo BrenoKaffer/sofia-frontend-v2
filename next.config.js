@@ -1,8 +1,20 @@
 const path = require('path');
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-  openAnalyzer: false,
-});
+
+// Conditionally load bundle analyzer only when needed and available
+let withBundleAnalyzer;
+try {
+  if (process.env.ANALYZE === 'true') {
+    withBundleAnalyzer = require('@next/bundle-analyzer')({
+      enabled: true,
+      openAnalyzer: false,
+    });
+  } else {
+    withBundleAnalyzer = (config) => config;
+  }
+} catch (error) {
+  // Bundle analyzer not available, use identity function
+  withBundleAnalyzer = (config) => config;
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
