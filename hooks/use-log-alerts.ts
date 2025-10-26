@@ -26,7 +26,7 @@ export function useLogAlerts() {
   const [alerts, setAlerts] = useState<LogAlert[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [settings, setSettings] = useState<AlertSettings>({
-    enabled: true,
+    enabled: false,
     errorThreshold: 5,
     timeWindow: 10,
     notificationSound: true,
@@ -150,6 +150,11 @@ export function useLogAlerts() {
     const savedSettings = localStorage.getItem('logAlertSettings');
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
+    }
+
+    // Se alertas estiverem desativados, não configurar listeners nem buscar dados
+    if (!settings.enabled) {
+      return;
     }
 
     // Solicitar permissão para notificações

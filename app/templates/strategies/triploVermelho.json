@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2.1",
+  "version": "1.0.0",
+  "template_key": "triploVermelho",
+  "name": "Triplo Vermelho",
+  "source": "template",
+  "locked": true,
+  "description": "Gera sinal após três vermelhos consecutivos.",
+  "nodes": [
+    { "id": "t1", "type": "trigger", "data": { "config": { "janela": 40 } } },
+    { "id": "c1", "type": "condition", "subtype": "repetition", "data": { "config": { "evento": "vermelho", "ocorrencias": 3 } } },
+    { "id": "s1", "type": "signal", "data": { "config": { "acao": "emitir_sinal" } } }
+  ],
+  "connections": [
+    { "source": "t1", "target": "c1" },
+    { "source": "c1", "target": "s1" }
+  ]
+}

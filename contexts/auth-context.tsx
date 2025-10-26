@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClientComponentClient();
+  const AUTH_DEV_BYPASS = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true';
 
   // Função para converter usuário do Supabase para o formato local
   const convertSupabaseUser = (supabaseUser: SupabaseUser): User => {
@@ -46,6 +47,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Verificar sessão inicial
     const getInitialSession = async () => {
       try {
+        // Se bypass ativo, simula usuário sem consultar Supabase
+        if (AUTH_DEV_BYPASS) {
+          setUser({
+            id: 'dev-bypass-user',
+            name: 'Dev Bypass',
+            email: 'dev@local',
+            avatar: undefined,
+            cpf: undefined,
+            fullName: 'Dev Bypass'
+          });
+          console.warn('[AUTH] Bypass de autenticação ATIVO no cliente');
+          return;
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser(convertSupabaseUser(session.user));
@@ -62,6 +77,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (AUTH_DEV_BYPASS) {
+          setUser({
+            id: 'dev-bypass-user',
+            name: 'Dev Bypass',
+            email: 'dev@local',
+            avatar: undefined,
+            cpf: undefined,
+            fullName: 'Dev Bypass'
+          });
+          setIsLoading(false);
+          return;
+        }
         if (session?.user) {
           setUser(convertSupabaseUser(session.user));
         } else {
@@ -177,6 +204,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getToken = async (): Promise<string | null> => {
     try {
+      if (AUTH_DEV_BYPASS) {
+        return 'dev-bypass-token';
+      }
       const { data: { session } } = await supabase.auth.getSession();
       return session?.access_token || null;
     } catch (error) {

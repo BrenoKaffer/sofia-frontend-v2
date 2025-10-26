@@ -1,0 +1,72 @@
+{
+  "toolbox": {
+    "conditions": [
+      { "key": "repetition", "label": "Repetição" },
+      { "key": "absence", "label": "Ausência" },
+      { "key": "trend", "label": "Tendência" },
+      { "key": "pattern", "label": "Padrão" },
+      { "key": "sequence", "label": "Sequência" },
+      { "key": "repeat-number", "label": "Repetir Número" },
+      { "key": "neighbors", "label": "Vizinhos" },
+      { "key": "break", "label": "Quebra" },
+      { "key": "time-window", "label": "Janela de Tempo" },
+      { "key": "specific-number", "label": "Número Específico" },
+      { "key": "alternation", "label": "Alternância" }
+    ]
+  },
+  "propertiesPanel": {
+    "fieldsByType": {
+      "condition:absence": [
+        { "name": "evento", "label": "Evento", "type": "select", "options": ["vermelho", "preto", "zero", "par", "ímpar", "numero"] },
+        { "name": "rodadasSemOcorrer", "label": "Rodadas sem ocorrer", "type": "number" },
+        { "name": "numeroAlvo", "label": "Número alvo", "type": "number", "visibleWhen": { "evento": "numero" } }
+      ],
+      "condition:specific-number": [
+        { "name": "numero", "label": "Número", "type": "number" },
+        { "name": "modo", "label": "Modo", "type": "select", "options": ["ocorreu", "ausente"] }
+      ],
+      "condition:neighbors": [
+        { "name": "numero", "label": "Número base", "type": "number" },
+        { "name": "raio", "label": "Raio (métrica circular)", "type": "number" }
+      ],
+      "condition:alternation": [
+        { "name": "eixo", "label": "Eixo", "type": "select", "options": ["cor", "paridade"] },
+        { "name": "comprimento", "label": "Comprimento", "type": "number" }
+      ]
+    }
+  },
+  "semantics": {
+    "evaluateConditionNode": {
+      "absence": {
+        "description": "Verifica ausência do evento nas últimas N rodadas.",
+        "rules": [
+          "Para eventos padrão (vermelho, preto, zero, par, ímpar), utiliza correspondência por tokenMatchesEvent.",
+          "Quando evento = 'numero', utiliza 'numeroAlvo' (ou 'numero' se presente) para checar que nenhum token das últimas N rodadas é igual ao alvo."
+        ]
+      },
+      "specific-number": {
+        "description": "Checa ocorrência ou ausência de um número específico no histórico.",
+        "rules": [
+          "modo = 'ocorreu': retorna verdadeiro se o número existir em qualquer posição do histórico recente.",
+          "modo = 'ausente': retorna verdadeiro se o número não aparece nas últimas N rodadas (padrão 10 se não especificado)."
+        ]
+      },
+      "neighbors": {
+        "description": "Verifica ocorrências em torno de um número usando distância circular da roda europeia.",
+        "rules": [
+          "Usa a ordem EUROPEAN_WHEEL (roleta single-zero) para calcular índices de cada número.",
+          "A distância entre dois números é a menor diferença de índices considerando wrap-around.",
+          "Passa se algum token numérico nas últimas M rodadas (M = max(raio*2, 12)) está a uma distância menor ou igual ao raio do número base."
+        ]
+      },
+      "alternation": {
+        "description": "Verifica alternância estrita em um eixo por N rodadas.",
+        "rules": [
+          "Eixo 'cor': alternação estrita entre vermelho e preto; tokens fora dessas categorias tornam falso.",
+          "Eixo 'paridade': alternação estrita entre par e ímpar; zero é tratado como quebra (não conta).",
+          "Exige comprimento mínimo 2 e histórico com pelo menos N entradas válidas."
+        ]
+      }
+    }
+  }
+}

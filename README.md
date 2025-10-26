@@ -85,7 +85,14 @@ npm run test:e2e        # Testes E2E
 npm run test:e2e:ui     # Testes E2E com interface
 ```
 
-## 🧪 Testes
+## 🧪 Testes do Builder Dinâmico
+- Executar do diretório do frontend para resolver imports de rotas: `ORGANIZADOS/sofia-frontend`.
+- Comando direto para o arquivo de testes: `npx jest __tests__/upload_from_builder.spec.ts`.
+- Caso adicione novos testes, mantenha-os no mesmo arquivo e siga o padrão de payload do guia em `PROMPTS/Guia de Payload do Strategy Builder.md`.
+- Variáveis de ambiente relevantes:
+  - `BACKEND_API_KEY` (para rotas protegidas: `upload-from-builder`, `register`, `toggle`).
+  - `CURRENT_SCHEMA_VERSION` (compatível com `schemaVersion` do payload).
+- Artefato de compilação do builder: JS puro com exports `METADATA`, `checkStrategy`, `generateSignal`, `decisionTrace`.
 
 O projeto possui uma suíte completa de testes:
 

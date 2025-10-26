@@ -34,12 +34,16 @@ class BackendService {
 
   constructor() {
     this.config = {
-      baseUrl: process.env.SOFIA_BACKEND_URL || 'http://localhost:3001',
+      baseUrl: process.env.SOFIA_BACKEND_URL || '',
       timeout: parseInt(process.env.SOFIA_API_TIMEOUT || '15000'),
       retries: parseInt(process.env.SOFIA_API_RETRIES || '3'),
       retryDelay: parseInt(process.env.SOFIA_API_RETRY_DELAY || '1000'),
       apiKey: process.env.BACKEND_API_KEY
     };
+    // Fallback para rotas internas do Next.js em desenvolvimento se baseUrl não estiver definido
+    if (!this.config.baseUrl) {
+      this.config.baseUrl = '';
+    }
   }
 
   /**

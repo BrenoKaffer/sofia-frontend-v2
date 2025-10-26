@@ -1,0 +1,392 @@
+{
+  "metadata": {
+    "title": "Documentação Completa da Página /builder - SOFIA",
+    "version": "1.0.0",
+    "created_at": "2024-12-20",
+    "description": "Documentação técnica completa da página Builder de Estratégias do sistema SOFIA",
+    "schema_version": "1.0.0"
+  },
+  "page_overview": {
+    "route": "/builder",
+    "title": "Builder de Estratégias",
+    "description": "Interface visual para criação e edição de estratégias de roleta baseadas em condições lógicas e histórico de spins",
+    "main_component": "app/builder/page.tsx",
+    "total_lines": 2888,
+    "key_features": [
+      "Interface drag-and-drop para criação de estratégias",
+      "Sistema de nós e conexões visuais",
+      "Validação em tempo real",
+      "Testes com histórico real e simulado",
+      "Compilação para JavaScript",
+      "Integração com backend para publicação"
+    ]
+  },
+  "architecture": {
+    "main_files": {
+      "page_component": {
+        "path": "app/builder/page.tsx",
+        "lines": 2888,
+        "description": "Componente principal da página builder com toda a lógica de interface e funcionalidades"
+      },
+      "builder_spec": {
+        "path": "app/config/builderSpec.ts",
+        "lines": 422,
+        "description": "Especificações e configurações do builder, incluindo tipos de nós e campos de propriedades"
+      },
+      "builder_compiler": {
+        "path": "lib/builder-compiler.ts",
+        "lines": 476,
+        "description": "Compilador que converte grafos do builder em código JavaScript executável"
+      },
+      "strategy_semantics": {
+        "path": "app/lib/strategySemantics.ts",
+        "description": "Funções para avaliação de condições e lógica das estratégias"
+      }
+    },
+    "dependencies": {
+      "ui_components": [
+        "Card", "Button", "Input", "Tabs", "Dialog", "Select", "Slider", "Checkbox", "Badge", "Accordion"
+      ],
+      "external_libraries": [
+        "ReactFlow - Interface de nós e conexões",
+        "Lucide React - Ícones",
+        "Sonner - Notificações toast"
+      ]
+    }
+  },
+  "data_structures": {
+    "node_types": {
+      "trigger": {
+        "description": "Nó que define quando a estratégia deve ser ativada",
+        "subtypes": ["analisar_janela"],
+        "config_fields": ["janela"]
+      },
+      "condition": {
+        "description": "Nó que avalia condições específicas do histórico",
+        "subtypes": [
+          "repetition", "absence", "trend", "pattern", "break", "neighbors", 
+          "repeat-number", "time-window", "sequence", "sequence_custom", 
+          "specific-number", "alternation", "setorDominante", "dozen_hot", 
+          "column_hot", "mirror"
+        ],
+        "config_fields": "Varia por subtipo"
+      },
+      "logic": {
+        "description": "Nó que combina condições com operadores lógicos",
+        "subtypes": ["AND", "OR", "NOT"],
+        "config_fields": ["operador"]
+      },
+      "signal": {
+        "description": "Nó que define a ação quando condições são satisfeitas",
+        "subtypes": ["emitir_sinal", "notificar", "apostar"],
+        "config_fields": [
+          "acao", "mensagem", "prioridade", "selectionMode", "numeros", 
+          "stake", "protecaoTipo", "protecaoLimite", "limiteRodadas", 
+          "excludeZero", "maxNumbersAuto", "maxNumbersHybrid", "minManualHybrid"
+        ]
+      }
+    },
+    "connection_types": {
+      "success": "Conexão executada quando condição é verdadeira",
+      "failure": "Conexão executada quando condição é falsa",
+      "condition": "Conexão padrão entre nós de condição"
+    },
+    "strategy_schema": {
+      "id": "string (UUID)",
+      "name": "string",
+      "description": "string",
+      "status": "active | paused | draft | testing",
+      "createdAt": "datetime",
+      "lastModified": "datetime",
+      "nodes": "array of StrategyNode",
+      "connections": "array of Connection",
+      "selectionMode": "automatic | hybrid | manual",
+      "gating": "object with gating rules",
+      "schemaVersion": "string"
+    }
+  },
+  "api_routes": {
+    "frontend_routes": {
+      "/api/strategies": {
+        "methods": ["GET", "POST"],
+        "description": "Gerenciamento de estratégias locais",
+        "file": "app/api/strategies/route.ts"
+      },
+      "/api/strategies/[id]": {
+        "methods": ["GET", "PUT", "DELETE"],
+        "description": "Operações específicas de estratégia",
+        "file": "app/api/strategies/[id]/route.ts"
+      },
+      "/api/dynamic-strategies/upload-from-builder": {
+        "methods": ["POST", "OPTIONS"],
+        "description": "Compilação e publicação de estratégias do builder",
+        "file": "app/api/dynamic-strategies/upload-from-builder/route.ts"
+      },
+      "/api/dynamic-strategies/[...path]": {
+        "methods": ["GET", "POST", "PUT", "DELETE"],
+        "description": "Proxy para backend de estratégias dinâmicas",
+        "file": "app/api/dynamic-strategies/[...path]/route.ts"
+      },
+      "/api/action-resolver": {
+        "description": "Resolução automática de números para apostas",
+        "usage": "Derivação automática e híbrida de números"
+      }
+    },
+    "backend_integration": {
+      "base_url": "process.env.SOFIA_BACKEND_URL || 'http://localhost:3001'",
+      "endpoints": {
+        "/api/dynamic-strategies": "Listagem de estratégias dinâmicas",
+        "/api/dynamic-strategies/create": "Criação de novas estratégias",
+        "/api/automation/strategy/register": "Registro no StrategyEngine",
+        "/api/dynamic-strategies/upload-from-builder": "Publicação de estratégias compiladas"
+      }
+    }
+  },
+  "core_functionalities": {
+    "node_management": {
+      "add_node": {
+        "function": "addNodeFromTemplate",
+        "description": "Adiciona novo nó ao canvas a partir de template da toolbox",
+        "parameters": ["template", "position"]
+      },
+      "update_node": {
+        "function": "updateNode",
+        "description": "Atualiza configuração de nó existente",
+        "parameters": ["nodeId", "updates"]
+      },
+      "delete_node": {
+        "function": "deleteNode",
+        "description": "Remove nó e suas conexões do canvas",
+        "parameters": ["nodeId"]
+      }
+    },
+    "connection_management": {
+      "create_connection": {
+        "function": "handleConnect",
+        "description": "Cria nova conexão entre nós",
+        "validation": "Verifica tipos compatíveis e evita loops"
+      },
+      "delete_connection": {
+        "function": "onEdgesDelete",
+        "description": "Remove conexões selecionadas",
+        "parameters": ["edges"]
+      }
+    },
+    "strategy_operations": {
+      "save_strategy": {
+        "function": "saveStrategy",
+        "description": "Salva estratégia com validação completa",
+        "steps": [
+          "Validação de nós signal",
+          "Validação de condições",
+          "Salvamento local",
+          "Envio para servidor",
+          "Registro no StrategyEngine",
+          "Publicação no backend"
+        ]
+      },
+      "test_strategy": {
+        "function": "testStrategy",
+        "description": "Testa estratégia com validação de grafo",
+        "validations": [
+          "Grafo não vazio",
+          "Presença de trigger",
+          "Conexões válidas",
+          "Nós alcançáveis"
+        ]
+      },
+      "compile_strategy": {
+        "function": "compileBuilderToJS",
+        "description": "Compila grafo em código JavaScript executável",
+        "output": "Módulo com METADATA, checkStrategy, generateSignal"
+      }
+    },
+    "testing_features": {
+      "dry_run_local": {
+        "description": "Simulação local da estratégia",
+        "steps": [
+          "Avaliação de condições",
+          "Execução de lógica",
+          "Geração de sinais",
+          "Coleta de telemetria"
+        ]
+      },
+      "test_with_real_history": {
+        "description": "Teste com histórico real da roleta",
+        "source": "/api/roulette-history",
+        "limit": "1-500 spins configurável"
+      },
+      "manual_history_test": {
+        "description": "Teste com histórico inserido manualmente",
+        "format": "Números separados por vírgula ou espaço"
+      }
+    }
+  },
+  "validation_system": {
+    "node_validation": {
+      "signal_nodes": {
+        "manual_selection": "Requer números selecionados",
+        "number_range": "Números entre 0-36",
+        "no_duplicates": "Sem números duplicados",
+        "valid_stake": "Stake > 0",
+        "protection_limits": "Limites de proteção válidos"
+      },
+      "condition_nodes": {
+        "absence_event": "Número alvo entre 0-36 quando evento é 'numero'",
+        "specific_number": "Número entre 0-36",
+        "neighbors": "Número base e raio válidos",
+        "time_window": "Início < fim"
+      }
+    },
+    "graph_validation": {
+      "empty_graph": "Grafo deve ter pelo menos um nó",
+      "missing_trigger": "Deve ter pelo menos um nó trigger",
+      "invalid_connections": "Conexões devem ter source e target válidos",
+      "unreachable_nodes": "Todos os nós devem ser alcançáveis"
+    }
+  },
+  "ui_components": {
+    "layout": {
+      "header": "Título e controles principais",
+      "tabs": ["Estratégias", "Templates", "Performance"],
+      "builder_modal": "Interface principal do builder"
+    },
+    "builder_modal": {
+      "toolbox": {
+        "width": "64 (unidades)",
+        "categories": ["Gatilhos", "Condições", "Lógica", "Sinal"],
+        "drag_drop": "Suporte completo para arrastar e soltar"
+      },
+      "canvas": {
+        "type": "ReactFlow",
+        "features": ["Background", "Controls", "MiniMap", "Zoom", "Pan"],
+        "node_types": ["trigger", "condition", "logic", "signal"],
+        "connection_types": ["success", "failure", "condition"]
+      },
+      "properties_panel": {
+        "width": "80 (unidades)",
+        "dynamic_fields": "Campos baseados no tipo e subtipo do nó selecionado",
+        "field_types": ["number", "select", "slider", "array", "text", "checkbox"]
+      }
+    },
+    "testing_interface": {
+      "controls": [
+        "Modo de seleção (automatic/hybrid/manual)",
+        "Habilitação de gating",
+        "Limite de histórico real",
+        "Status de saúde do backend"
+      ],
+      "actions": [
+        "Resetar preferências",
+        "Testar com histórico real",
+        "Testar com histórico manual",
+        "Salvar estratégia"
+      ]
+    }
+  },
+  "data_flow": {
+    "strategy_creation": [
+      "1. Usuário arrasta nós da toolbox para o canvas",
+      "2. Usuário conecta nós criando fluxo lógico",
+      "3. Usuário configura propriedades de cada nó",
+      "4. Sistema valida configurações em tempo real",
+      "5. Usuário testa estratégia com histórico",
+      "6. Sistema compila grafo para JavaScript",
+      "7. Usuário salva estratégia localmente e no servidor"
+    ],
+    "strategy_execution": [
+      "1. Sistema recebe novo spin da roleta",
+      "2. Estratégia avalia condições baseadas no histórico",
+      "3. Nós de lógica combinam resultados das condições",
+      "4. Se ativada, nó signal gera números para aposta",
+      "5. Sistema aplica regras de gating se configuradas",
+      "6. Números finais são enviados para sistema de apostas"
+    ]
+  },
+  "configuration_options": {
+    "selection_modes": {
+      "automatic": "Sistema deriva números automaticamente baseado nas condições",
+      "hybrid": "Combina números manuais com derivação automática",
+      "manual": "Usuário seleciona números específicos"
+    },
+    "gating_rules": {
+      "maxNumbersAuto": "Máximo de números no modo automático (1-36)",
+      "maxNumbersHybrid": "Máximo de números no modo híbrido (1-36)",
+      "minManualHybrid": "Mínimo de números manuais no modo híbrido (1-36)",
+      "excludeZero": "Excluir zero das seleções automáticas"
+    },
+    "protection_types": {
+      "martingale": "Dobra aposta após perda",
+      "fibonacci": "Sequência de Fibonacci para apostas",
+      "flat": "Aposta fixa sem progressão"
+    }
+  },
+  "integration_points": {
+    "local_storage": [
+      "Preferências do usuário",
+      "Estratégias em desenvolvimento",
+      "Configurações de interface"
+    ],
+    "server_apis": [
+      "Salvamento de estratégias",
+      "Histórico de roleta",
+      "Status de saúde do backend",
+      "Validação de sinais"
+    ],
+    "backend_services": [
+      "StrategyEngine para registro",
+      "Dynamic Strategies para publicação",
+      "Action Resolver para derivação automática"
+    ]
+  },
+  "error_handling": {
+    "validation_errors": "Exibidos em tempo real no painel de propriedades",
+    "compilation_errors": "Mostrados durante teste ou salvamento",
+    "network_errors": "Toast notifications para falhas de API",
+    "graph_errors": "Validação de conectividade e estrutura do grafo"
+  },
+  "performance_considerations": {
+    "lazy_loading": "Componentes carregados sob demanda",
+    "debounced_validation": "Validação com delay para evitar spam",
+    "optimized_rendering": "ReactFlow otimizado para grandes grafos",
+    "local_caching": "Cache de estratégias e preferências"
+  },
+  "testing_framework": {
+    "unit_tests": {
+      "file": "__tests__/upload_from_builder.spec.ts",
+      "coverage": "Compilação, validação e execução de estratégias",
+      "test_cases": [
+        "Neighbors + signal logic activation",
+        "Absence of red derives black set",
+        "Complex logic combinations (AND/OR/NOT)",
+        "Mirror derivation with radius",
+        "Gating rules application"
+      ]
+    },
+    "integration_tests": {
+      "file": "lib/betting-automation/__tests__/upload_from_builder.test.ts",
+      "focus": "Logic aggregation and operator combinations"
+    }
+  },
+  "security_considerations": {
+    "input_validation": "Sanitização de todos os inputs do usuário",
+    "code_compilation": "Compilação segura sem eval() direto",
+    "api_authentication": "Tokens de autenticação para APIs do backend",
+    "xss_prevention": "Escape de conteúdo dinâmico"
+  },
+  "future_enhancements": {
+    "planned_features": [
+      "Templates de estratégias pré-definidos",
+      "Histórico de versões de estratégias",
+      "Colaboração em tempo real",
+      "Análise de performance integrada",
+      "Importação/exportação de estratégias"
+    ],
+    "technical_debt": [
+      "Refatoração do componente principal (2888 linhas)",
+      "Separação de lógica de negócio da UI",
+      "Melhoria na tipagem TypeScript",
+      "Otimização de performance para grafos grandes"
+    ]
+  }
+}

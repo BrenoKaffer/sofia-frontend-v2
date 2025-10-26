@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'nodejs'
+
+function jsonLog(obj: any) { try { console.log(JSON.stringify(obj)) } catch { /* noop */ } }
+
 // Configuração do Backend SOFIA
 const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 Iniciando validação de sinal...');
-    
+    const correlation_id = (() => { try { return require('crypto').randomUUID() } catch { return `${Date.now()}-${Math.random()}` } })()
+    jsonLog({ level: 'info', op: 'signals.validate', msg: 'start', correlation_id })
     // Verificar autorização
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      jsonLog({ level: 'warn', op: 'signals.validate', msg: 'missing bearer', correlation_id })
       return NextResponse.json(
         { error: 'Token de autorização necessário' },
         { status: 401 }
@@ -17,11 +22,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log('📝 Dados recebidos para validação:', body);
+    jsonLog({ level: 'debug', op: 'signals.validate', msg: 'payload', payload: body, correlation_id })
 
     // Validar sinal no backend SOFIA
-    console.log('🔍 Enviando validação para o backend SOFIA...');
-    
+    jsonLog({ level: 'info', op: 'signals.validate', msg: 'forwarding to backend', backend: SOFIA_BACKEND_URL, correlation_id })
     const response = await fetch(`${SOFIA_BACKEND_URL}/signals/validate`, {
       method: 'POST',
       headers: {
@@ -32,17 +36,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      console.error('❌ Erro ao validar sinal no backend:', response.status, response.statusText);
       const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+      jsonLog({ level: 'error', op: 'signals.validate', msg: 'backend error', status: response.status, statusText: response.statusText, error: errorData, correlation_id })
       return NextResponse.json(errorData, { status: response.status });
     }
 
     const validationData = await response.json();
-    console.log('✅ Sinal validado no backend SOFIA:', validationData);
-    
+    jsonLog({ level: 'info', op: 'signals.validate', msg: 'backend ok', data: validationData, correlation_id })
     return NextResponse.json(validationData);
   } catch (error) {
-    console.error('Erro na API de validação de sinais:', error);
+    jsonLog({ level: 'error', op: 'signals.validate', msg: 'internal error', error: String(error) })
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
@@ -63,4 +66,21 @@ export async function GET(request: NextRequest) {
       net_payout: 'Lucro líquido real (opcional, será calculado se não fornecido)'
     }
   });
+}
+
+export async function OPTIONS() {
+  return NextResponse.json({
+    ok: true,
+    methods: ['POST'],
+    description: 'Validate a signal outcome with server token',
+    auth: 'Bearer BACKEND_API_KEY',
+    payload: {
+      signal_id: 'string',
+      result: 'hit|miss',
+      winning_number: '0..36? optional',
+      net_payout: 'number? optional',
+      table_id: 'string? optional',
+      strategy_id: 'string? optional'
+    },
+  })
 }

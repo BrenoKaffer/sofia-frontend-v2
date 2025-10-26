@@ -31,6 +31,8 @@ const ROUTE_RATE_LIMIT_MAP: Record<string, keyof typeof RATE_LIMIT_CONFIGS> = {
   '/api/admin': 'admin',
   '/api/user-backup': 'admin',
   '/api/seed-demo-data': 'admin',
+  '/api/dynamic-strategies': 'admin',
+  '/api/strategies': 'admin',
   
   // APIs de pagamento - CRÍTICAS (rate limiting rigoroso)
   '/api/payments': 'auth',

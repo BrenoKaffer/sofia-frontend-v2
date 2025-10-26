@@ -28,10 +28,16 @@ class ApiClient {
   private defaultRetries = 3;
 
   constructor() {
-    // Configuração para usar o backend SOFIA real
-    const sofiaBackendUrl = process.env.SOFIA_BACKEND_URL || 'http://localhost:3001';
-    this.baseUrl = `${sofiaBackendUrl}/api`;
-    this.publicBaseUrl = `${sofiaBackendUrl}/api/public`;
+    // Configuração: preferir URLs definidas via env, com fallback para rotas internas /api
+    const sofiaBackendUrl = process.env.SOFIA_BACKEND_URL;
+    if (sofiaBackendUrl) {
+      this.baseUrl = `${sofiaBackendUrl}/api`;
+      this.publicBaseUrl = `${sofiaBackendUrl}/api/public`;
+    } else {
+      // Fallback para roteamento interno do Next.js em desenvolvimento
+      this.baseUrl = `/api`;
+      this.publicBaseUrl = `/api/public`;
+    }
     this.apiKey = process.env.NEXT_PUBLIC_API_KEY;
   }
 
@@ -409,6 +415,24 @@ class ApiClient {
    */
   async getAvailableOptions() {
     return this.makeRequest(`${this.baseUrl}/available-options`);
+  }
+
+  /**
+   * Resolver seleção de números (neighbors, setorDominante, etc.)
+   * input: payload de contexto ou sinal do Builder/estratégia
+   * spinsHistory: opcional, histórico de giros; se ausente, usar table_id
+   */
+  async resolveActionSelection(input: any, spinsHistory?: any[], options?: { table_id?: string; limit?: number }) {
+    const body = {
+      input,
+      spinsHistory,
+      table_id: options?.table_id,
+      limit: options?.limit
+    };
+    return this.makeRequest(`${this.baseUrl}/action-resolver`, {
+      method: 'POST',
+      body
+    });
   }
 
   /**

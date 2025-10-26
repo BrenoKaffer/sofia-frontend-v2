@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { AuthService } from '@/lib/auth-service';
 import { logger } from '@/lib/logger';
 
+export const runtime = 'nodejs'
+
 // POST - Logout do usuário
 export async function POST(req: NextRequest) {
   try {

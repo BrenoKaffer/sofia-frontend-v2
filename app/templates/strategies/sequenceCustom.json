@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2.1",
+  "version": "1.0.0",
+  "template_key": "sequenceCustom",
+  "name": "Sequência Personalizada",
+  "source": "template",
+  "locked": true,
+  "description": "Projeta próximo token com base em sequência customizável (cor, paridade, alto/baixo).",
+  "nodes": [
+    { "id": "t1", "type": "trigger", "data": { "config": { "janela": 100 } } },
+    { "id": "c1", "type": "condition", "subtype": "sequence_custom", "data": { "config": { "sequencia": ["vermelho", "preto", "vermelho"], "tipo": "cor" } } },
+    { "id": "s1", "type": "signal", "data": { "config": { "acao": "emitir_sinal" } } }
+  ],
+  "connections": [
+    { "source": "t1", "target": "c1" },
+    { "source": "c1", "target": "s1" }
+  ]
+}

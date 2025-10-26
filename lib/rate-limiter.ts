@@ -60,13 +60,17 @@ export const RATE_LIMIT_CONFIGS = {
   },
 } as const;
 
+// Singleton de cache compartilhado entre requisições
+const sharedCache = new RedisCache();
+
 // Classe principal do Rate Limiter
 export class RateLimiter {
   private cache: RedisCache;
   private config: RateLimitConfig;
   
   constructor(config: RateLimitConfig) {
-    this.cache = new RedisCache();
+    // Usar cache compartilhado para persistência entre requisições
+    this.cache = sharedCache;
     this.config = config;
   }
   
@@ -111,11 +115,11 @@ export class RateLimiter {
     
     try {
       // Busca dados existentes
-      const existingData = await this.cache.get(key);
+      const existingData = await this.cache.get<number[]>(key);
       let hits: number[] = [];
       
-      if (existingData) {
-        hits = JSON.parse(existingData as string) || [];
+      if (existingData && Array.isArray(existingData)) {
+        hits = existingData;
       }
       
       // Remove hits fora da janela de tempo
@@ -127,7 +131,7 @@ export class RateLimiter {
       // Salva dados atualizados
       await this.cache.set(
         key,
-        JSON.stringify(hits),
+        hits,
         Math.ceil(this.config.windowMs / 1000)
       );
       

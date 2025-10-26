@@ -38,7 +38,7 @@ interface RecentActivityProps {
   loading?: boolean; // Estado de carregamento
 }
 
-export function RecentActivity({ signals, spins, loading = false }: RecentActivityProps) {
+export function RecentActivity({ signals = [], spins, loading = false }: RecentActivityProps) {
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
 
   // Função para truncar texto
@@ -84,7 +84,7 @@ export function RecentActivity({ signals, spins, loading = false }: RecentActivi
   };
 
   // Transformar os `signals` em `ActivityItem` para exibição
-  const activities: ActivityItem[] = signals.map((signal, index) => {
+  const activities: ActivityItem[] = (Array.isArray(signals) ? signals : []).map((signal, index) => {
     const timeAgo = Math.floor((new Date().getTime() - new Date(signal.timestamp_generated).getTime()) / 1000);
     let timeString = '';
     if (timeAgo < 60) timeString = `${timeAgo}s atrás`;

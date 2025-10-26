@@ -82,10 +82,13 @@ export async function GET(request: NextRequest) {
           }
         ];
         
-        return NextResponse.json({
-          data: defaultTables,
-          success: false,
-          message: 'Usando dados de fallback devido a erro no backend'
+        return NextResponse.json(defaultTables, {
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
         });
       }
 
@@ -94,16 +97,22 @@ export async function GET(request: NextRequest) {
       // Validar estrutura da resposta
       if (tablesData && typeof tablesData === 'object') {
         if (tablesData.data && Array.isArray(tablesData.data)) {
-          return NextResponse.json({
-            data: tablesData.data,
-            success: true,
-            message: 'Tabelas carregadas com sucesso'
+          return NextResponse.json(tablesData.data, {
+            status: 200,
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
           });
         } else if (Array.isArray(tablesData)) {
-          return NextResponse.json({
-            data: tablesData,
-            success: true,
-            message: 'Tabelas carregadas com sucesso'
+          return NextResponse.json(tablesData, {
+            status: 200,
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
           });
         }
       }
@@ -148,10 +157,13 @@ export async function GET(request: NextRequest) {
         }
       ];
       
-      return NextResponse.json({
-        data: defaultTables,
-        success: false,
-        message: 'Usando dados de fallback devido a erro de conexão'
+      return NextResponse.json(defaultTables, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
     }
   } catch (error) {

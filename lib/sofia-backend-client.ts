@@ -28,8 +28,10 @@ class SofiaBackendClient {
 
   constructor() {
     // Usar variáveis de ambiente ou fallback para desenvolvimento
-    this.baseUrl = process.env.SOFIA_BACKEND_URL || 'http://localhost:3001';
-    this.wsUrl = process.env.SOFIA_BACKEND_WS_URL || 'ws://localhost:3001';
+    const backendUrl = process.env.SOFIA_BACKEND_URL;
+    const backendWsUrl = process.env.SOFIA_BACKEND_WS_URL;
+    this.baseUrl = backendUrl ? backendUrl : '';
+    this.wsUrl = backendWsUrl ? backendWsUrl : '';
     this.timeout = parseInt(process.env.SOFIA_API_TIMEOUT || '30000');
     this.retries = parseInt(process.env.SOFIA_API_RETRIES || '3');
     this.retryDelay = parseInt(process.env.SOFIA_API_RETRY_DELAY || '1000');

@@ -11,7 +11,7 @@ import {
   capturePerformanceMetrics, 
   captureEngagementMetrics, 
   setupErrorTracking 
-} from '@/lib/analytics-middleware';
+} from '@/lib/analytics-client';
 import { analytics } from '@/lib/analytics';
 import { logger } from '@/lib/logger';
 

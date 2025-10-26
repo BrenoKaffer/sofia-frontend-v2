@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { DEFAULT_ROLES } from '@/lib/auth-service';
 
+export const runtime = 'nodejs'
+
 // GET - Listar todas as roles
 async function handleGet(req: NextRequest) {
   try {

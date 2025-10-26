@@ -26,6 +26,11 @@ class MemoryCache {
     return 'OK';
   }
 
+  // Compat: método similar ao Redis para set com TTL
+  async setEx(key: string, ttl: number, value: any) {
+    return this.set(key, value, { EX: ttl });
+  }
+
   async get(key: string) {
     const item = this.cache.get(key);
     if (!item) return null;

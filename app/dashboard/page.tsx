@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
-import { useUser } from '@/hooks/use-user';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { DashboardLayout } from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +15,10 @@ import { Separator } from '@/components/ui/separator';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowRight, ArrowUpRight, Clock, Activity, TrendingUp, BarChart3, Target, AlertTriangle, CheckCircle, ChevronRight, Play, Zap, History, Settings, ExternalLink } from 'lucide-react';
 import { redirect } from 'next/navigation';
-
-// Lazy imports para componentes pesados
+import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
+import { useDashboardPreferences } from '@/hooks/use-dashboard-preferences';
 import { withLazyLoading } from '@/components/lazy/lazy-component';
+import { apiClient } from '@/lib/api-client';
 import { usePerformanceMonitoring, useSmartMemo, useDebounce } from '@/hooks/use-performance';
 
 // Componentes lazy
@@ -28,12 +28,6 @@ const PerformanceChart = withLazyLoading(() => import('@/components/dashboard/pe
 const RouletteStatus = withLazyLoading(() => import('@/components/dashboard/roulette-status'));
 const RecentActivity = withLazyLoading(() => import('@/components/dashboard/recent-activity'));
 const RouletteModal = withLazyLoading(() => import('@/components/dashboard/roulette-modal'));
-const RealTimeMetrics = withLazyLoading(() => import('@/components/dashboard/real-time-metrics'));
-
-import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
-import { useDashboardPreferences } from '@/hooks/use-dashboard-preferences';
-import { useSignalNotifications } from '@/hooks/use-signal-notifications';
-import { AuthTest } from '@/components/auth/auth-test';
 
 // Definição de Tipos para os dados do Backend
 interface GeneratedSignal {
@@ -83,23 +77,14 @@ interface KpiData {
 
 // Dados dinâmicos baseados no backend
 
-function DashboardPage() {
-  const { user, isLoaded } = useUser();
-  const { getToken } = useAuth();
+export default function DashboardPage() {
+  const { user, isLoading, getToken } = useAuth();
   const { preferences: dashboardPreferences, loading: preferencesLoading } = useDashboardPreferences();
-  const {
-    processSignals,
-    notifyConnectionLost,
-    notifyConnectionRestored,
-    notifyHighActivity,
-    getNotificationStatus
-  } = useSignalNotifications();
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
   const [selectedActiveTable, setSelectedActiveTable] = useState<{ tableId: string; strategyName: string; suggestedBets: (string | number)[] } | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const lastActivityRef = useRef<number>(Date.now());
-  const [activeTab, setActiveTab] = useState('overview');
 
   // Frases motivacionais reais sobre estratégias de roleta
   const motivationalPhrases = [
@@ -174,11 +159,82 @@ function DashboardPage() {
   };
 
   // Estados para dados reais do backend
-  const [liveSignalsData, setLiveSignalsData] = useState<GeneratedSignal[]>([]);
+  const [liveSignalsData, setLiveSignalsData] = useState<GeneratedSignal[]>([
+    // DADOS MOCK TEMPORÁRIOS PARA TESTE
+    {
+      id: "1",
+      strategy_name: "Estratégia Fibonacci Avançada",
+      strategy_id: "fibonacci-advanced",
+      table_id: "evolution-double-ball-roulette",
+      suggested_bets: [7, 14, 21, 28, "Red", "1st-12"],
+      bet_numbers: [7, 14, 21, 28, "Red", "1st-12"],
+      suggested_units: 3,
+      confidence_level: 85,
+      confidence_score: 85,
+      confidence_factors: {
+        strategy_performance: 0.82,
+        table_performance: 0.78,
+        pattern_strength: 0.91,
+        data_volume: 0.88,
+        time_factor: 0.75,
+        consistency: 0.83
+      },
+      timestamp_generated: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 60000).toISOString(), // 1 minuto
+      expected_return: 125.50,
+      is_validated: false,
+      type: "pattern",
+      status: "active",
+      message: "Padrão forte detectado nos últimos 15 giros. Sequência de números pares com alta probabilidade."
+    },
+    {
+      id: "2",
+      strategy_name: "Martingale Modificado",
+      strategy_id: "martingale-modified",
+      table_id: "evolution-lightning-roulette",
+      suggested_bets: [0, 32, 15, "Black"],
+      bet_numbers: [0, 32, 15, "Black"],
+      suggested_units: 2,
+      confidence_level: 65,
+      confidence_score: 65,
+      timestamp_generated: new Date(Date.now() - 30000).toISOString(), // 30 segundos atrás
+      expires_at: new Date(Date.now() + 30000).toISOString(), // 30 segundos
+      expected_return: 89.25,
+      is_validated: false,
+      type: "progression",
+      status: "active",
+      message: "Oportunidade de recuperação identificada. Aposte com cautela."
+    }
+  ]);
   const [latestRouletteSpin, setLatestRouletteSpin] = useState<RouletteSpin | null>(null);
   const [kpisData, setKpisData] = useState<KpiData[]>([]);
   const [rouletteHistoryData, setRouletteHistoryData] = useState<RouletteSpin[]>([]);
-  const [activeSignal, setActiveSignal] = useState<GeneratedSignal | null>(null);
+  const [activeSignal, setActiveSignal] = useState<GeneratedSignal | null>({
+    id: "1",
+    strategy_name: "Estratégia Fibonacci Avançada",
+    strategy_id: "fibonacci-advanced",
+    table_id: "evolution-double-ball-roulette",
+    suggested_bets: [7, 14, 21, 28, "Red", "1st-12"],
+    bet_numbers: [7, 14, 21, 28, "Red", "1st-12"],
+    suggested_units: 3,
+    confidence_level: 85,
+    confidence_score: 85,
+    confidence_factors: {
+      strategy_performance: 0.82,
+      table_performance: 0.78,
+      pattern_strength: 0.91,
+      data_volume: 0.88,
+      time_factor: 0.75,
+      consistency: 0.83
+    },
+    timestamp_generated: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 60000).toISOString(),
+    expected_return: 125.50,
+    is_validated: false,
+    type: "pattern",
+    status: "active",
+    message: "Padrão forte detectado nos últimos 15 giros. Sequência de números pares com alta probabilidade."
+  });
   const [countdown, setCountdown] = useState(0);
   const [progressValue, setProgressValue] = useState(0);
   const [loading_data, setLoadingData] = useState(true);
@@ -186,95 +242,74 @@ function DashboardPage() {
   const [activeRouletteStatus, setActiveRouletteStatus] = useState<{table_id: string, status: string} | null>(null);
   const [monitoredTables, setMonitoredTables] = useState<string[]>([]); // Roletas monitoradas
   const monitoredTablesRef = useRef<string[]>([]); // Ref para evitar re-renders no Realtime
-  const previousConnectionStatusRef = useRef<'connected' | 'disconnected' | 'reconnecting'>('connected');
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-  const API_BASE_URL = '/api'; // Usar APIs locais do Next.js
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
-  // Monitorar mudanças no status de conexão para notificações
-  useEffect(() => {
-    const previousStatus = previousConnectionStatusRef.current;
-    
-    if (previousStatus !== connectionStatus) {
-      if (previousStatus === 'connected' && connectionStatus === 'disconnected') {
-        // Conexão perdida
-        notifyConnectionLost();
-      } else if (previousStatus !== 'connected' && connectionStatus === 'connected') {
-        // Conexão restaurada
-        notifyConnectionRestored();
-      }
-      
-      previousConnectionStatusRef.current = connectionStatus;
-    }
-  }, [connectionStatus, notifyConnectionLost, notifyConnectionRestored]);
+  // Helper para headers condicionais ao token
+  const buildHeaders = (token?: string) => (token ? { Authorization: `Bearer ${token}` } : {});
+
 
   // Função para buscar preferências do usuário (roletas monitoradas)
   const fetchUserPreferences = useCallback(async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`${API_BASE_URL}/user-preferences`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const response = await apiClient.get('/user-preferences', {
+        headers: buildHeaders(token),
+        timeout: 8000,
       });
-      
-      if (!response.ok) {
-        throw new Error(`Erro ao buscar preferências (${response.status})`);
-      }
-      
-      const preferences = await response.json();
+      const preferences = (response as any)?.data ?? response;
       console.log('✅ Preferências do usuário carregadas:', preferences);
-      setMonitoredTables(preferences.tables || []);
-      return preferences.tables || [];
+      const tables = Array.isArray(preferences?.tables) ? preferences.tables : (Array.isArray(preferences) ? preferences : []);
+      setMonitoredTables(tables);
+      return tables;
     } catch (error) {
-       console.error('❌ Erro ao buscar preferências:', error);
-       return [];
-     }
-   }, [getToken]);
+      console.error('❌ Erro ao buscar preferências:', error);
+      return [];
+    }
+  }, [getToken]);
  
-   // Função para atualizar KPIs periodicamente
-   const updateKPIs = useCallback(async () => {
-     try {
-       const token = await getToken();
-       const response = await fetch(`${API_BASE_URL}/kpis`, {
-         headers: {
-           'Authorization': `Bearer ${token}`,
-           'Content-Type': 'application/json',
-         },
-       });
-       
-       if (response.ok) {
-         const responseData = await response.json();
-         const kpisData = responseData.data || [];
-         setKpisData(kpisData);
-         console.log('🔄 KPIs atualizados');
-       }
-     } catch (error) {
-       console.error('❌ Erro ao atualizar KPIs:', error);
-     }
-   }, [getToken]);
+  // Função para atualizar KPIs periodicamente
+  const updateKPIs = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const response = await apiClient.get('/kpis', {
+        headers: buildHeaders(token),
+        timeout: 12000,
+      });
+      const rawData = (response as any)?.data ?? response;
+      if (!rawData) return;
+      const dataArray = Array.isArray(rawData) ? rawData : (rawData.data || []);
+      const transformedData: KpiData[] = dataArray.map((item: any) => ({
+        strategy_id: item.strategy_id || 'Estratégia Desconhecida',
+        total_signals_generated: Number(item.total_signals_generated ?? item.total_activations ?? 0) || 0,
+        successful_signals: Number(item.successful_signals ?? item.total_hits ?? 0) || 0,
+        failed_signals: Number(item.failed_signals ?? item.total_misses ?? 0) || 0,
+        assertiveness_rate_percent: Number(item.assertiveness_rate_percent ?? item.hit_rate ?? 0) || 0,
+        total_net_profit_loss: Number(item.total_net_profit_loss ?? item.total_net_payout ?? 0) || 0,
+        last_updated: item.last_updated || new Date().toISOString()
+      }));
+      setKpisData(transformedData);
+      console.log('🔄 KPIs atualizados');
+    } catch (error) {
+      console.error('❌ Erro ao atualizar KPIs:', error);
+    }
+  }, [getToken]);
  
-   // Função para atualizar status da roleta
-   const updateRouletteStatus = useCallback(async () => {
-     try {
-       const token = await getToken();
-       const response = await fetch(`${API_BASE_URL}/roulette-status`, {
-         headers: {
-           'Authorization': `Bearer ${token}`,
-           'Content-Type': 'application/json',
-         },
-       });
-       
-       if (response.ok) {
-         const statusData = await response.json();
-         setActiveRouletteStatus(statusData);
-         console.log('🔄 Status da roleta atualizado');
-       }
-     } catch (error) {
-       console.error('❌ Erro ao atualizar status da roleta:', error);
-     }
-   }, [getToken]);
+  // Função para atualizar status da roleta
+  const updateRouletteStatus = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const response = await apiClient.get('/roulette-status', {
+        headers: buildHeaders(token),
+        timeout: 10000,
+      });
+      const statusData = (response as any)?.data ?? response;
+      setActiveRouletteStatus(statusData);
+      console.log('🔄 Status da roleta atualizado');
+    } catch (error) {
+      console.error('❌ Erro ao atualizar status da roleta:', error);
+    }
+  }, [getToken]);
 
   // Função para buscar table_ids do backend
   const fetchTableIds = useCallback(async () => {
@@ -283,142 +318,67 @@ function DashboardPage() {
       const token = await getToken();
       console.log('🔑 Token para table_ids obtido:', token ? 'Sim' : 'Não');
       
-      // Usar Promise.race para timeout sem AbortController
-      const fetchPromise = fetch(`${API_BASE_URL}/table-ids`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await apiClient.get('/roulette-tables', {
+        headers: buildHeaders(token),
+        timeout: 10000,
+      });
+      const data = (response as any)?.data ?? response;
+      console.log('✅ Roulette tables fetched successfully:', data);
+      
+      let tableIds: string[] = [];
+      if (Array.isArray(data)) {
+        if (data.length > 0 && typeof data[0] === 'string') {
+          tableIds = data as string[];
+        } else {
+          tableIds = data.map((t: any) => t.table_id || t.id).filter(Boolean);
         }
-      });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('TABLE_IDS_TIMEOUT'));
-        }, 8000);
-      });
-      
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
-      
-      console.log('📡 Table IDs Response status:', response.status);
-      console.log('📡 Table IDs Response ok:', response.ok);
-      
-      if (!response.ok) {
-        console.error('❌ Erro ao buscar Table IDs:', response.status);
-        setMonitoredTables([]);
-        return [];
+      } else if (Array.isArray(data?.data)) {
+        const arr = data.data;
+        tableIds = arr.map((t: any) => t.table_id || t.id).filter(Boolean);
       }
       
-      const data = await response.json();
-      console.log('✅ Table IDs fetched successfully:', data);
+      if (tableIds.length === 0) {
+        console.warn('⚠️ Nenhum table_id válido encontrado no retorno, usando padrão');
+        tableIds = ['mesa1', 'mesa2', 'mesa3'];
+      }
       
-      // Verificar se os dados estão em uma propriedade 'data' ou diretamente no array
-      const tableIds = Array.isArray(data) ? data : (data.data || []);
       console.log('🎯 Table IDs extraídos:', tableIds);
-      
       setMonitoredTables(tableIds);
       return tableIds;
     } catch (error: any) {
       console.error('❌ Erro ao buscar table_ids:', error);
       
-      if (error?.message === 'TABLE_IDS_TIMEOUT') {
-        console.log('⏰ Timeout nos Table IDs, usando dados offline');
-      } else if (error?.name === 'AbortError') {
-        console.log('⏰ Timeout nos Table IDs, usando dados offline');
-      }
-      
-      // Retornar valores padrão em caso de erro
       const defaultTables = ['mesa1', 'mesa2', 'mesa3'];
       setMonitoredTables(defaultTables);
       return defaultTables;
     }
-  }, [getToken, API_BASE_URL]);
+  }, [getToken]);
 
   // Função para buscar KPIs do backend
   const fetchKpis = useCallback(async () => {
     try {
       const token = await getToken();
-      
-      // Usar Promise.race para timeout sem AbortController
-      const fetchPromise = fetch(`${API_BASE_URL}/kpis`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        }
+      const response = await apiClient.get('/kpis', {
+        headers: buildHeaders(token),
+        timeout: 12000,
       });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('KPIS_TIMEOUT'));
-        }, 10000);
-      });
-      
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
-      
-      if (!response.ok) {
-        console.error('❌ Erro ao buscar KPIs:', response.status);
-        setKpisData([]);
-        return;
-      }
-      
-      const rawData = await response.json();
-      console.log('✅ Raw KPIs data received:', rawData);
-      console.log('📊 Tipo dos dados recebidos:', typeof rawData);
-      console.log('📊 É array?', Array.isArray(rawData));
-      console.log('📊 Tem propriedade data?', rawData.hasOwnProperty('data'));
-      
-      // Verificar se os dados estão em uma propriedade 'data' ou diretamente no array
-      const dataArray = Array.isArray(rawData) ? rawData : (rawData.data || []);
-      console.log('✅ Data array extracted:', dataArray);
-      console.log('📊 Tamanho do array:', dataArray.length);
-      
-      // Transformar os dados do backend para o formato esperado pelo frontend
-      const transformedData: KpiData[] = dataArray.map((item: any, index: number) => {
-        // Log para debug dos campos recebidos
-        console.log(`✅ Raw KPI item ${index + 1}:`, item);
-        console.log(`📊 Campos disponíveis no item ${index + 1}:`, Object.keys(item));
-        
-        // Mapear campos da tabela strategy_kpis
-        const total_signals = (item.total_signals_generated || item.total_activations || 0);
-        const successful = (item.successful_signals || item.total_hits || 0);
-        const failed = (item.failed_signals || item.total_misses || 0);
-        const assertiveness = (item.assertiveness_rate_percent || item.hit_rate || 0);
-        const profit = (item.total_net_profit_loss || item.total_net_payout || 0);
-        
-        console.log(`📊 Valores extraídos do item ${index + 1}:`);
-        console.log(`  - total_signals: ${total_signals} (original: ${item.total_signals_generated})`);
-        console.log(`  - successful: ${successful} (original: ${item.successful_signals})`);
-        console.log(`  - failed: ${failed} (original: ${item.failed_signals})`);
-        console.log(`  - assertiveness: ${assertiveness} (original: ${item.assertiveness_rate_percent})`);
-        console.log(`  - profit: ${profit} (original: ${item.total_net_profit_loss})`);
-        
-        const transformedItem = {
-          strategy_id: item.strategy_id || 'Estratégia Desconhecida',
-          total_signals_generated: Number(total_signals) || 0,
-          successful_signals: Number(successful) || 0,
-          failed_signals: Number(failed) || 0,
-          assertiveness_rate_percent: Number(assertiveness) || 0,
-          total_net_profit_loss: Number(profit) || 0,
-          last_updated: item.last_updated || new Date().toISOString()
-        };
-        
-        console.log(`📊 Item transformado ${index + 1}:`, transformedItem);
-        return transformedItem;
-      });
-      
-      console.log('✅ Transformed KPIs data:', transformedData);
+      const rawData = (response as any)?.data ?? response;
+      const dataArray = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+      const transformedData: KpiData[] = dataArray.map((item: any) => ({
+        strategy_id: item.strategy_id || 'Estratégia Desconhecida',
+        total_signals_generated: Number(item.total_signals_generated ?? item.total_activations ?? 0) || 0,
+        successful_signals: Number(item.successful_signals ?? item.total_hits ?? 0) || 0,
+        failed_signals: Number(item.failed_signals ?? item.total_misses ?? 0) || 0,
+        assertiveness_rate_percent: Number(item.assertiveness_rate_percent ?? item.hit_rate ?? 0) || 0,
+        total_net_profit_loss: Number(item.total_net_profit_loss ?? item.total_net_payout ?? 0) || 0,
+        last_updated: item.last_updated || new Date().toISOString()
+      }));
       setKpisData(transformedData);
     } catch (error: any) {
       console.error('❌ Erro ao buscar KPIs do backend:', error);
-      
-      if (error?.message === 'KPIS_TIMEOUT') {
-        console.log('⏰ Timeout nos KPIs, usando dados offline');
-      } else if (error?.name === 'AbortError') {
-        console.log('⏰ Timeout nos KPIs, usando dados offline');
-      }
-      
-      // Definir valores padrão em caso de erro
       setKpisData([]);
-    }  }, [getToken, API_BASE_URL, monitoredTables]);
+    }
+  }, [getToken]);
 
 
 
@@ -429,23 +389,11 @@ function DashboardPage() {
       const token = await getToken();
       console.log('🔑 Token obtido:', token ? 'Sim' : 'Não');
       
-      const response = await fetch(`${API_BASE_URL}/roulette-history?limit=100`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const response = await apiClient.get('/roulette-history?limit=100', {
+        headers: buildHeaders(token),
+        timeout: 12000,
       });
-      
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Response error:', errorText);
-        throw new Error(`Backend não disponível (${response.status}): ${errorText}`);
-      }
-      
-      const data: RouletteSpin[] = await response.json();
+      const data: RouletteSpin[] = ((response as any)?.data ?? response) as RouletteSpin[];
       console.log('✅ Roulette history fetched successfully:', data);
       console.log('📊 Número de giros recebidos:', data.length);
       setRouletteHistoryData(data);
@@ -462,7 +410,7 @@ function DashboardPage() {
       setRouletteHistoryData([]);
       setLatestRouletteSpin(null);
     }
-  }, [getToken, API_BASE_URL]);
+  }, [getToken]);
 
   // Função para buscar status da roleta ativa
   const fetchRouletteStatus = useCallback(async () => {
@@ -471,29 +419,16 @@ function DashboardPage() {
       const token = await getToken();
       console.log('🔑 Token obtido:', token ? 'Sim' : 'Não');
       
-      const response = await fetch(`${API_BASE_URL}/roulette-status`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const response = await apiClient.get('/roulette-status', {
+        headers: buildHeaders(token),
+        timeout: 10000,
       });
-      
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Response error:', errorText);
-        throw new Error(`Backend não disponível (${response.status}): ${errorText}`);
-      }
-      
-      const data = await response.json();
+      const data = (response as any)?.data ?? response;
       console.log('✅ Roulette status fetched successfully:', data);
       console.log('📊 Tipo de dados retornados:', typeof data, Array.isArray(data) ? 'Array' : 'Object');
       
-      // Se retornar array, pegar o primeiro item ativo
       if (Array.isArray(data) && data.length > 0) {
-        const activeTable = data.find(table => table.status === 'active') || data[0];
+        const activeTable = data.find((table: any) => table.status === 'active') || data[0];
         console.log('🎯 Mesa ativa selecionada:', activeTable);
         return activeTable;
       }
@@ -503,7 +438,7 @@ function DashboardPage() {
       console.error('❌ Erro ao buscar status da roleta:', error);
       return null;
     }
-  }, [getToken, API_BASE_URL]);
+  }, [getToken]);
 
   // Função para buscar padrões recentes
   const fetchRecentSignals = useCallback(async () => {
@@ -512,57 +447,49 @@ function DashboardPage() {
       const token = await getToken();
       console.log('🔑 Token para padrões obtido:', token ? 'Sim' : 'Não');
       
-      // Usar Promise.race para timeout sem AbortController
-      const fetchPromise = fetch(`${API_BASE_URL}/signals/recent?limit=5`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await apiClient.get('/signals/recent?limit=5', {
+        headers: buildHeaders(token),
+        timeout: 15000,
+      });
+      const rawDataAny: any = (response as any)?.data ?? response;
+      console.log('✅ Recent signals fetched successfully:', rawDataAny);
+      
+      // Padronizar para array, independente do formato retornado
+      let signalsArray: any[] = [];
+      try {
+        if (Array.isArray(rawDataAny)) {
+          signalsArray = rawDataAny;
+        } else if (rawDataAny && Array.isArray(rawDataAny.signals)) {
+          signalsArray = rawDataAny.signals;
+        } else if (rawDataAny && Array.isArray(rawDataAny.items)) {
+          signalsArray = rawDataAny.items;
+        } else if (rawDataAny && typeof rawDataAny === 'object') {
+          const values = Object.values(rawDataAny);
+          signalsArray = values.flatMap((v: any) => Array.isArray(v) ? v : []);
+        } else {
+          signalsArray = [];
         }
-      });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('RECENT_SIGNALS_TIMEOUT'));
-        }, 15000);
-      });
-      
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
-      
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
-      
-      if (!response.ok) {
-        console.error('❌ Erro ao buscar sinais:', response.status);
-        setLiveSignalsData([]);
-        setActiveSignal(null);
-        setCountdown(0);
-        return;
+      } catch (parseErr) {
+        console.warn('Falha ao padronizar dados de sinais recentes:', parseErr);
+        signalsArray = [];
       }
-      
-      const rawData: GeneratedSignal[] = await response.json();
-      console.log('✅ Recent signals fetched successfully:', rawData);
-      console.log('📊 Número de padrões recebidos:', rawData.length);
+      console.log('📊 Número de padrões recebidos:', Array.isArray(signalsArray) ? signalsArray.length : 0);
       
       // Buscar as preferências atuais do usuário para filtrar
       let currentMonitoredTables: string[] = [];
       try {
-        const token = await getToken();
-        const prefsResponse = await fetch(`${API_BASE_URL}/user-preferences`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+        const prefsResp = await apiClient.get('/user-preferences', {
+          headers: buildHeaders(token),
+          timeout: 5000,
         });
-        if (prefsResponse.ok) {
-          const preferences = await prefsResponse.json();
-          currentMonitoredTables = preferences.tables || [];
-        }
+        const preferences = (prefsResp as any)?.data ?? prefsResp;
+        currentMonitoredTables = Array.isArray(preferences?.tables) ? preferences.tables : [];
       } catch (error) {
         console.log('⚠️ Usando todas as mesas devido a erro ao buscar preferências:', error);
       }
       
       // Filtrar apenas sinais das roletas monitoradas
-      const filteredData = rawData.filter(signal => {
+      const filteredData = signalsArray.filter((signal: any) => {
         const isMonitored = currentMonitoredTables.length === 0 || currentMonitoredTables.includes(signal.table_id);
         if (!isMonitored) {
           console.log('🚫 Sinal filtrado (roleta não monitorada):', signal.table_id);
@@ -570,32 +497,29 @@ function DashboardPage() {
         return isMonitored;
       });
       
-      console.log('🎯 Sinais filtrados para roletas monitoradas:', filteredData.length, 'de', rawData.length);
+      console.log('🎯 Sinais filtrados para roletas monitoradas:', filteredData.length, 'de', Array.isArray(signalsArray) ? signalsArray.length : 0);
       console.log('📋 Roletas monitoradas:', currentMonitoredTables);
-      console.log('📊 Dados brutos dos sinais:', rawData);
+      console.log('📊 Dados brutos dos sinais:', rawDataAny);
       console.log('🔍 Sinais filtrados:', filteredData);
       
       // Mapear dados para estrutura compatível com LiveSignals
       const mappedData = filteredData.map(signal => ({
         ...signal,
-        strategy_id: signal.strategy_name, // Mapear strategy_name para strategy_id
-        bet_numbers: signal.suggested_bets, // Manter todas as apostas (números e strings como Red, Black, etc.)
-        expected_return: signal.expected_return, // Usar valor calculado pela API
+        strategy_id: signal.strategy_name,
+        bet_numbers: signal.suggested_bets,
+        expected_return: signal.expected_return,
         status: signal.is_validated ? 'validated' : 'pending',
         confidence_level: typeof signal.confidence_level === 'string' ? 
           (signal.confidence_level === 'High' ? 85 : signal.confidence_level === 'Medium' ? 65 : 45) : 
           signal.confidence_level,
-        // Garantir que campos essenciais sejam preservados
-        message: signal.message, // Preservar mensagem da estratégia
-        suggested_bets: signal.suggested_bets, // Preservar apostas sugeridas
-        // Incluir campos de confiança se disponíveis
+        message: signal.message,
+        suggested_bets: signal.suggested_bets,
         confidence_score: signal.confidence_score,
         confidence_factors: signal.confidence_factors
       }));
       
       console.log('🗂️ Dados mapeados:', mappedData);
       
-      // Debug: Verificar se campos essenciais estão presentes
       mappedData.forEach((signal, index) => {
         console.log(`📋 Sinal ${index + 1}:`);
         console.log('  - ID:', signal.id);
@@ -608,28 +532,6 @@ function DashboardPage() {
       
       setLiveSignalsData(mappedData);
       
-      // Processar notificações para os novos sinais
-      if (mappedData.length > 0) {
-        try {
-          await processSignals(mappedData.map(signal => ({
-            id: signal.id,
-            strategy_id: signal.strategy_id,
-            table_id: signal.table_id,
-            confidence: signal.confidence_level,
-            created_at: signal.timestamp_generated,
-            expires_at: signal.expires_at
-          })));
-          
-          // Notificar alta atividade se muitos sinais
-          if (mappedData.length >= 3) {
-            await notifyHighActivity(mappedData.length);
-          }
-        } catch (error) {
-          console.error('❌ Erro ao processar notificações de sinais:', error);
-        }
-      }
-      
-      // Se há padrões, definir o mais recente como ativo
       if (mappedData.length > 0) {
         const mostRecentSignal = mappedData[0];
         setActiveSignal(mostRecentSignal);
@@ -637,7 +539,6 @@ function DashboardPage() {
         console.log('🔢 Apostas do sinal ativo:', mostRecentSignal.bet_numbers);
         console.log('📝 Estratégia do sinal ativo:', mostRecentSignal.strategy_name);
         
-        // Calcular countdown baseado em expires_at
         if (mostRecentSignal.expires_at) {
           const now = new Date().getTime();
           const expiresAt = new Date(mostRecentSignal.expires_at).getTime();
@@ -655,21 +556,12 @@ function DashboardPage() {
       }
     } catch (error: any) {
       console.error('❌ Erro ao buscar sinais recentes:', error);
-      
-      if (error?.message === 'RECENT_SIGNALS_TIMEOUT') {
-        console.log('⏰ Timeout detectado');
-        setError('Timeout na conexão com o servidor');
-      } else if (error?.name === 'AbortError') {
-        console.log('⏰ Timeout detectado');
-        setError('Timeout na conexão com o servidor');
-      } else {
-        setError('Sistema temporariamente indisponível');
-      }
+      setError(error?.message?.includes('TIMEOUT') ? 'Timeout na conexão com o servidor' : 'Sistema temporariamente indisponível');
       setLiveSignalsData([]);
       setActiveSignal(null);
       setCountdown(0);
     }
-  }, [getToken, API_BASE_URL]);
+  }, [getToken]);
 
   // Efeito para sincronizar activeSignal com o primeiro sinal da lista
   useEffect(() => {
@@ -699,9 +591,9 @@ function DashboardPage() {
   useEffect(() => {
     console.log('🔄 useEffect executado - carregando dados reais!');
     console.log('👤 User:', user);
-    console.log('⏳ isLoaded:', isLoaded);
+    console.log('⏳ isLoading:', isLoading);
     
-    if (user && isLoaded) {
+    if (user && !isLoading) {
       console.log('✅ Condições atendidas - iniciando carregamento de dados reais...');
       const loadInitialData = async () => {
           setLoadingData(true);
@@ -720,10 +612,12 @@ function DashboardPage() {
             
             const token = await getToken();
             console.log('🔑 Token obtido para carregamento inicial:', token ? 'Sim' : 'Não');
-            console.log('🔗 API_BASE_URL:', API_BASE_URL);
             
-            if (!token) {
-              throw new Error('Token de autenticação não disponível');
+            const isMock = (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') || (process.env.USE_MOCK_DATA === 'true');
+            if (!token && !isMock) {
+              setConnectionStatus('disconnected');
+              setError('Sessão não autenticada. Faça login para dados reais.');
+              console.log('ℹ️ Prosseguindo sem token, evitando interrupção do carregamento inicial');
             }
             
             // Carregar dados essenciais primeiro (sequencial para melhor UX)
@@ -732,139 +626,46 @@ function DashboardPage() {
             // 1. Preferências do usuário (necessário para filtrar outros dados)
             console.log('📋 Carregando preferências do usuário...');
             try {
-              // Usar Promise.race para timeout sem AbortController
-              const fetchPromise = fetch(`${API_BASE_URL}/user-preferences`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                }
-              });
-              
-              const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => {
-                  reject(new Error('PREFERENCES_TIMEOUT'));
-                }, 5000);
-              });
-              
-              const preferencesResponse = await Promise.race([fetchPromise, timeoutPromise]);
-              console.log('📋 Status da resposta de preferências:', preferencesResponse.status);
-              
-              if (preferencesResponse.ok) {
-                const preferencesData = await preferencesResponse.json();
-                console.log('✅ Preferências carregadas:', preferencesData);
-                setMonitoredTables(preferencesData.tables || []);
-              } else {
-                console.error('❌ Erro ao carregar preferências:', preferencesResponse.status, preferencesResponse.statusText);
+              if (!isMock) {
+                await fetchUserPreferences();
               }
             } catch (prefError: any) {
-              if (prefError?.message === 'PREFERENCES_TIMEOUT') {
-                console.log('⏰ Timeout ao carregar preferências');
-              } else if (prefError?.name === 'AbortError') {
-                console.log('⏰ Timeout ao carregar preferências');
-              } else {
-                console.warn('⚠️ Erro ao carregar preferências, usando padrões:', prefError);
-              }
+              console.warn('⚠️ Erro ao carregar preferências:', prefError);
               setMonitoredTables([]);
             }
             
             // 2. Sinais recentes (dados mais importantes)
             console.log('🎯 Carregando sinais recentes...');
             try {
-              // Usar Promise.race para timeout sem AbortController
-              const fetchPromise = fetch(`${API_BASE_URL}/signals/recent?limit=5`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                }
-              });
-              
-              const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => {
-                  console.log('⏰ Timeout na requisição de sinais - usando dados mock');
-                  reject(new Error('REQUEST_TIMEOUT'));
-                }, 15000);
-              });
-              
-              const signalsResponse = await Promise.race([fetchPromise, timeoutPromise]);
-              console.log('🎯 Status da resposta de sinais:', signalsResponse.status);
-              if (signalsResponse.ok) {
-                const responseData = await signalsResponse.json();
-                const signalsData = responseData.data || [];
-                console.log('✅ Sinais carregados:', signalsData);
-                console.log('📊 Número de sinais recebidos:', signalsData.length);
-                setLiveSignalsData(signalsData);
-                
-                if (signalsData.length > 0) {
-                  setActiveSignal(signalsData[0]);
-                  console.log('🎯 Sinal ativo definido:', signalsData[0]);
-                } else {
-                  console.log('⚠️ Nenhum sinal encontrado');
-                }
+              if (!isMock) {
+                await fetchRecentSignals();
               } else {
-                // Erro ao carregar sinais
-                const errorText = await signalsResponse.text();
+                // Em modo mock, já há dados sem necessidade de backend
+                setLoadingData(false);
               }
             } catch (signalsError: any) {
-              if (signalsError?.message === 'REQUEST_TIMEOUT') {
-                // Timeout na requisição de sinais - continuando com dados mock
-              } else if (signalsError?.name === 'AbortError') {
-                // Requisição cancelada - continuando com dados mock
-              } else {
-                // Erro ao carregar sinais, continuando com dados mock
-              }
-              // Manter os dados mock em caso de erro
+              console.warn('⚠️ Erro ao carregar sinais:', signalsError?.message || signalsError);
             }
             
             // 3. Carregar dados secundários em paralelo (não bloqueantes)
-            // Carregando dados secundários...
+            console.log('📊 Carregando dados secundários...');
             const secondaryPromises = [
-              fetch(`${API_BASE_URL}/kpis`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-              }).then(res => res.ok ? res.json() : null).then(responseData => {
-                if (responseData) {
-                  // KPIs carregados
-                  const kpisData = responseData.data || [];
-                  setKpisData(kpisData);
-                }
-              }).catch(err => {
-                // Erro ao carregar KPIs
-              }),
-              
-              fetch(`${API_BASE_URL}/roulette-history?limit=10`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-              }).then(res => res.ok ? res.json() : null).then(data => {
-                if (data) {
-                  // Histórico carregado
-                  setRouletteHistoryData(data);
-                  if (data.length > 0) setLatestRouletteSpin(data[0]);
-                }
-              }).catch(err => {
-                // Erro ao carregar histórico
-              }),
-              
-              fetch(`${API_BASE_URL}/roulette-status`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-              }).then(res => res.ok ? res.json() : null).then(data => {
-                if (data) {
-                  // Status carregado
-                  setActiveRouletteStatus(data);
-                }
-              }).catch(err => {
-                // Erro ao carregar status
-              })
+              !isMock ? updateKPIs() : Promise.resolve(),
+              !isMock ? fetchRouletteHistory() : Promise.resolve(),
+              !isMock ? updateRouletteStatus() : Promise.resolve()
             ];
             
             // Aguardar dados secundários sem bloquear a interface
             await Promise.allSettled(secondaryPromises);
             
-            // Carregamento otimizado concluído
+            console.log('✅ Carregamento otimizado concluído!');
           } catch (error) {
-            // Erro ao carregar dados do backend
+            console.error('❌ Erro ao carregar dados do backend:', error);
             setError('Erro ao conectar com o servidor. Verifique sua conexão.');
           } finally {
             clearTimeout(timeoutId); // Limpar timeout geral
             setLoadingData(false);
-            // Carregamento finalizado
+            console.log('🏁 Carregamento finalizado');
           }
         };
 
@@ -872,39 +673,14 @@ function DashboardPage() {
 
       // Configurar polling para atualizações em tempo real
       console.log('🔄 Configurando polling para atualizações...');
-      setConnectionStatus('connected');
+      setConnectionStatus((s) => s);
       
       // Polling para sinais recentes
       const pollSignals = async () => {
         try {
-          const token = await getToken();
-          const response = await fetch('/api/signals/recent', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            const responseData = await response.json();
-            const data = responseData.data || [];
-            setLiveSignalsData(data.slice(0, 10));
-            
-            // Atualizar sinal ativo se houver um mais recente
-            if (data.length > 0) {
-              setActiveSignal(prev => {
-                const newest = data[0];
-                // Verificar se é um sinal diferente (por ID) ou se não há sinal ativo
-                if (!prev || newest.id !== prev.id) {
-                  console.log('🔄 Atualizando sinal ativo:', newest.id, 'números:', newest.suggested_bets);
-                  return newest;
-                }
-                return prev;
-              });
-            }
-            
-            setConnectionStatus('connected');
-            lastActivityRef.current = Date.now();
-          }
+          await fetchRecentSignals();
+          setConnectionStatus('connected');
+          lastActivityRef.current = Date.now();
         } catch (error) {
           console.error('❌ Erro ao buscar sinais:', error);
         }
@@ -913,21 +689,7 @@ function DashboardPage() {
       // Polling para histórico de roleta
       const pollRouletteHistory = async () => {
         try {
-          const token = await getToken();
-          const response = await fetch('/api/roulette-history', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            setRouletteHistoryData(data.slice(0, 20));
-            
-            if (data.length > 0) {
-              setLatestRouletteSpin(data[0]);
-            }
-          }
+          await fetchRouletteHistory();
         } catch (error) {
           console.error('❌ Erro ao buscar histórico de roleta:', error);
         }
@@ -942,18 +704,18 @@ function DashboardPage() {
       const rouletteInterval = setInterval(pollRouletteHistory, 10000); // A cada 10 segundos
 
       // Cleanup function
-       return () => {
-         console.log('🧹 Cleanup - removing polling intervals...');
-         clearInterval(signalsInterval);
-         clearInterval(rouletteInterval);
-         console.log('🧹 Cleanup completed successfully');
-       };
+      return () => {
+        console.log('🧹 Cleanup - removing polling intervals...');
+        clearInterval(signalsInterval);
+        clearInterval(rouletteInterval);
+        console.log('🧹 Cleanup completed successfully');
+      };
     } else {
       console.log('❌ Condições não atendidas para carregar dados:');
       console.log('   - User existe:', !!user);
-      console.log('   - Loaded:', isLoaded);
+      console.log('   - Loading:', isLoading);
     }
-  }, [user, isLoaded]);
+  }, [user, isLoading, getToken]);
 
   // Rotação das frases motivacionais
   useEffect(() => {
@@ -968,7 +730,7 @@ function DashboardPage() {
 
   // Atualizações periódicas de dados
   useEffect(() => {
-    if (user && isLoaded) {
+    if (user && !isLoading) {
       // Atualizar KPIs a cada 5 minutos
       const kpisInterval = setInterval(() => {
         updateKPIs();
@@ -984,7 +746,7 @@ function DashboardPage() {
         clearInterval(statusInterval);
       };
     }
-  }, [user, isLoaded, updateKPIs, updateRouletteStatus]);
+  }, [user, isLoading, updateKPIs, updateRouletteStatus]);
 
   // Contagem regressiva do sinal ativo baseada em expires_at
   useEffect(() => {
@@ -1046,7 +808,7 @@ function DashboardPage() {
     }
   }, [user, getToken]); // Removida fetchRouletteStatus das dependências
 
-  if (!isLoaded) {
+  if (isLoading) {
     return null;
   }
 
@@ -1127,15 +889,8 @@ function DashboardPage() {
           </div>
         </div>
 
-        {/* Tabs de Navegação */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="metrics">Métricas em Tempo Real</TabsTrigger>
-          </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            {/* Mostrar skeleton durante carregamento */}
+        {/* Mostrar skeleton durante carregamento */}
         {loading_data ? (
           <DashboardSkeleton />
         ) : (
@@ -1529,13 +1284,6 @@ function DashboardPage() {
           </Card>
         )}
 
-        {/* Componente de Teste de Autenticação (apenas para desenvolvimento) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mb-6">
-            <AuthTest />
-          </div>
-        )}
-
         {/* Layout Principal do Dashboard */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Coluna Esquerda - Padrão Ativo e Estatísticas */}
@@ -1589,12 +1337,6 @@ function DashboardPage() {
             </div>
           </>
         )}
-          </TabsContent>
-
-          <TabsContent value="metrics" className="space-y-6">
-            <RealTimeMetrics />
-          </TabsContent>
-        </Tabs>
       </div>
 
       {/* Modal da Roleta */}
@@ -1608,6 +1350,3 @@ function DashboardPage() {
     </DashboardLayout>
   );
 }
-
-// Memoização do componente principal para otimização de performance
-export default memo(DashboardPage);

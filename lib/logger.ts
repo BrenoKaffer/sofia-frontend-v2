@@ -71,8 +71,17 @@ class Logger {
 
   private constructor() {
     this.isDevelopment = process.env.NEXT_PUBLIC_ENV === 'development';
-    this.logLevel = this.isDevelopment ? LogLevel.DEBUG : LogLevel.INFO;
-    this.persistToDatabase = true; // Habilitar persistência por padrão
+    const envLogLevel = (process.env.NEXT_PUBLIC_LOG_LEVEL || '').toUpperCase();
+    const levelMap: Record<string, LogLevel> = {
+      ERROR: LogLevel.ERROR,
+      WARN: LogLevel.WARN,
+      INFO: LogLevel.INFO,
+      DEBUG: LogLevel.DEBUG,
+    };
+    // Padrão mais silencioso em dev: INFO
+    this.logLevel = levelMap[envLogLevel] ?? (this.isDevelopment ? LogLevel.INFO : LogLevel.INFO);
+    const useMock = (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') || (process.env.USE_MOCK_DATA === 'true');
+    this.persistToDatabase = !useMock; // Desabilita persistência em modo mock
     this.sessionId = this.generateSessionId();
     
     // Configurar Supabase apenas se as variáveis estiverem disponíveis
@@ -162,150 +171,89 @@ class Logger {
 
   private async persistToSupabase(entry: LogEntry): Promise<void> {
     // Se a persistência está desabilitada ou já detectamos falha de conexão, não tentar
-    if (!this.persistToDatabase || !this.supabase || this.supabaseConnectionFailed) return;
+    if (!this.persistToDatabase || this.supabaseConnectionFailed) return;
+    // Evitar persistência explícita em modo mock
+    if ((process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') || (process.env.USE_MOCK_DATA === 'true')) return;
 
     try {
       // Mapear o level
       const levelString = LogLevelString[entry.level];
       
-      // Log detalhado para debug
-      console.log('=== DEBUG PERSISTÊNCIA ===');
-      console.log('entry.level:', entry.level, 'typeof:', typeof entry.level);
-      console.log('levelString:', levelString, 'typeof:', typeof levelString);
-      console.log('LogLevelString:', LogLevelString);
-      console.log('Object.keys(LogLevelString):', Object.keys(LogLevelString));
-      console.log('Object.values(LogLevelString):', Object.values(LogLevelString));
+      // Log detalhado para debug (apenas em desenvolvimento)
+      if (this.isDevelopment) {
+        console.log('=== DEBUG PERSISTÊNCIA VIA API ===');
+        console.log('entry.level:', entry.level, 'typeof:', typeof entry.level);
+        console.log('levelString:', levelString, 'typeof:', typeof levelString);
+      }
 
-      // Dados mínimos que devem existir em qualquer versão da tabela
-      const minimalLogData = {
+      // Preparar dados do log para enviar à API
+      const logData = {
         level: levelString,
         message: entry.message,
-      };
-
-      console.log('Dados sendo enviados:', JSON.stringify(minimalLogData, null, 2));
-
-      // Dados opcionais que podem ou não existir na tabela
-      const optionalFields = {
-        timestamp: entry.timestamp,
         context: entry.context?.component || null,
-        source: entry.context?.action || null,
-        user_id: entry.context?.userId || null,
-        session_id: this.sessionId,
-        stack_trace: entry.error?.stack || null,
-        environment: this.isDevelopment ? 'development' : 'production',
-        version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+        source: entry.context?.action || 'frontend',
         details: {
           metadata: entry.context?.metadata || {},
           error_message: entry.error?.message || null,
           error_name: entry.error?.name || null,
+          user_id: entry.context?.userId || null,
+          session_id: this.sessionId,
+          environment: this.isDevelopment ? 'development' : 'production',
+          version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
         },
+        stack_trace: entry.error?.stack || null,
+        request_id: entry.context?.metadata?.requestId || null,
       };
 
-      // Tentar inserir com todos os campos primeiro
-      let logData = { ...minimalLogData, ...optionalFields };
-      let { error } = await this.supabase
-        .from('system_logs')
-        .insert([logData]);
-
-      // Se houver erro de coluna não encontrada, tentar com campos reduzidos
-      if (error && error.code === 'PGRST204') {
-        console.warn('Coluna não encontrada, tentando com campos básicos:', error.message);
-        
-        // Tentar sem details
-        const { details, ...withoutDetails } = { ...minimalLogData, ...optionalFields };
-        
-        const { error: error2 } = await this.supabase
-          .from('system_logs')
-          .insert([withoutDetails]);
-
-        if (error2 && error2.code === 'PGRST204') {
-          console.warn('Ainda há colunas não encontradas, tentando com campos mínimos:', error2.message);
-          
-          // Tentar apenas com campos essenciais
-          const essentialFields = {
-            ...minimalLogData,
-            timestamp: entry.timestamp,
-            context: entry.context?.component || null,
-          };
-
-          const { error: error3 } = await this.supabase
-            .from('system_logs')
-            .insert([essentialFields]);
-
-          if (error3 && error3.code === 'PGRST204') {
-            console.warn('Tentando apenas com campos mínimos absolutos:', error3.message);
-            
-            // Último recurso: apenas level e message
-            const { error: finalError } = await this.supabase
-              .from('system_logs')
-              .insert([minimalLogData]);
-
-            if (finalError) {
-              console.error('Falha ao persistir log mesmo com campos mínimos:', finalError);
-              console.error('Dados que estavam sendo enviados:', JSON.stringify(minimalLogData, null, 2));
-              console.error('entry.level original:', entry.level);
-              console.error('typeof entry.level:', typeof entry.level);
-              console.error('LogLevelString[entry.level]:', LogLevelString[entry.level]);
-              console.error('Object.keys(LogLevelString):', Object.keys(LogLevelString));
-              console.error('Object.values(LogLevelString):', Object.values(LogLevelString));
-              
-              // Se nem os campos mínimos funcionam, desabilitar persistência
-              this.supabaseConnectionFailed = true;
-              console.warn('🚫 Persistência de logs no Supabase desabilitada devido a problemas de estrutura da tabela');
-              
-              // Log detalhado do erro para debug
-              if (finalError.code === '23514') {
-                console.warn('Erro de constraint check detectado. Verifique os valores permitidos para a coluna level.');
-                console.warn('Constraint esperada: DEBUG, INFO, WARN, ERROR, FATAL');
-                console.warn('Valor enviado:', levelString);
-              }
-            } else {
-              console.info('Log persistido com campos mínimos (level + message)');
-            }
-          } else if (error3) {
-            console.error('Falha ao persistir log com campos essenciais:', error3);
-          } else {
-            console.info('Log persistido com campos essenciais');
-          }
-        } else if (error2) {
-          console.error('Falha ao persistir log sem details:', error2);
-        } else {
-          console.info('Log persistido sem coluna details');
-        }
-      } else if (error) {
-        // Verificar se é erro de conectividade ou constraint
-        const isConnectionError = error.message?.includes('Failed to fetch') || 
-                                 error.message?.includes('Network') ||
-                                 error.message?.includes('CORS') ||
-                                 !error.code;
-
-        const isConstraintError = error.code === '23514' || // Check constraint violation
-                                 error.code === '23505' || // Unique violation
-                                 error.code === '23503' || // Foreign key violation
-                                 error.message?.includes('constraint') ||
-                                 error.message?.includes('violates check');
-
-        if (isConnectionError || isConstraintError) {
-          const errorType = isConnectionError ? 'conectividade' : 'constraint/estrutura da tabela';
-          console.warn(`🚫 Problema de ${errorType} com Supabase detectado. Desabilitando persistência de logs.`);
-          console.warn(`Erro detalhado: ${error.message || error.code}`);
-          this.supabaseConnectionFailed = true;
-        } else {
-          console.error('Falha ao persistir log no banco:', error);
-        }
-      } else {
-        // Sucesso na primeira tentativa
-        console.debug('Log persistido com sucesso com todos os campos');
+      if (this.isDevelopment) {
+        console.log('Dados sendo enviados para API:', JSON.stringify(logData, null, 2));
       }
+
+      // Fazer chamada para a API /api/logs
+      const response = await fetch('/api/logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-session-id': this.sessionId,
+        },
+        body: JSON.stringify(logData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        throw new Error(`API Error ${response.status}: ${errorData.error || errorData.message || 'Erro desconhecido'}`);
+      }
+
+      const result = await response.json();
+      
+      if (this.isDevelopment) {
+        console.debug('Log persistido com sucesso via API:', result.message);
+      }
+
     } catch (error: any) {
-      // Verificar se é erro de conectividade
-      if (error.message?.includes('Failed to fetch') || 
-          error.message?.includes('Network') ||
-          error.name === 'TypeError') {
-        console.warn('🚫 Erro de conectividade detectado. Desabilitando persistência de logs no Supabase.');
+      // Verificar se é erro de conectividade ou de rede
+      const isNetworkError = error.message?.includes('Failed to fetch') || 
+                            error.message?.includes('Network') ||
+                            error.message?.includes('CORS') ||
+                            error.name === 'TypeError' ||
+                            error.name === 'NetworkError';
+
+      const isServerError = error.message?.includes('API Error 5') || // 5xx errors
+                           error.message?.includes('Internal Server Error');
+
+      if (isNetworkError) {
+        console.warn('🚫 Erro de conectividade detectado. Desabilitando persistência de logs temporariamente.');
+        this.supabaseConnectionFailed = true;
+      } else if (isServerError) {
+        console.warn('🚫 Erro do servidor detectado. Desabilitando persistência de logs temporariamente.');
         this.supabaseConnectionFailed = true;
       } else {
-        console.error('Erro ao persistir log:', error);
+        console.error('Erro ao persistir log via API:', error.message || error);
+        
+        // Para erros de validação (4xx), não desabilitar a persistência
+        if (!error.message?.includes('API Error 4')) {
+          this.supabaseConnectionFailed = true;
+        }
       }
     }
   }
@@ -360,44 +308,48 @@ class Logger {
     startDate?: string,
     endDate?: string
   ): Promise<SystemLogEntry[]> {
-    if (!this.supabase) {
-      console.warn('Supabase não configurado - retornando logs locais');
-      return [];
-    }
-
     try {
-      let query = this.supabase
-        .from('system_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+      // Construir parâmetros da query
+      const params = new URLSearchParams();
+      params.append('limit', limit.toString());
+      params.append('offset', '0');
 
       if (level) {
-        query = query.eq('level', level);
+        params.append('level', level);
       }
 
       if (context) {
-        query = query.eq('context', context);
+        params.append('context', context);
       }
 
       if (startDate) {
-        query = query.gte('created_at', startDate);
+        params.append('start_date', startDate);
       }
 
       if (endDate) {
-        query = query.lte('created_at', endDate);
+        params.append('end_date', endDate);
       }
 
-      const { data, error } = await query;
+      // Fazer chamada para a API /api/logs
+      const response = await fetch(`/api/logs?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-session-id': this.sessionId,
+        },
+      });
 
-      if (error) {
-        console.error('Erro ao buscar logs do banco:', error);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('Erro ao buscar logs via API:', errorData.error || errorData.message);
         return [];
       }
 
-      return data || [];
-    } catch (error) {
-      console.error('Erro ao buscar logs:', error);
+      const result = await response.json();
+      return result.data || [];
+
+    } catch (error: any) {
+      console.error('Erro ao buscar logs via API:', error.message || error);
       return [];
     }
   }
@@ -407,22 +359,32 @@ class Logger {
   }
 
   public async clearDatabaseLogs(): Promise<boolean> {
-    if (!this.supabase) return false;
-
     try {
-      const { error } = await this.supabase
-        .from('system_logs')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Deletar todos
+      // Calcular data de 30 dias atrás como padrão
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      if (error) {
-        console.error('Erro ao limpar logs do banco:', error);
+      // Fazer chamada para a API /api/logs com DELETE
+      const response = await fetch(`/api/logs?olderThan=${thirtyDaysAgo.toISOString()}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-session-id': this.sessionId,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('Erro ao limpar logs via API:', errorData.error || errorData.message);
         return false;
       }
 
+      const result = await response.json();
+      console.info('Logs limpos com sucesso:', result.message);
       return true;
-    } catch (error) {
-      console.error('Erro ao limpar logs:', error);
+
+    } catch (error: any) {
+      console.error('Erro ao limpar logs via API:', error.message || error);
       return false;
     }
   }

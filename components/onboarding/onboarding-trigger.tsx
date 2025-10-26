@@ -75,13 +75,13 @@ export function OnboardingTrigger({ userId, userEmail }: OnboardingTriggerProps)
               Bem-vindo à SOFIA! 🎉
             </DialogTitle>
             <DialogDescription className="text-center space-y-4">
-              <div>
+              <span className="block">
                 Olá{userEmail ? `, ${userEmail.split('@')[0]}` : ''}! Estamos muito felizes em tê-lo conosco.
-              </div>
-              <div>
+              </span>
+              <span className="block">
                 A SOFIA é sua assistente inteligente para análise de padrões em roletas online. 
                 Que tal fazer um tour rápido para conhecer todos os recursos?
-              </div>
+              </span>
             </DialogDescription>
           </DialogHeader>
           

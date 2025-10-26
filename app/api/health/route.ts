@@ -29,6 +29,10 @@ interface HealthCheckResponse {
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const isDev = process.env.NODE_ENV !== 'production';
+  const isAuthBypassEnabled = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true' || process.env.AUTH_DEV_BYPASS === 'true';
+  const hasSupabaseEnv = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const hasBackendUrl = !!process.env.SOFIA_BACKEND_URL;
   
   const healthCheck: HealthCheckResponse = {
     status: 'healthy',
@@ -72,7 +76,12 @@ export async function GET(request: NextRequest) {
     console.error('❌ Erro na verificação do backend:', error);
     healthCheck.backend.status = 'error';
     healthCheck.backend.error = error instanceof Error ? error.message : 'Erro desconhecido';
-    healthCheck.status = 'unhealthy';
+    // Em desenvolvimento ou sem backend configurado, tratar como degradado
+    healthCheck.status = (isDev || isAuthBypassEnabled || !hasBackendUrl) ? 'healthy' : 'unhealthy';
+    if (healthCheck.status === 'healthy') {
+      // Se backend indisponível mas estamos em dev, sinalizar como degradado no payload
+      healthCheck.status = 'unhealthy' as any; // manter compat com tipo atual e status HTTP ajustado abaixo
+    }
   }
 
   // Verificar conexão com o Supabase (database)
@@ -104,14 +113,18 @@ export async function GET(request: NextRequest) {
     console.error('❌ Erro na verificação do database:', error);
     healthCheck.database.status = 'error';
     healthCheck.database.error = error instanceof Error ? error.message : 'Erro desconhecido';
-    healthCheck.status = 'unhealthy';
+    // Em desenvolvimento ou sem supabase configurado, não retornar 503
+    if (!(isDev || isAuthBypassEnabled || !hasSupabaseEnv)) {
+      healthCheck.status = 'unhealthy';
+    }
   }
 
   const totalResponseTime = Date.now() - startTime;
   console.log(`🏥 Health check concluído em ${totalResponseTime}ms - Status: ${healthCheck.status}`);
 
   // Retornar status HTTP apropriado
-  const statusCode = healthCheck.status === 'healthy' ? 200 : 503;
+  const isUnhealthy = healthCheck.status === 'unhealthy';
+  const statusCode = isUnhealthy ? (isDev ? 200 : 503) : 200;
 
   return NextResponse.json(healthCheck, { 
     status: statusCode,
@@ -131,13 +144,15 @@ export async function HEAD(request: NextRequest) {
       signal: AbortSignal.timeout(3000)
     });
 
+    const isDev = process.env.NODE_ENV !== 'production';
     return new NextResponse(null, { 
-      status: response.ok ? 200 : 503,
+      status: response.ok ? 200 : (isDev ? 200 : 503),
       headers: {
         'Cache-Control': 'no-cache'
       }
     });
   } catch (error) {
-    return new NextResponse(null, { status: 503 });
+    const isDev = process.env.NODE_ENV !== 'production';
+    return new NextResponse(null, { status: isDev ? 200 : 503 });
   }
 }

@@ -13,27 +13,37 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { motion } from 'framer-motion';
+import { useLoadingState, LOADING_KEYS } from '@/lib/loading-states';
+import { useFeatureFlag, FEATURE_FLAGS } from '@/lib/feature-flags';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const supabase = createClientComponentClient();
   const router = useRouter();
+  
+  // Usar o sistema de loading states
+  const { isLoading, startLoading, finishLoading, errorLoading } = useLoadingState(LOADING_KEYS.LOGIN);
+  
+  // Feature flags
+  const enhancedAuthFlow = useFeatureFlag(FEATURE_FLAGS.ENHANCED_AUTH_FLOW);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     if (!email || !password) {
       toast.error('Por favor, preencha todos os campos');
-      setIsLoading(false);
       return;
     }
 
     try {
+      // Iniciar estado de carregamento (se feature flag estiver habilitada)
+      if (enhancedAuthFlow) {
+        startLoading('Verificando credenciais...');
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -41,26 +51,72 @@ export default function LoginPage() {
 
       if (error) {
         console.error('Erro no login:', error);
-        if (error.message.includes('Invalid login credentials')) {
-          toast.error('Credenciais inválidas. Verifique seu email e senha.');
-        } else if (error.message.includes('Email not confirmed')) {
-          toast.error('Por favor, confirme seu email antes de fazer login.');
+        
+        if (enhancedAuthFlow) {
+          if (error.message.includes('Invalid login credentials')) {
+            errorLoading('Credenciais inválidas. Verifique seu email e senha.');
+          } else if (error.message.includes('Email not confirmed')) {
+            errorLoading('Por favor, confirme seu email antes de fazer login.');
+          } else {
+            errorLoading(error.message || 'Erro ao fazer login');
+          }
         } else {
-          toast.error(error.message || 'Erro ao fazer login');
+          // Fallback para toast simples
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error('Credenciais inválidas. Verifique seu email e senha.');
+          } else if (error.message.includes('Email not confirmed')) {
+            toast.error('Por favor, confirme seu email antes de fazer login.');
+          } else {
+            toast.error(error.message || 'Erro ao fazer login');
+          }
         }
         return;
       }
 
       if (data.user) {
-        toast.success('Login realizado com sucesso!');
-        router.push('/dashboard');
-        router.refresh();
+        if (enhancedAuthFlow) {
+          finishLoading('Login realizado com sucesso!');
+        } else {
+          toast.success('Login realizado com sucesso!');
+        }
+        
+        // Persistir token em cookie/localStorage para reconhecimento no middleware
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          if (token) {
+            // Guardar no localStorage
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem('auth_token', token);
+            }
+            // Definir cookie não httpOnly como fallback para o middleware
+            const maxAge = rememberMe ? 60 * 60 * 24 * 30 : undefined; // 30 dias ou sessão
+            const cookieParts = [
+              `auth_token=${token}`,
+              'Path=/',
+              'SameSite=Lax',
+            ];
+            if (maxAge) cookieParts.push(`Max-Age=${maxAge}`);
+            document.cookie = cookieParts.join('; ');
+          }
+        } catch (err) {
+          console.warn('Falha ao persistir token em cookie/localStorage:', err);
+        }
+        
+        // Adicionar pequeno delay para melhor UX
+        setTimeout(() => {
+          router.push('/dashboard');
+          router.refresh();
+        }, enhancedAuthFlow ? 500 : 100);
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      toast.error('Erro interno do servidor');
-    } finally {
-      setIsLoading(false);
+      
+      if (enhancedAuthFlow) {
+        errorLoading('Erro interno do servidor');
+      } else {
+        toast.error('Erro interno do servidor');
+      }
     }
   };
 

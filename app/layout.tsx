@@ -1,4 +1,5 @@
 import './globals.css';
+import 'reactflow/dist/style.css';
 import type { Metadata } from 'next';
 import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/sonner';

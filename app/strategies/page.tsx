@@ -18,6 +18,8 @@ interface Strategy {
   id: string
   name: string
   enabled: boolean
+  origin?: 'curated' | 'builder'
+  status?: 'active' | 'paused' | string
 }
 
 interface StrategyDescription {
@@ -71,6 +73,7 @@ export default function EstrategiasAtivas() {
     risk: '',
     chips: ''
   })
+  const [builderStrategyIds, setBuilderStrategyIds] = useState<string[]>([])
 
   // Carregar opções disponíveis e preferências do usuário
   useEffect(() => {
@@ -147,10 +150,11 @@ export default function EstrategiasAtivas() {
     try {
       setLoading(true)
       
-      // Buscar opções disponíveis e preferências do usuário
-      const [availableResponse, preferencesResponse] = await Promise.all([
+      // Buscar opções disponíveis, preferências do usuário e estratégias do Builder
+      const [availableResponse, preferencesResponse, builderResponse] = await Promise.all([
         fetch('/api/available-options'),
-        fetch('/api/user-preferences')
+        fetch('/api/user-preferences'),
+        fetch('/api/strategies').catch(() => null as any)
       ])
 
       let availableOptions: AvailableOptions
@@ -205,11 +209,13 @@ export default function EstrategiasAtivas() {
         userPreferences = availableOptions.default_preferences
       }
 
-      // Configurar estratégias com estado baseado nas preferências
-      const strategiesWithState: Strategy[] = availableOptions.strategies.map(strategyName => ({
+      // Configurar estratégias curadas com estado baseado nas preferências
+      const curatedStrategies: Strategy[] = availableOptions.strategies.map(strategyName => ({
         id: strategyName,
         name: strategyName,
-        enabled: userPreferences?.strategies.includes(strategyName) ?? true
+        enabled: userPreferences?.strategies.includes(strategyName) ?? true,
+        origin: 'curated',
+        status: (userPreferences?.strategies.includes(strategyName) ? 'active' : 'paused')
       }))
 
       // Configurar mesas com estado baseado nas preferências
@@ -231,7 +237,23 @@ export default function EstrategiasAtivas() {
         return a.name.localeCompare(b.name)
       })
 
-      setStrategies(strategiesWithState)
+      // Carregar estratégias do Builder do backend
+      let builderList: any[] = []
+      if (builderResponse && builderResponse.ok) {
+        const builderData = await builderResponse.json()
+        builderList = Array.isArray(builderData) ? builderData : (builderData?.strategies || [])
+      }
+      const builderStrategies: Strategy[] = builderList.map((s: any) => ({
+        id: s.id,
+        name: s.name || s.id,
+        enabled: String(s.status || '').toLowerCase() === 'active',
+        origin: 'builder',
+        status: String(s.status || '').toLowerCase() === 'active' ? 'active' : 'paused'
+      }))
+      setBuilderStrategyIds(builderStrategies.map(s => s.id))
+
+      // Unificar listas (curadas + Builder)
+      setStrategies([...curatedStrategies, ...builderStrategies])
       setTables(tablesWithState)
       setHasChanges(false)
     } catch (error) {
@@ -241,15 +263,52 @@ export default function EstrategiasAtivas() {
     }
   }
 
-  const toggleStrategy = (strategyId: string) => {
+  useEffect(() => {
+    try {
+      const bc = new BroadcastChannel('strategies')
+      bc.onmessage = (ev: MessageEvent) => {
+        const msg: any = (ev && (ev as any).data) || (ev as any)
+        if (msg?.type === 'strategy_saved') {
+          loadData()
+        }
+      }
+      return () => bc.close()
+    } catch (_) {
+      // ambientes sem BroadcastChannel
+    }
+  }, [])
+
+  const toggleStrategy = async (strategyId: string) => {
+    const isBuilder = builderStrategyIds.includes(strategyId)
+    const current = strategies.find(s => s.id === strategyId)
+    const enabling = !(current?.enabled)
+
     setStrategies(prev => 
-      prev.map(strategy => 
-        strategy.id === strategyId 
-          ? { ...strategy, enabled: !strategy.enabled }
-          : strategy
+      prev.map(s => 
+        s.id === strategyId 
+          ? { ...s, enabled: !s.enabled, status: !s.enabled ? 'active' : 'paused' }
+          : s
       )
     )
-    setHasChanges(true)
+
+    if (isBuilder) {
+      try {
+        const resp = await fetch('/api/automation/auto-entry/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ strategy_id: strategyId, enabled: enabling })
+        })
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}))
+          throw new Error(String((data as any)?.error || resp.statusText))
+        }
+        toast.success(enabling ? 'Estratégia ativada.' : 'Estratégia pausada.')
+      } catch (error) {
+        toast.error('Erro ao alternar estratégia do Builder')
+      }
+    } else {
+      setHasChanges(true)
+    }
   }
 
   const toggleTable = (tableId: string) => {
@@ -268,7 +327,10 @@ export default function EstrategiasAtivas() {
       setSaving(true)
       
       const preferences: UserPreferences = {
-        strategies: strategies.filter(s => s.enabled).map(s => s.id),
+        strategies: strategies
+          .filter(s => !builderStrategyIds.includes(s.id))
+          .filter(s => s.enabled)
+          .map(s => s.id),
         tables: tables.filter(t => t.enabled).map(t => t.id)
       }
 
@@ -306,7 +368,8 @@ export default function EstrategiasAtivas() {
         setStrategies(prev => 
           prev.map(strategy => ({
             ...strategy,
-            enabled: defaultPreferences.strategies.includes(strategy.id)
+            enabled: defaultPreferences.strategies.includes(strategy.id),
+            status: defaultPreferences.strategies.includes(strategy.id) ? 'active' : 'paused'
           }))
         )
 
@@ -456,9 +519,14 @@ export default function EstrategiasAtivas() {
                     />
                     <div>
                       <p className="font-medium">{strategy.name}</p>
-                      <Badge variant={strategy.enabled ? "default" : "secondary"} className="text-xs">
-                        {strategy.enabled ? "Ativa" : "Inativa"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {strategy.origin === 'builder' ? 'Builder' : 'Curada'}
+                        </Badge>
+                        <Badge variant={strategy.status === 'active' ? "default" : "secondary"} className="text-xs">
+                          {strategy.status === 'active' ? "Ativa" : "Pausada"}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 </div>

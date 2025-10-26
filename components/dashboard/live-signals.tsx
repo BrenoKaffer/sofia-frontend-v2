@@ -55,7 +55,7 @@ interface LiveSignalsProps {
   progressValue?: number;
 }
 
-export function LiveSignals({ signals, loading = false, onGoToTable, activeSignal, countdown, progressValue }: LiveSignalsProps) {
+export function LiveSignals({ signals = [], loading = false, onGoToTable, activeSignal, countdown, progressValue }: LiveSignalsProps) {
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
 
   // Função para truncar texto
@@ -74,7 +74,7 @@ export function LiveSignals({ signals, loading = false, onGoToTable, activeSigna
     }
     setExpandedMessages(newExpanded);
   };
-  const [displaySignals, setDisplaySignals] = useState<GeneratedSignal[]>(signals);
+  const [displaySignals, setDisplaySignals] = useState<GeneratedSignal[]>(Array.isArray(signals) ? signals : []);
   const [isLive, setIsLive] = useState(true);
   const [signalCountdowns, setSignalCountdowns] = useState<{[key: string]: {timeLeft: number, progress: number}}>({});
 
@@ -130,7 +130,8 @@ export function LiveSignals({ signals, loading = false, onGoToTable, activeSigna
   // Atualizar countdowns a cada segundo (otimizado)
   // Memoizar cálculos de tempo para evitar recálculos desnecessários
   const memoizedTimeCalculations = useMemo(() => {
-    return displaySignals.map(signal => ({
+    const safeSignals = Array.isArray(displaySignals) ? displaySignals : [];
+    return safeSignals.map(signal => ({
       id: signal.id,
       timeLeft: getTimeRemaining(signal.expires_at).timeLeft,
       progress: calculateProgress(signal)
@@ -172,7 +173,7 @@ export function LiveSignals({ signals, loading = false, onGoToTable, activeSigna
   }, [memoizedTimeCalculations, displaySignals, getTimeRemaining]); // Dependências otimizadas
 
   useEffect(() => {
-    setDisplaySignals(signals);
+    setDisplaySignals(Array.isArray(signals) ? signals : []);
   }, [signals]);
 
   const getConfidencePercentage = (level: 'High' | 'Medium' | 'Low' | 'Unknown') => {

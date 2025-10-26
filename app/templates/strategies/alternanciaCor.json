@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2.1",
+  "version": "1.0.0",
+  "template_key": "alternanciaCor",
+  "name": "Alternância de Cor (x4)",
+  "source": "template",
+  "locked": true,
+  "description": "Gera sinal quando ocorre alternância de cor com comprimento 4.",
+  "nodes": [
+    { "id": "t1", "type": "trigger", "data": { "config": { "janela": 30 } } },
+    { "id": "c1", "type": "condition", "subtype": "alternation", "data": { "config": { "eixo": "cor", "comprimento": 4 } } },
+    { "id": "s1", "type": "signal", "data": { "config": { "acao": "emitir_sinal" } } }
+  ],
+  "connections": [
+    { "source": "t1", "target": "c1" },
+    { "source": "c1", "target": "s1" }
+  ]
+}

@@ -72,6 +72,12 @@ class PushNotificationService {
       throw new Error('Service Worker não é suportado');
     }
 
+    // Evitar registro do Service Worker em ambiente de desenvolvimento
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Service Worker desativado em desenvolvimento');
+      throw new Error('Service Worker desativado em desenvolvimento');
+    }
+
     try {
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/'

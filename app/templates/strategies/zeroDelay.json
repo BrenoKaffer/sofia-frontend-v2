@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2.1",
+  "version": "1.0.0",
+  "template_key": "zeroDelay",
+  "name": "Zero Delay",
+  "source": "template",
+  "locked": true,
+  "description": "Estratégia de resposta imediata sem atrasos na emissão de sinais.",
+  "nodes": [
+    { "id": "t1", "type": "trigger", "data": { "config": { "janela": 20 } } },
+    { "id": "c1", "type": "condition", "subtype": "threshold", "data": { "config": { "variavel": "probabilidade", "min": 0.8 } } },
+    { "id": "s1", "type": "signal", "data": { "config": { "acao": "emitir_sinal", "delay": 0 } } }
+  ],
+  "connections": [
+    { "source": "t1", "target": "c1" },
+    { "source": "c1", "target": "s1" }
+  ]
+}

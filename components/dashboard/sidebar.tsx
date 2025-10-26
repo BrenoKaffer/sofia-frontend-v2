@@ -65,8 +65,8 @@ const navigationSections = [
   {
     title: 'Ferramentas Avançadas',
     items: [
-      { name: 'Simulador de Estratégias', href: '/simulator', icon: Activity },
       { name: 'Builder de Estratégias', href: '/builder', icon: Puzzle },
+      { name: 'Simulador de Estratégias', href: '/simulator', icon: Activity },
       { name: 'Importar Dados', href: '/import', icon: Upload },
       { name: 'Exportar Relatórios', href: '/export', icon: Download },
       { name: 'Log do Sistema', href: '/logs', icon: FileText },
@@ -177,9 +177,17 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
                 <div className="space-y-1">
                   {section.items.map((item) => {
                     const isActive = pathname === item.href;
+                    // Mapear data-testid para links específicos exigidos pelos testes E2E
+                    const testIdMap: Record<string, string> = {
+                      '/dashboard': 'nav-dashboard',
+                      '/analytics': 'nav-analytics',
+                      '/settings': 'nav-settings',
+                    };
+                    const dataTestId = testIdMap[item.href];
                     return (
                       <Link key={item.name} href={item.href}>
                         <div
+                          data-testid={dataTestId}
                           className={cn(
                             'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium font-sans transition-all hover:scale-[1.02]',
                             isActive

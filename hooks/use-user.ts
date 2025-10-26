@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 // Interface para o usuário (compatível com Clerk)
@@ -58,6 +58,7 @@ export function useUser(): UseUserReturn {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    const supabase = createClientComponentClient();
     // Obter sessão inicial
     const getInitialSession = async () => {
       try {
@@ -104,6 +105,7 @@ export function useUser(): UseUserReturn {
  */
 export function useAuth() {
   const { user, isLoaded, isSignedIn } = useUser();
+  const supabase = createClientComponentClient();
 
   const signOut = async () => {
     try {

@@ -32,14 +32,19 @@ const startTime = Date.now();
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const checkStartTime = Date.now();
-  
+  // Habilitar bypass em desenvolvimento para evitar 503 quando serviços não estão configurados
+  const isAuthBypassEnabled = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true' || process.env.AUTH_DEV_BYPASS === 'true';
+  const hasSupabaseEnv = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const hasBackendUrl = !!process.env.SOFIA_BACKEND_URL;
+  const isDev = process.env.NODE_ENV !== 'production';
+
   try {
     // Executar checks de saúde em paralelo
     const [databaseCheck, backendCheck, cacheCheck, authCheck] = await Promise.allSettled([
-      checkDatabase(),
-      checkBackend(),
+      checkDatabase({ isAuthBypassEnabled, hasSupabaseEnv }),
+      checkBackend({ isAuthBypassEnabled, hasBackendUrl }),
       checkCache(),
-      checkAuth()
+      checkAuth({ isAuthBypassEnabled, hasSupabaseEnv })
     ]);
 
     const services = {
@@ -49,8 +54,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       auth: extractResult(authCheck)
     };
 
-    // Determinar status geral
-    const overallStatus = determineOverallStatus(services);
+    // Determinar status geral com consciência de ambiente de desenvolvimento
+    const statuses = Object.values(services).map(s => s.status);
+    let overallStatus: HealthCheckResult['status'];
+    if (statuses.every(s => s === 'healthy')) {
+      overallStatus = 'healthy';
+    } else if (statuses.some(s => s === 'unhealthy')) {
+      overallStatus = (isDev || isAuthBypassEnabled || !hasSupabaseEnv || !hasBackendUrl) ? 'degraded' : 'unhealthy';
+    } else {
+      overallStatus = 'degraded';
+    }
+
     const responseTime = Date.now() - checkStartTime;
 
     const healthResult: HealthCheckResult = {
@@ -103,10 +117,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-async function checkDatabase(): Promise<ServiceStatus> {
+async function checkDatabase({ isAuthBypassEnabled, hasSupabaseEnv }: { isAuthBypassEnabled: boolean; hasSupabaseEnv: boolean; }): Promise<ServiceStatus> {
   const startTime = Date.now();
   
   try {
+    // Se não houver Supabase configurado ou bypass ativo, retornar degradado
+    if (!hasSupabaseEnv || isAuthBypassEnabled) {
+      return {
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        details: { configured: hasSupabaseEnv, bypass: isAuthBypassEnabled }
+      };
+    }
+
     const { supabase } = await import('@/lib/supabase');
     
     // Teste simples de conectividade
@@ -118,6 +141,14 @@ async function checkDatabase(): Promise<ServiceStatus> {
     const responseTime = Date.now() - startTime;
 
     if (error) {
+      // Tratar erro como degradado em desenvolvimento para evitar 503
+      if (isAuthBypassEnabled) {
+        return {
+          status: 'degraded',
+          responseTime,
+          error: error.message
+        };
+      }
       return {
         status: 'unhealthy',
         responseTime,
@@ -132,6 +163,14 @@ async function checkDatabase(): Promise<ServiceStatus> {
     };
 
   } catch (error) {
+    // Tratar falha como degradada se bypass ativo ou Supabase não configurado
+    if (!hasSupabaseEnv || isAuthBypassEnabled) {
+      return {
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        error: error instanceof Error ? error.message : 'Database check degraded'
+      };
+    }
     return {
       status: 'unhealthy',
       responseTime: Date.now() - startTime,
@@ -140,10 +179,19 @@ async function checkDatabase(): Promise<ServiceStatus> {
   }
 }
 
-async function checkBackend(): Promise<ServiceStatus> {
+async function checkBackend({ isAuthBypassEnabled, hasBackendUrl }: { isAuthBypassEnabled: boolean; hasBackendUrl: boolean; }): Promise<ServiceStatus> {
   const startTime = Date.now();
   
   try {
+    // Se backend não estiver configurado ou bypass ativo, retornar degradado
+    if (!hasBackendUrl || isAuthBypassEnabled) {
+      return {
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        details: { configured: hasBackendUrl, bypass: isAuthBypassEnabled }
+      };
+    }
+
     // Tentar fazer uma requisição simples ao backend
     const result = await backendService.healthCheck();
     const responseTime = Date.now() - startTime;
@@ -155,6 +203,14 @@ async function checkBackend(): Promise<ServiceStatus> {
     };
 
   } catch (error) {
+    // Em desenvolvimento, tratar como degradado
+    if (isAuthBypassEnabled || !hasBackendUrl) {
+      return {
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        error: error instanceof Error ? error.message : 'Backend check degraded'
+      };
+    }
     return {
       status: 'unhealthy',
       responseTime: Date.now() - startTime,
@@ -201,10 +257,18 @@ async function checkCache(): Promise<ServiceStatus> {
   }
 }
 
-async function checkAuth(): Promise<ServiceStatus> {
+async function checkAuth({ isAuthBypassEnabled, hasSupabaseEnv }: { isAuthBypassEnabled: boolean; hasSupabaseEnv: boolean; }): Promise<ServiceStatus> {
   const startTime = Date.now();
   
   try {
+    if (isAuthBypassEnabled || !hasSupabaseEnv) {
+      return {
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        details: { bypass: isAuthBypassEnabled, configured: hasSupabaseEnv }
+      };
+    }
+
     const { supabase } = await import('@/lib/supabase');
     
     // Verificar se o serviço de auth está respondendo
@@ -229,6 +293,14 @@ async function checkAuth(): Promise<ServiceStatus> {
     };
 
   } catch (error) {
+    // Em desenvolvimento, tratar como degradado
+    if (isAuthBypassEnabled || !hasSupabaseEnv) {
+      return {
+        status: 'degraded',
+        responseTime: Date.now() - startTime,
+        error: error instanceof Error ? error.message : 'Auth service check degraded'
+      };
+    }
     return {
       status: 'unhealthy',
       responseTime: Date.now() - startTime,

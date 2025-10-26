@@ -25,6 +25,9 @@ const nextConfig = {
   // Bundle optimization
   compress: true,
   
+  // Fix workspace root to this project to avoid incorrect inference in dev
+  outputFileTracingRoot: path.resolve(__dirname),
+  
   // Code splitting optimization
   experimental: {
     serverActions: {

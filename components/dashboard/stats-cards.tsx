@@ -61,8 +61,9 @@ export const StatsCards = memo(function StatsCards({ kpisData, loading = false, 
     // Se há um sinal ativo, usar a assertividade específica da estratégia ativa
     if (activeSignal && activeSignal.strategy_id) {
       const activeStrategyKpi = effectiveKpisData.find(k => k.strategy_id === activeSignal.strategy_id);
-      if (activeStrategyKpi && typeof activeStrategyKpi.assertiveness_rate_percent === 'number' && !isNaN(activeStrategyKpi.assertiveness_rate_percent)) {
-        return activeStrategyKpi.assertiveness_rate_percent;
+      if (activeStrategyKpi && typeof activeStrategyKpi.assertiveness_rate_percent !== 'undefined') {
+        const n = Number(activeStrategyKpi.assertiveness_rate_percent);
+        return Number.isFinite(n) ? n : 0;
       }
     }
     
@@ -81,6 +82,7 @@ export const StatsCards = memo(function StatsCards({ kpisData, loading = false, 
   };
   
   const hitRate = getHitRate();
+  const safeHitRate = Number.isFinite(hitRate) ? hitRate : 0;
   
   // Lucro Total: somar todos os lucros/perdas das estratégias
   const totalRoiMensal = effectiveKpisData.reduce((sum, kpi) => {
@@ -97,7 +99,7 @@ export const StatsCards = memo(function StatsCards({ kpisData, loading = false, 
   const activeStrategiesCount = effectiveKpisData.length; // Ou adicione lógica para contar apenas as realmente "ativas"
     return {
       totalActiveSignals,
-      totalAssertiveness: hitRate,
+      totalAssertiveness: safeHitRate,
       totalRoiMensal,
       activeStrategiesCount,
       totalSignals: totalSignalsAnalyzed
@@ -117,7 +119,7 @@ export const StatsCards = memo(function StatsCards({ kpisData, loading = false, 
     },
     {
       title: 'Taxa de Acerto',
-      value: loading ? '...' : `${statsCalculations.totalAssertiveness.toFixed(1)}%`,
+      value: loading ? '...' : `${Number(statsCalculations.totalAssertiveness).toFixed(1)}%`,
       change: '+2.1%',
       trend: statsCalculations.totalAssertiveness >= 70 ? 'up' as const : 'down' as const,
       icon: Target,
@@ -147,7 +149,7 @@ export const StatsCards = memo(function StatsCards({ kpisData, loading = false, 
     },
   ];
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-testid="stats-cards">
       {stats.map((stat, index) => (
         <motion.div
           key={stat.title}
