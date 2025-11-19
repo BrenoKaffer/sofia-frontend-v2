@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -14,11 +14,19 @@ if ((!supabaseUrl || !supabaseAnonKey) && typeof window !== 'undefined') {
 const defaultUrl = supabaseUrl || 'https://placeholder.supabase.co'
 const defaultKey = supabaseAnonKey || 'placeholder-key'
 
-// Cliente para uso no browser (client-side)
-export const supabase = createBrowserClient(
-  defaultUrl,
-  defaultKey
-)
+// Singleton instance for browser client
+let supabaseInstance: SupabaseClient | null = null
+
+// Singleton getter for browser client
+export const getSupabaseClient = (): SupabaseClient => {
+  if (!supabaseInstance) {
+    supabaseInstance = createBrowserClient(defaultUrl, defaultKey)
+  }
+  return supabaseInstance
+}
+
+// Export singleton instance for direct use
+export const supabase = getSupabaseClient()
 
 // Cliente para uso no servidor (server-side)
 export const createServerClient = () => {

@@ -91,8 +91,38 @@ class MemoryCache {
   }
 }
 
-// Função para criar cliente de cache
-const createClient = (config: any) => {
+// Função para criar cliente de cache (condicional)
+class IoRedisCompat {
+  private client: any;
+  constructor(client: any) {
+    this.client = client;
+  }
+  async connect() { if (this.client.connect) await this.client.connect(); }
+  async disconnect() { if (this.client.quit) await this.client.quit(); }
+  async setEx(key: string, ttl: number, value: any) { await this.client.set(key, value, 'EX', ttl); }
+  async get(key: string) { return await this.client.get(key); }
+  async del(key: string) { return await this.client.del(key); }
+  async exists(key: string) { return await this.client.exists(key); }
+  async expire(key: string, seconds: number) { return await this.client.expire(key, seconds); }
+  async keys(pattern: string) { return await this.client.keys(pattern); }
+  async flushAll() { if (this.client.flushall) { await this.client.flushall(); } }
+  get isOpen() { return true; }
+  get isReady() { return true; }
+}
+
+const createClient = async (config: any): Promise<RedisClientType> => {
+  const isBrowser = typeof window !== 'undefined';
+  const hasRedisUrl = !!process.env.REDIS_URL;
+  if (!isBrowser && hasRedisUrl) {
+    try {
+      const mod = await import('ioredis');
+      const RedisCtor = (mod as any).default || mod;
+      const client = new RedisCtor(config.url, { lazyConnect: config.lazyConnect, maxRetriesPerRequest: config.maxRetriesPerRequest });
+      return new IoRedisCompat(client);
+    } catch (error) {
+      logger.warn('Falling back to memory cache', { metadata: { error: error instanceof Error ? error.message : 'Unknown error' } });
+    }
+  }
   return new MemoryCache();
 };
 
@@ -136,11 +166,11 @@ class RedisCache {
 
   private async initializeClient(): Promise<void> {
     try {
-      // Usar cache em memória como fallback
-      this.client = new MemoryCache();
-      await this.client.connect();
+      this.client = await createClient(REDIS_CONFIG);
+      await (this.client as any).connect();
       this.isConnected = true;
-      logger.info('Memory cache initialized', { metadata: { context: 'cache' } });
+      const type = this.client instanceof MemoryCache ? 'memory' : 'redis';
+      logger.info(`${type === 'redis' ? 'Redis' : 'Memory'} cache initialized`, { metadata: { context: 'cache', type } });
     } catch (error) {
       logger.error('Failed to initialize cache', { 
         metadata: {

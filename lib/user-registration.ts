@@ -1,7 +1,8 @@
 // Função para inserir dados do usuário nas tabelas após o registro
 // Este arquivo contém a lógica para salvar os dados do formulário de cadastro
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/auth-helpers-nextjs';
 
 export interface RegistrationData {
@@ -25,7 +26,6 @@ export interface UserProfileData {
  * @returns Promise com resultado da operação
  */
 export async function insertUserData(userData: RegistrationData): Promise<void> {
-  const supabase = createClientComponentClient();
   
   console.log('🔄 [USER_REGISTRATION] Iniciando inserção de dados do usuário');
   console.log('📋 [USER_REGISTRATION] Dados recebidos:', {
@@ -101,7 +101,6 @@ export async function updateUserProfile(
     preferences: Record<string, any>;
   }>
 ) {
-  const supabase = createClientComponentClient();
   
   try {
     // Atualizar tabela user_profiles unificada
@@ -159,7 +158,6 @@ export async function updateUserProfile(
  * @returns Promise com os dados do usuário
  */
 export async function getUserData(userId: string) {
-  const supabase = createClientComponentClient();
   
   try {
     // Buscar dados do perfil unificado

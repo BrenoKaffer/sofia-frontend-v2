@@ -2,8 +2,8 @@ import { test, expect, Page } from '@playwright/test';
 
 // Configurações de teste
 const TEST_USER = {
-  email: 'test@example.com',
-  password: 'testpassword123'
+  email: process.env.E2E_TEST_EMAIL || 'test@example.com',
+  password: process.env.E2E_TEST_PASSWORD || 'testpassword123'
 };
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';

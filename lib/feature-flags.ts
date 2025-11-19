@@ -20,6 +20,8 @@ export interface FeatureFlag {
 
 // Definição das feature flags disponíveis
 export const FEATURE_FLAGS = {
+  // Modo MVP: oculta funcionalidades não essenciais temporariamente
+  MVP_MODE: 'mvp_mode',
   // Autenticação e Segurança
   ENHANCED_AUTH_FLOW: 'enhanced_auth_flow',
   TWO_FACTOR_AUTH: 'two_factor_auth',
@@ -44,6 +46,8 @@ export const FEATURE_FLAGS = {
 
 // Configuração padrão das feature flags
 const defaultFlags: Record<string, boolean> = {
+  // Modo MVP habilitado por padrão; pode ser desativado via env
+  [FEATURE_FLAGS.MVP_MODE]: (process.env.NEXT_PUBLIC_MVP_MODE ?? 'true') === 'true',
   // Autenticação - habilitadas por padrão para melhor UX
   [FEATURE_FLAGS.ENHANCED_AUTH_FLOW]: true,
   [FEATURE_FLAGS.TWO_FACTOR_AUTH]: false,

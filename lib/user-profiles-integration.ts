@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabase';
 
 // Tipos para os dados do formulário de registro
 export interface FormRegistrationData {
@@ -30,7 +30,6 @@ export interface UserProfilePreferences {
  * @returns Promise com resultado da operação
  */
 export async function insertUserProfileFromForm(userData: FormRegistrationData): Promise<void> {
-  const supabase = createClientComponentClient();
   
   const { data, error } = await supabase.rpc('insert_user_profile_from_form', {
     p_user_id: userData.userId,
@@ -59,7 +58,6 @@ export async function updateUserProfilePreferences(
   userId: string, 
   preferences: Partial<UserProfilePreferences>
 ): Promise<void> {
-  const supabase = createClientComponentClient();
   
   const { data, error } = await supabase
     .from('user_profiles')
@@ -82,7 +80,6 @@ export async function updateUserProfilePreferences(
  * @returns Promise com os dados do perfil
  */
 export async function getUserProfile(userId: string) {
-  const supabase = createClientComponentClient();
   
   const { data, error } = await supabase
     .from('user_profiles')
@@ -105,8 +102,6 @@ export async function getUserProfile(userId: string) {
  * @returns Promise com resultado da operação
  */
 export async function completeOnboarding(userId: string): Promise<void> {
-  const supabase = createClientComponentClient();
-  
   const { data, error } = await supabase
     .from('user_profiles')
     .update({

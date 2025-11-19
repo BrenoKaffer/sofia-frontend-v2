@@ -24,8 +24,10 @@ async function testLogin() {
     console.log('✅ Campos encontrados, preenchendo...');
     
     // Preencher os campos
-    emailInput.value = 'teste@sofia.com';
-    passwordInput.value = 'teste123';
+    const envEmail = (window.env && window.env.E2E_TEST_EMAIL) || '';
+    const envPassword = (window.env && window.env.E2E_TEST_PASSWORD) || '';
+    emailInput.value = envEmail;
+    passwordInput.value = envPassword;
     
     // Disparar eventos para garantir que o React detecte as mudanças
     emailInput.dispatchEvent(new Event('input', { bubbles: true }));

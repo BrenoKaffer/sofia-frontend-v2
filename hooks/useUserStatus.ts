@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
 import { 
   AccountStatus, 
   StatusChangeRequest, 
@@ -36,8 +36,6 @@ export function useUserStatus(userId?: string) {
   const [statusHistory, setStatusHistory] = useState<StatusChangeHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const supabase = createClientComponentClient();
 
   // Carregar perfil do usuário
   const loadUserProfile = async (targetUserId?: string) => {
@@ -283,7 +281,6 @@ export function useCurrentUserStatus() {
   } | null>(null);
   
   const [loading, setLoading] = useState(true);
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     const checkStatus = async () => {

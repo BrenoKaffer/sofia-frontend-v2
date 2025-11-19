@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,14 +14,15 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { motion } from 'framer-motion';
 import { useLoadingState, LOADING_KEYS } from '@/lib/loading-states';
 import { useFeatureFlag, FEATURE_FLAGS } from '@/lib/feature-flags';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const supabase = createClientComponentClient();
   const router = useRouter();
+  const { login, isLoading: isAuthLoading } = useAuth();
   
   // Usar o sistema de loading states
   const { isLoading, startLoading, finishLoading, errorLoading } = useLoadingState(LOADING_KEYS.LOGIN);
@@ -44,71 +44,25 @@ export default function LoginPage() {
         startLoading('Verificando credenciais...');
       }
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const success = await login(email, password);
 
-      if (error) {
-        console.error('Erro no login:', error);
-        
+      if (!success) {
         if (enhancedAuthFlow) {
-          if (error.message.includes('Invalid login credentials')) {
-            errorLoading('Credenciais inválidas. Verifique seu email e senha.');
-          } else if (error.message.includes('Email not confirmed')) {
-            errorLoading('Por favor, confirme seu email antes de fazer login.');
-          } else {
-            errorLoading(error.message || 'Erro ao fazer login');
-          }
-        } else {
-          // Fallback para toast simples
-          if (error.message.includes('Invalid login credentials')) {
-            toast.error('Credenciais inválidas. Verifique seu email e senha.');
-          } else if (error.message.includes('Email not confirmed')) {
-            toast.error('Por favor, confirme seu email antes de fazer login.');
-          } else {
-            toast.error(error.message || 'Erro ao fazer login');
-          }
+          errorLoading('Falha no login. Verifique suas credenciais.');
         }
         return;
       }
 
-      if (data.user) {
-        if (enhancedAuthFlow) {
-          finishLoading('Login realizado com sucesso!');
-        } else {
-          toast.success('Login realizado com sucesso!');
-        }
-        
-        // Persistir token em cookie/localStorage para reconhecimento no middleware
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData?.session?.access_token;
-          if (token) {
-            // Guardar no localStorage
-            if (typeof window !== 'undefined') {
-              window.localStorage.setItem('auth_token', token);
-            }
-            // Definir cookie não httpOnly como fallback para o middleware
-            const maxAge = rememberMe ? 60 * 60 * 24 * 30 : undefined; // 30 dias ou sessão
-            const cookieParts = [
-              `auth_token=${token}`,
-              'Path=/',
-              'SameSite=Lax',
-            ];
-            if (maxAge) cookieParts.push(`Max-Age=${maxAge}`);
-            document.cookie = cookieParts.join('; ');
-          }
-        } catch (err) {
-          console.warn('Falha ao persistir token em cookie/localStorage:', err);
-        }
-        
-        // Adicionar pequeno delay para melhor UX
-        setTimeout(() => {
-          router.push('/dashboard');
-          router.refresh();
-        }, enhancedAuthFlow ? 500 : 100);
+      if (enhancedAuthFlow) {
+        finishLoading('Login realizado com sucesso!');
+      } else {
+        toast.success('Login realizado com sucesso!');
       }
+      
+      // Redirecionar para o dashboard; cookies de sessão são gerenciados pelo AuthHelper
+      setTimeout(() => {
+        router.replace('/dashboard');
+      }, enhancedAuthFlow ? 500 : 100);
     } catch (error) {
       console.error('Erro no login:', error);
       
@@ -226,14 +180,15 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
-                  disabled={isLoading}
+                  disabled={isLoading || isAuthLoading}
+                  data-testid="login-button"
                 >
-                  {isLoading ? (
+                  {isLoading || isAuthLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : (
                     <ArrowRight className="w-4 h-4 mr-2" />
                   )}
-                  <span className="font-sans">{isLoading ? 'Entrando...' : 'Entrar'}</span>
+                  <span className="font-sans">{isLoading || isAuthLoading ? 'Entrando...' : 'Entrar'}</span>
                 </Button>
                 
                 <div className="text-center text-sm font-sans">

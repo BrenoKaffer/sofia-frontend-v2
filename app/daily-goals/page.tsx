@@ -201,6 +201,43 @@ export default function DailyGoalsPage() {
     }
   ]);
 
+  useEffect(() => {
+    const fetchPrefs = async () => {
+      try {
+        const res = await fetch('/api/user-preferences');
+        if (!res.ok) throw new Error('Erro ao buscar preferências');
+        const prefs = await res.json();
+        const targetProfit = Number(prefs?.daily_goal ?? initialTodayGoals[0]?.target ?? 200);
+        const base = Number(prefs?.initial_bankroll ?? baseValue);
+        setBaseValue(String(base));
+        setTodayGoals(prev => {
+          const idx = prev.findIndex(g => g.type === 'profit');
+          if (idx >= 0) {
+            const updated = [...prev];
+            updated[idx] = { ...updated[idx], target: targetProfit };
+            return updated;
+          }
+          return [
+            {
+              id: Date.now(),
+              title: 'Meta de Lucro',
+              target: targetProfit,
+              current: 0,
+              type: 'profit',
+              priority: 'high',
+              deadline: '23:59',
+              completed: false
+            },
+            ...prev
+          ];
+        });
+      } catch (e) {
+        // fallback silencioso
+      }
+    };
+    fetchPrefs();
+  }, []);
+
   // Calcular estatísticas do dia
   const todayStats = {
     totalGoals: todayGoals.length,
@@ -248,13 +285,35 @@ export default function DailyGoalsPage() {
   };
 
   const handleAddGoal = () => {
-    if (!newGoalTitle || !newGoalTarget) return;
-    
-    const calculatedTarget = calculateGoalValue();
-    
+    // Calcular ou definir padrão para o alvo
+    let calculatedTarget = calculateGoalValue();
+    if (!newGoalTarget || calculatedTarget <= 0) {
+      // Valores padrão por tipo quando o usuário não preenche
+      calculatedTarget =
+        newGoalType === 'profit' ? 100 :
+        newGoalType === 'sessions' ? 5 :
+        newGoalType === 'winrate' ? 70 :
+        newGoalType === 'time' ? 60 : 100;
+    }
+
+    // Título padrão quando não informado
+    const defaultTitle =
+      newGoalType === 'profit' ? `Meta de Lucro` :
+      newGoalType === 'sessions' ? `Número de Sessões` :
+      newGoalType === 'winrate' ? `Taxa de Acerto` :
+      newGoalType === 'time' ? `Tempo de Jogo` : 'Nova Meta';
+
+    const titleWithValue = () => {
+      if (newGoalType === 'profit') return `${defaultTitle} (${calculatedTarget} R$)`;
+      if (newGoalType === 'sessions') return `${defaultTitle} (${calculatedTarget})`;
+      if (newGoalType === 'winrate') return `${defaultTitle} (${calculatedTarget}%)`;
+      if (newGoalType === 'time') return `${defaultTitle} (${calculatedTarget} min)`;
+      return defaultTitle;
+    };
+
     const newGoal = {
       id: Date.now(),
-      title: newGoalTitle,
+      title: newGoalTitle ? newGoalTitle : titleWithValue(),
       target: calculatedTarget,
       current: 0,
       type: newGoalType as 'profit' | 'sessions' | 'winrate' | 'time',
@@ -264,14 +323,14 @@ export default function DailyGoalsPage() {
       valueType: goalValueType,
       originalTarget: newGoalTarget
     };
-    
+
     setTodayGoals([...todayGoals, newGoal]);
     setNewGoalTitle('');
     setNewGoalTarget('');
     setNewGoalType('profit');
     setNewGoalDeadline('23:59');
     setGoalValueType('fixed');
-    
+
     generateMotivationalFeedback('encouragement');
   };
 
@@ -313,6 +372,25 @@ export default function DailyGoalsPage() {
     }));
   };
 
+  const handleSaveGoals = async () => {
+    setIsLoading(true);
+    try {
+      const profitGoal = todayGoals.find(g => g.type === 'profit');
+      await fetch('/api/user-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          daily_goal: profitGoal?.target ?? 0
+        })
+      });
+      console.log('Metas salvas com sucesso');
+    } catch (e) {
+      console.error('Erro ao salvar metas', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getGoalIcon = (type: string) => {
     switch (type) {
       case 'profit': return <DollarSign className="h-4 w-4" />;
@@ -325,10 +403,10 @@ export default function DailyGoalsPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'border-red-500 bg-red-50';
-      case 'medium': return 'border-yellow-500 bg-yellow-50';
-      case 'low': return 'border-green-500 bg-green-50';
-      default: return 'border-gray-500 bg-gray-50';
+      case 'high': return 'border-red-600 bg-red-100 dark:border-red-700 dark:bg-red-900/20';
+      case 'medium': return 'border-yellow-600 bg-yellow-100 dark:border-yellow-700 dark:bg-yellow-900/20';
+      case 'low': return 'border-green-600 bg-green-100 dark:border-green-700 dark:bg-green-900/20';
+      default: return 'border-slate-600 bg-slate-100 dark:border-slate-700 dark:bg-slate-900/20';
     }
   };
 
@@ -372,7 +450,7 @@ export default function DailyGoalsPage() {
         </div>
 
         {/* Mensagem Motivacional */}
-        <Alert className="border-blue-200 bg-blue-50">
+        <Alert className="border-blue-500 bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20">
           <Star className="h-4 w-4" />
           <AlertDescription className="font-medium">
             {getMotivationalMessage()}
@@ -381,7 +459,7 @@ export default function DailyGoalsPage() {
 
         {/* Alerta Motivacional Dinâmico */}
         {showMotivationalAlert && (
-          <Alert className="border-green-200 bg-green-50 animate-pulse">
+          <Alert className="border-green-500 bg-green-100 dark:border-green-700 dark:bg-green-900/20 animate-pulse">
             <Trophy className="h-4 w-4" />
             <AlertDescription>
               {motivationalMessage}
@@ -628,6 +706,10 @@ export default function DailyGoalsPage() {
                     <Plus className="h-4 w-4 mr-2" />
                     Adicionar Meta
                   </Button>
+                  <Button variant="outline" onClick={handleSaveGoals} className="w-full">
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar Metas
+                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -653,8 +735,8 @@ export default function DailyGoalsPage() {
                         key={mission.id}
                         className={`p-4 border rounded-lg ${
                           mission.completed 
-                            ? 'border-green-200 bg-green-50' 
-                            : 'border-gray-200 bg-gray-50'
+                            ? 'border-green-600 bg-green-100 dark:border-green-700 dark:bg-green-900/20' 
+                            : 'border-slate-600 bg-slate-100 dark:border-slate-700 dark:bg-slate-900/20'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -697,7 +779,7 @@ export default function DailyGoalsPage() {
                           </div>
                           <Progress 
                             value={progress} 
-                            className={`h-2 ${isOverTarget ? 'bg-green-100' : ''}`}
+                            className={`h-2 ${isOverTarget ? 'bg-green-100 dark:bg-green-900/20' : ''}`}
                           />
                           <div className="flex justify-between items-center">
                             <p className="text-xs text-muted-foreground">
@@ -732,13 +814,13 @@ export default function DailyGoalsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 border rounded-lg">
+                    <div className="text-center p-4 border rounded-lg bg-slate-100 dark:bg-slate-900/20 border-slate-600 dark:border-slate-700">
                       <div className="text-2xl font-bold text-green-600">
                         {missions.filter(m => m.completed).length}
                       </div>
                       <p className="text-sm text-muted-foreground">Concluídas</p>
                     </div>
-                    <div className="text-center p-4 border rounded-lg">
+                    <div className="text-center p-4 border rounded-lg bg-slate-100 dark:bg-slate-900/20 border-slate-600 dark:border-slate-700">
                       <div className="text-2xl font-bold text-blue-600">
                         {missions.filter(m => !m.completed).length}
                       </div>
@@ -803,7 +885,7 @@ export default function DailyGoalsPage() {
                       ]}
                     />
                     <Legend />
-                    <Bar dataKey="goal" fill="#e5e7eb" name="Meta" />
+                    <Bar dataKey="goal" fill="#475569" name="Meta" />
                     <Bar dataKey="achieved" fill="#10b981" name="Atingido" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -812,7 +894,7 @@ export default function DailyGoalsPage() {
                   {weeklyProgress.map((day, index) => (
                     <div key={index} className="text-center">
                       <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-medium ${
-                        day.completed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                        day.completed ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400'
                       }`}>
                         {day.completed ? '✓' : '○'}
                       </div>
@@ -839,8 +921,8 @@ export default function DailyGoalsPage() {
                       key={achievement.id}
                       className={`p-4 border rounded-lg ${
                         achievement.unlocked 
-                          ? 'border-green-200 bg-green-50' 
-                          : 'border-gray-200 bg-gray-50 opacity-60'
+                          ? 'border-green-600 bg-green-100 dark:border-green-700 dark:bg-green-900/20' 
+                          : 'border-slate-600 bg-slate-100 dark:border-slate-700 dark:bg-slate-900/20 opacity-80'
                       }`}
                     >
                       <div className="flex items-start gap-3">

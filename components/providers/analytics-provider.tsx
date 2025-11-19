@@ -12,8 +12,26 @@ import {
   captureEngagementMetrics, 
   setupErrorTracking 
 } from '@/lib/analytics-client';
-import { analytics } from '@/lib/analytics';
+// Removed server-only analytics import to avoid bundling ioredis in client
 import { logger } from '@/lib/logger';
+
+// Safe client-side stubs for analytics
+const trackEvent = (type: string, name: string, properties: Record<string, any> = {}, userId?: string) => {
+  try {
+    logger.debug('analytics.track', { type, name, userId, properties });
+  } catch {}
+};
+const trackPageView = (page: string, userId?: string, properties: Record<string, any> = {}) => {
+  try {
+    logger.debug('analytics.page_view', { page, userId, properties });
+  } catch {}
+};
+const trackError = (error: Error, context: string, userId?: string, properties: Record<string, any> = {}) => {
+  try {
+    logger.error('analytics.error', { context, userId, properties }, error);
+  } catch {}
+};
+const flush = () => {};
 
 // Interface do contexto de analytics
 interface AnalyticsContextType {
@@ -83,7 +101,7 @@ export function AnalyticsProvider({
       });
       
       // Rastreia inicialização da aplicação
-      analytics.track('user_action', 'app_initialized', {
+      trackEvent('user_action', 'app_initialized', {
         timestamp: Date.now(),
         userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
         url: typeof window !== 'undefined' ? window.location.href : undefined,
@@ -151,7 +169,7 @@ export function AnalyticsProvider({
     
     const handleRouteChange = () => {
       try {
-        analytics.trackPageView(window.location.pathname, userId, {
+        trackPageView(window.location.pathname, userId, {
           referrer: document.referrer,
           timestamp: Date.now(),
         });
@@ -195,20 +213,20 @@ export function AnalyticsProvider({
     
     try {
       // Rastreia login/início de sessão
-      analytics.track('user_action', 'session_started', {
+      trackEvent('user_action', 'session_started', {
         userId,
         timestamp: Date.now(),
       }, userId);
       
       // Rastreia fim de sessão ao sair
       const handleBeforeUnload = () => {
-        analytics.track('user_action', 'session_ended', {
+        trackEvent('user_action', 'session_ended', {
           userId,
           timestamp: Date.now(),
         }, userId);
         
         // Força flush dos eventos pendentes
-        analytics.flush();
+        flush();
       };
       
       window.addEventListener('beforeunload', handleBeforeUnload);
@@ -233,12 +251,12 @@ export function AnalyticsProvider({
     
     try {
       if (userId) {
-        analytics.track('user_action', 'user_identified', {
+        trackEvent('user_action', 'user_identified', {
           userId,
           timestamp: Date.now(),
         }, userId);
       } else {
-        analytics.track('user_action', 'user_anonymous', {
+        trackEvent('user_action', 'user_anonymous', {
           timestamp: Date.now(),
         });
       }
@@ -284,7 +302,7 @@ export function withAnalytics<P extends object>(
     
     useEffect(() => {
       if (trackMount) {
-        analytics.track('user_action', 'component_mounted', {
+        trackEvent('user_action', 'component_mounted', {
           componentName,
           props: trackProps ? props : undefined,
           timestamp: Date.now(),
@@ -293,7 +311,7 @@ export function withAnalytics<P extends object>(
       
       return () => {
         if (trackUnmount) {
-          analytics.track('user_action', 'component_unmounted', {
+          trackEvent('user_action', 'component_unmounted', {
             componentName,
             timestamp: Date.now(),
           }, userId);
@@ -311,19 +329,19 @@ export function useTrackEvent() {
   
   return {
     trackEvent: (eventName: string, properties?: Record<string, any>) => {
-      analytics.track('user_action', eventName, {
+      trackEvent('user_action', eventName, {
         ...properties,
         timestamp: Date.now(),
       }, userId);
     },
     trackPageView: (page: string, properties?: Record<string, any>) => {
-      analytics.trackPageView(page, userId, {
+      trackPageView(page, userId, {
         ...properties,
         timestamp: Date.now(),
       });
     },
     trackError: (error: Error, context: string, properties?: Record<string, any>) => {
-      analytics.trackError(error, context, userId, {
+      trackError(error, context, userId, {
         ...properties,
         timestamp: Date.now(),
       });

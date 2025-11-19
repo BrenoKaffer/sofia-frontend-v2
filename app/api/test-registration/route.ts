@@ -162,8 +162,8 @@ export async function GET() {
 
     // Teste 3: Teste de registro real com usuário temporário
     try {
-      const testEmail = `deferred-test-${Date.now()}@example.com`
-      const testPassword = 'TestPassword123!'
+      const testEmail = process.env.TEST_REG_EMAIL || `deferred-test-${Date.now()}@example.com`
+      const testPassword = process.env.TEST_REG_PASSWORD || ''
       let testUserId: string | null = null
       
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({

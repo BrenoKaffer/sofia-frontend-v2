@@ -90,24 +90,30 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
 
   // Lógica para obter hot/cold numbers a partir do histórico
   const getHotColdNumbers = (history: RouletteSpin[]) => {
-    // Verificar se o histórico existe e não está vazio
-    if (!history || history.length === 0) {
+    // Normalizar: garantir que seja array
+    if (!Array.isArray(history) || history.length === 0) {
       return { hotNumbers: [], coldNumbers: [] };
     }
 
     const counts: { [key: number]: number } = {};
-    history.forEach(spin => {
-      counts[spin.spin_number] = (counts[spin.spin_number] || 0) + 1;
-    });
+    for (const spin of history) {
+      const num = typeof spin.spin_number === 'number' ? spin.spin_number : parseInt(String(spin.spin_number));
+      if (!Number.isNaN(num)) {
+        counts[num] = (counts[num] || 0) + 1;
+      }
+    }
 
-    const sortedNumbers = Object.entries(counts).sort(([, countA], [, countB]) => countB - countA);
+    const sortedNumbers = Object.entries(counts).sort(([, countA], [, countB]) => (countB as number) - (countA as number));
     const hotNumbers = sortedNumbers.slice(0, 3).map(([num]) => parseInt(num));
     const coldNumbers = sortedNumbers.slice(-3).map(([num]) => parseInt(num));
 
     return { hotNumbers, coldNumbers };
   };
 
-  const { hotNumbers, coldNumbers } = getHotColdNumbers(rouletteHistoryData || []);
+  // Array seguro para histórico
+  const safeHistory = Array.isArray(rouletteHistoryData) ? rouletteHistoryData : [];
+
+  const { hotNumbers, coldNumbers } = getHotColdNumbers(safeHistory);
   
   const getTimeAgo = (spin_timestamp: string) => {
     const now = new Date();
@@ -265,7 +271,7 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
           <div>
             <p className="text-sm text-muted-foreground mb-3 font-heading">Últimos números</p>
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {(rouletteHistoryData || [])
+              {(safeHistory)
                 .filter(spin => currentRouletteDisplay && spin.table_id === currentRouletteDisplay.id)
                 .slice(0, 7)
                 .map((spin, index) => (

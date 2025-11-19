@@ -111,25 +111,47 @@ export default function BankrollPage() {
   const [goalReached, setGoalReached] = useState(false);
   const [showGoalAlert, setShowGoalAlert] = useState(false);
 
-  // Calcular estatísticas
-  const profitPercentage = ((bankrollData.currentBankroll - bankrollData.initialBankroll) / bankrollData.initialBankroll) * 100;
-  const riskPercentage = (bankrollData.currentDrawdown / bankrollData.currentBankroll) * 100;
-  const maxBetAmount = (bankrollData.currentBankroll * maxBetPercentage) / 100;
-
-  const handleSaveSettings = () => {
+  useEffect(() => {
+    const fetchPreferences = async () => {
+      try {
+        const res = await fetch('/api/user-preferences');
+        if (!res.ok) throw new Error('Prefetch error');
+        const prefs = await res.json();
+        setInitialBankroll(Number(prefs?.initial_bankroll ?? prefs?.initialBankroll ?? bankrollData.initialBankroll));
+        setStopLoss(Number(prefs?.stop_loss ?? prefs?.daily_stop_loss ?? 200));
+        setTakeProfit(Number(prefs?.take_profit ?? prefs?.daily_stop_gain ?? 300));
+        setMaxBetPercentage(Number(prefs?.max_bet_percentage ?? prefs?.maxBetPercentage ?? 5));
+        setDailyGoal(Number(prefs?.daily_goal ?? 100));
+      } catch (e) {
+        // fallback silencioso
+      }
+    };
+    fetchPreferences();
+  }, []);
+  const handleSaveSettings = async () => {
     setIsLoading(true);
-    // Simular salvamento
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log('Configurações salvas:', {
-        initialBankroll,
-        stopLoss,
-        takeProfit,
-        maxBetPercentage,
-        autoStopLoss,
-        autoTakeProfit
+    try {
+      await fetch('/api/user-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initial_bankroll: initialBankroll,
+          stop_loss: stopLoss,
+          take_profit: takeProfit,
+          max_bet_percentage: maxBetPercentage,
+          daily_goal: dailyGoal,
+          auto_stop_loss: autoStopLoss,
+          auto_take_profit: autoTakeProfit,
+          progression_type: progressionType,
+          progression_steps: progressionSteps
+        })
       });
-    }, 1000);
+      console.log('Preferências salvas com sucesso');
+    } catch (e) {
+      console.error('Erro ao salvar preferências', e);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResetBankroll = () => {

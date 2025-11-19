@@ -1,0 +1,317 @@
+{
+  "timestamp": "2025-10-26T20:02:28.983Z",
+  "summary": {
+    "total": 34,
+    "high": 13,
+    "medium": 11,
+    "low": 10
+  },
+  "issues": [
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\app\\api\\forgot-password\\route.ts",
+      "line": 0,
+      "description": "Senha hardcoded: password:', error);\r\n    return NextResponse.json(...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.663Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\app\\reset-password\\page.tsx",
+      "line": 0,
+      "description": "Token hardcoded: token:', error);\r\n            setIsValidToken(fals...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.705Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\app\\reset-password\\page.tsx",
+      "line": 0,
+      "description": "Token hardcoded: token:', error);\r\n          setIsValidToken(false)...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.705Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\contexts\\auth-context.tsx",
+      "line": 0,
+      "description": "Token hardcoded: token:', error);\r\n      toast.error('...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.747Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\lib\\auth-service.ts",
+      "line": 0,
+      "description": "Token hardcoded: token:', undefined, error as Error);\r\n      return...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.757Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\security-report.json",
+      "line": 15,
+      "description": "Senha hardcoded: password:', error);\\r\\n    return NextResponse.jso...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.776Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\security-report.json",
+      "line": 51,
+      "description": "Senha hardcoded: password: 'testpassword123'...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.776Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\security-report.json",
+      "line": 51,
+      "description": "Senha hardcoded: password: 'testpassword123'...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.776Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\security-report.json",
+      "line": 69,
+      "description": "API key hardcoded: API_KEY = 'test-api-key'...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.776Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\security-report.json",
+      "line": 24,
+      "description": "Token hardcoded: token:', error);\\r\\n            setIsValidToken(fa...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.776Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\security-report.json",
+      "line": 33,
+      "description": "Token hardcoded: token:', error);\\r\\n          setIsValidToken(fals...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.776Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\security-report.json",
+      "line": 42,
+      "description": "Token hardcoded: token:', error);\\r\\n      toast.error('...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.776Z"
+    },
+    {
+      "type": "hardcoded-credentials",
+      "severity": "high",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\security-report.json",
+      "line": 78,
+      "description": "Token hardcoded: token:', undefined, error as Error);\\r\\n      retu...",
+      "recommendation": "Mover para variáveis de ambiente",
+      "timestamp": "2025-10-26T20:02:25.776Z"
+    },
+    {
+      "type": "insecure-cors",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\scripts\\security-scan.js",
+      "line": 0,
+      "description": "CORS configurado para aceitar qualquer origem",
+      "recommendation": "Configurar origens específicas",
+      "timestamp": "2025-10-26T20:02:28.914Z"
+    },
+    {
+      "type": "debug-enabled",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\scripts\\security-scan.js",
+      "line": 0,
+      "description": "Debug habilitado em produção",
+      "recommendation": "Desabilitar debug em produção",
+      "timestamp": "2025-10-26T20:02:28.914Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\app\\api\\create-pix\\route.ts",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.930Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\app\\api\\metrics\\route.ts",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.932Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\app\\api\\payments\\route.ts",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.933Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\app\\api\\payments\\webhook\\route.ts",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.933Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\app\\dashboard\\page.tsx",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.942Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\backups\\dashboard-backup-2025-10-07_22-30-20\\page.tsx",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.948Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\backups\\login-page-backup-20250913-163851.tsx",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.949Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\components\\monitoring\\monitoring-dashboard.tsx",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.957Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\enable_password_protection_api.js",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.962Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\fix-search-path-direct.js",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.963Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\fix-search-path.js",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.963Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\lib\\analytics.ts",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.965Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\lib\\api-error-handler.ts",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.966Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\lib\\error-handler.ts",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.968Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\lib\\monitoring.ts",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.968Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\lib\\user-registration.ts",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.969Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\scripts\\security-scan.js",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.974Z"
+    },
+    {
+      "type": "stack-trace-exposure",
+      "severity": "low",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\test-login-final.js",
+      "line": 0,
+      "description": "Stack trace pode ser exposto",
+      "recommendation": "Sanitizar erros antes de retornar",
+      "timestamp": "2025-10-26T20:02:28.976Z"
+    },
+    {
+      "type": "information-disclosure",
+      "severity": "medium",
+      "file": "C:\\Users\\breno\\Arquivo\\Desktop\\PROJETO SOFIA\\github-sofia-frontend\\test-registration.js",
+      "line": 0,
+      "description": "Console.log pode expor informações sensíveis",
+      "recommendation": "Remover ou usar logger apropriado",
+      "timestamp": "2025-10-26T20:02:28.977Z"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,7 @@ export function AuthTest({ className }: AuthTestProps) {
     database: false,
   });
 
-  const supabase = createClientComponentClient();
+  // Using singleton Supabase client imported from '@/lib/supabase'
 
   useEffect(() => {
     // Verificar se há usuário logado

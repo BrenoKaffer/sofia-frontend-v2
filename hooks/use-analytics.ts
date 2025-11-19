@@ -5,19 +5,19 @@
 
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useUser } from '@/hooks/use-user';
-import { 
-  analytics, 
+import type { 
   AnalyticsEventType, 
   PerformanceMetrics, 
   BusinessMetrics, 
   EngagementMetrics 
 } from '../lib/analytics';
 import { 
+  browserAnalytics, 
   capturePerformanceMetrics, 
   captureEngagementMetrics, 
   trackCustomEvent, 
   setupErrorTracking 
-} from '../lib/analytics-middleware';
+} from '../lib/analytics-client';
 import { logger } from '../lib/logger';
 
 // Interfaces específicas para substituir tipos 'any'
@@ -57,12 +57,12 @@ export function useAnalytics() {
     name: string,
     properties: AnalyticsProperties = {}
   ) => {
-    analytics.track(type, name, properties, userId);
+    browserAnalytics.track(type, name, properties, userId);
   }, [userId]);
   
   // Função para rastrear page view
   const trackPageView = useCallback((page: string, additionalProps: AnalyticsProperties = {}) => {
-    analytics.trackPageView(page, userId, additionalProps);
+    browserAnalytics.trackPageView(page, userId, additionalProps);
   }, [userId]);
   
   // Função para rastrear ação do usuário
@@ -71,7 +71,7 @@ export function useAnalytics() {
     target: string, 
     additionalProps: AnalyticsProperties = {}
   ) => {
-    analytics.trackUserAction(action, target, userId, additionalProps);
+    browserAnalytics.trackUserAction(action, target, userId, additionalProps);
   }, [userId]);
   
   // Função para rastrear erro
@@ -80,22 +80,22 @@ export function useAnalytics() {
     context: string, 
     additionalProps: AnalyticsProperties = {}
   ) => {
-    analytics.trackError(error, context, userId, additionalProps);
+    browserAnalytics.trackError(error, context, userId, additionalProps);
   }, [userId]);
   
   // Função para rastrear métricas de performance
   const trackPerformance = useCallback((metrics: PerformanceMetrics) => {
-    analytics.trackPerformance(metrics, userId);
+    browserAnalytics.trackPerformance(metrics, userId);
   }, [userId]);
   
   // Função para rastrear métricas de negócio
   const trackBusinessMetrics = useCallback((metrics: BusinessMetrics) => {
-    analytics.trackBusinessMetrics(metrics, userId);
+    browserAnalytics.trackBusinessMetrics(metrics, userId);
   }, [userId]);
   
   // Função para rastrear engajamento
   const trackEngagement = useCallback((metrics: EngagementMetrics) => {
-    analytics.trackEngagement(metrics, userId);
+    browserAnalytics.trackEngagement(metrics, userId);
   }, [userId]);
   
   // Função para rastrear conversão
@@ -105,7 +105,7 @@ export function useAnalytics() {
     currency: string = 'BRL', 
     additionalProps: AnalyticsProperties = {}
   ) => {
-    analytics.trackConversion(type, value, currency, userId, additionalProps);
+    browserAnalytics.trackConversion(type, value, currency, userId, additionalProps);
   }, [userId]);
   
   return {
@@ -335,8 +335,17 @@ export function useRealTimeMetrics() {
     setError(null);
     
     try {
-      const data = await analytics.getMetrics(date);
-      setMetrics(data);
+      const qs = new URLSearchParams();
+      qs.set('action', 'realtime');
+      if (date) qs.set('date', date);
+      const res = await fetch(`/api/analytics?${qs.toString()}`);
+      if (res.ok) {
+        const payload = await res.json();
+        const incoming = (payload && typeof payload === 'object') ? (payload.data ?? payload) : null;
+        setMetrics(incoming || {});
+      } else {
+        setMetrics({});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch metrics');
       logger.error('Failed to fetch real-time metrics', { metadata: { error: err } });
@@ -350,8 +359,19 @@ export function useRealTimeMetrics() {
     setError(null);
     
     try {
-      const data = await analytics.getPageStats(date);
-      setMetrics(prev => ({ ...prev, pageStats: data }));
+      const qs = new URLSearchParams();
+      qs.set('action', 'overview');
+      if (date) qs.set('date', date);
+      const res = await fetch(`/api/analytics?${qs.toString()}`);
+      if (res.ok) {
+        const payload = await res.json();
+        const incoming = (payload && typeof payload === 'object') ? (payload.data ?? payload) : null;
+        const topPages = incoming?.topPages as Array<{ page: string; views: number }> | undefined;
+        const pageStats = topPages?.reduce<Record<string, number>>((acc, cur) => { acc[cur.page] = cur.views; return acc; }, {}) || {};
+        setMetrics(prev => ({ ...prev, pageStats }));
+      } else {
+        setMetrics(prev => ({ ...prev, pageStats: {} }));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch page stats');
       logger.error('Failed to fetch page stats', { metadata: { error: err } });

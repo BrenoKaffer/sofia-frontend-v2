@@ -26,8 +26,8 @@ jest.mock('@/lib/auth-server', () => ({
 }));
 
 // Mock das variáveis de ambiente
-process.env.BACKEND_API_KEY = 'test-api-key';
-process.env.BACKEND_URL = 'http://localhost:8000';
+process.env.BACKEND_API_KEY = process.env.BACKEND_API_KEY || process.env.TEST_BACKEND_API_KEY || '';
+process.env.BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 (process.env as any).NODE_ENV = 'test';
 
 // Mock do fetch global

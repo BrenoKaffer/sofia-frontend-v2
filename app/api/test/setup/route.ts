@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
 
     if (action === 'create-test-user') {
       const user = body?.user || {};
-      const email: string = user.email || 'test@example.com';
-      const password: string = user.password || 'testpassword123';
-      const name: string = user.name || 'Test User';
+      const email: string = user.email || process.env.E2E_TEST_EMAIL || '';
+      const password: string = user.password || process.env.E2E_TEST_PASSWORD || '';
+      const name: string = user.name || process.env.E2E_TEST_NAME || 'Test User';
 
       // Try to create user; if already exists, handle accordingly
       const { data: createData, error: createError } = await supabase.auth.admin.createUser({

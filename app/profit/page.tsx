@@ -56,6 +56,13 @@ const strategyProfits = [
   { name: 'Fibonacci Avançado', profit: 320, sessions: 10, winRate: 70, color: '#8b5cf6' },
 ];
 
+// Estado populado por API com fallback aos mocks
+const ProfitPageStateInit = () => {
+  const [profitDataState, setProfitDataState] = useState(profitData);
+  const [strategyProfitsState, setStrategyProfitsState] = useState(strategyProfits);
+  return { profitDataState, setProfitDataState, strategyProfitsState, setStrategyProfitsState };
+};
+
 const monthlyData = [
   { month: 'Jan', profit: 1200, goal: 1000 },
   { month: 'Fev', profit: 800, goal: 1000 },
@@ -104,11 +111,62 @@ const recentSessions = [
 export default function ProfitPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('7d');
   const [isLoading, setIsLoading] = useState(false);
+  const { profitDataState, setProfitDataState, strategyProfitsState, setStrategyProfitsState } = ProfitPageStateInit();
 
-  const totalProfit = profitData.reduce((sum, day) => sum + day.profit, 0);
-  const totalSessions = profitData.reduce((sum, day) => sum + day.sessions, 0);
-  const avgWinRate = profitData.reduce((sum, day) => sum + day.winRate, 0) / profitData.length;
-  const profitPerSession = totalProfit / totalSessions;
+  useEffect(() => {
+    const fetchKpis = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/kpis-estrategias');
+        const raw = await res.json();
+        const dataArray = Array.isArray(raw) ? raw : (raw?.data || []);
+
+        const strategies = dataArray.map((item: any) => ({
+          name: item.strategy_id || item.strategy_name || 'Estratégia Desconhecida',
+          profit: Number(item.total_net_profit_loss ?? item.total_net_payout ?? 0) || 0,
+          sessions: Number(item.total_signals_generated ?? item.total_activations ?? 0) || 0,
+          winRate: Number(item.assertiveness_rate_percent ?? item.hit_rate ?? 0) || 0,
+          color: '#10b981'
+        }));
+        setStrategyProfitsState(strategies.length ? strategies : strategyProfits);
+
+        const seriesLength = Math.max(
+          ...dataArray.map((item: any) => (Array.isArray(item.recentPerformance) ? item.recentPerformance.length : 0)),
+          0
+        ) || 7;
+        const profitsPerDay = Array.from({ length: seriesLength }, (_, i) =>
+          dataArray.reduce((sum: number, item: any) => {
+            const v = Array.isArray(item.recentPerformance) ? item.recentPerformance[i] : 0;
+            return sum + (typeof v === 'number' ? v : 0);
+          }, 0)
+        );
+        const sessionsPerDay = strategies.reduce((acc, st) => acc + Math.max(1, Math.round(st.sessions / seriesLength)), 0);
+        const avgWinRate = strategies.length
+          ? Math.round(strategies.reduce((acc, st) => acc + st.winRate, 0) / strategies.length)
+          : 0;
+        const computed = profitsPerDay.map((p, idx) => ({
+          date: `${String(idx + 1).padStart(2, '0')}/01`,
+          profit: Number(p) || 0,
+          sessions: sessionsPerDay,
+          winRate: avgWinRate
+        }));
+
+        setProfitDataState(computed.length ? computed : profitData);
+      } catch (e) {
+        setStrategyProfitsState(strategyProfits);
+        setProfitDataState(profitData);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchKpis();
+  }, [selectedPeriod]);
+
+  const totalProfit = profitDataState.reduce((sum, day) => sum + day.profit, 0);
+  const totalSessions = profitDataState.reduce((sum, day) => sum + day.sessions, 0);
+  const avgWinRate = profitDataState.reduce((sum, day) => sum + day.winRate, 0) / profitDataState.length;
+  const profitPerSession = totalProfit / (totalSessions || 1);
 
   const handleRefresh = () => {
     setIsLoading(true);
@@ -232,7 +290,7 @@ export default function ProfitPage() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={profitData}>
+                    <LineChart data={profitDataState}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
@@ -267,7 +325,7 @@ export default function ProfitPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {strategyProfits.map((strategy, index) => (
+                  {strategyProfitsState.map((strategy, index) => (
                     <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <h4 className="font-medium">{strategy.name}</h4>

@@ -38,7 +38,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className="font-sans">
+      <body className="font-sans" suppressHydrationWarning>
         <ErrorBoundary>
           <MonitoringProvider>
             <Providers>

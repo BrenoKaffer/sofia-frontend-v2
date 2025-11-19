@@ -4,13 +4,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-user';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { LoadingOverlay } from '@/components/ui/loading-overlay';
+// Removido overlay de redirecionamento para manter apenas "Carregando SOFIA..."
 
 export default function Home() {
   const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
   const [hasRedirected, setHasRedirected] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -21,7 +20,6 @@ export default function Home() {
 
     if (isLoaded && !hasRedirected) {
       setHasRedirected(true);
-      setIsRedirecting(true);
       
       // Implementar debounce para prevenir múltiplos redirecionamentos
       redirectTimeoutRef.current = setTimeout(() => {
@@ -52,16 +50,11 @@ export default function Home() {
 
   return (
     <>
-      <LoadingOverlay 
-        isVisible={isRedirecting} 
-        message={isSignedIn ? "Redirecionando para o dashboard..." : "Redirecionando para o login..."} 
-        variant="blur"
-      />
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/5">
         <div className="text-center space-y-4">
           <LoadingSpinner size="lg" />
           <p className="text-muted-foreground">
-            {!isLoaded ? 'Carregando SOFIA...' : 'Redirecionando...'}
+            {'Carregando SOFIA...'}
           </p>
         </div>
       </div>

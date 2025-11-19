@@ -22,7 +22,7 @@ interface CPFResponse {
 }
 
 const API_BASE_URL = 'https://api.cpfhub.io/api/cpf';
-const API_KEY = '9abcddccebf235a812d6e84798298094d620d4b66fe971f2490ef1de0ba83ab6';
+const API_KEY = process.env.CPF_HUB_API_KEY || '';
 
 export class CPFService {
   static async validateCPF(cpf: string, birthDate: string): Promise<CPFResponse> {
@@ -57,6 +57,11 @@ export class CPFService {
         return simulatedData;
       }
       
+      // Verificar se a API key está configurada
+      if (!API_KEY) {
+        throw new Error('CPF_HUB_API_KEY não configurada nas variáveis de ambiente');
+      }
+
       // Em produção, faz a consulta real
       const response = await fetch(API_BASE_URL, {
         method: 'POST',

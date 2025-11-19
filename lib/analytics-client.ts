@@ -3,8 +3,93 @@
  * Safe utilities for browser that DO NOT import server-only modules
  */
 
-import { analytics } from './analytics';
 import { logger } from './logger';
+
+// Tipos importados apenas para type-check (não entram no bundle)
+import type {
+  AnalyticsEventType,
+  PerformanceMetrics,
+  BusinessMetrics,
+  EngagementMetrics,
+} from './analytics';
+
+// Safe client-side stubs
+const trackPerformance = (metrics: Record<string, any>, userId?: string) => {
+  try { logger.debug('analytics.performance', { metrics, userId }); } catch {}
+};
+const trackEngagement = (metrics: Record<string, any>, userId?: string) => {
+  try { logger.debug('analytics.engagement', { metrics, userId }); } catch {}
+};
+const trackError = (error: Error, context: string, userId?: string, properties?: Record<string, any>) => {
+  try { logger.error('analytics.error', { context, userId, properties }, error); } catch {}
+};
+
+// Envia evento para API (best-effort; falhas são silenciosas)
+async function sendEventToApi(payload: Record<string, any>): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch('/api/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'same-origin',
+    });
+  } catch {
+    // Silently ignore in client
+  }
+}
+
+// Objeto seguro para uso no cliente, espelhando a API usada pelo hook
+export const browserAnalytics = {
+  track(type: AnalyticsEventType, name: string, properties: Record<string, any> = {}, userId?: string): void {
+    try {
+      logger.info('analytics.track', { type, name, userId, properties });
+      void sendEventToApi({ eventType: type, eventName: name, properties, timestamp: Date.now() });
+    } catch {}
+  },
+
+  trackPageView(page: string, userId?: string, additionalProps: Record<string, any> = {}): void {
+    this.track('page_view', 'page_viewed', { page, timestamp: Date.now(), ...additionalProps }, userId);
+  },
+
+  trackUserAction(action: string, target: string, userId?: string, additionalProps: Record<string, any> = {}): void {
+    this.track('user_action', action, { target, timestamp: Date.now(), ...additionalProps }, userId);
+  },
+
+  trackError(error: Error, context: string, userId?: string, additionalProps: Record<string, any> = {}): void {
+    try {
+      trackError(error, context, userId, additionalProps);
+      void sendEventToApi({ eventType: 'error', eventName: 'error_occurred', properties: { message: error.message, stack: error.stack, context, timestamp: Date.now(), ...additionalProps } });
+    } catch {}
+  },
+
+  trackPerformance(metrics: PerformanceMetrics, userId?: string): void {
+    try {
+      trackPerformance({ ...metrics, timestamp: Date.now() }, userId);
+      void sendEventToApi({ eventType: 'performance', eventName: 'performance_metrics', properties: { ...metrics, timestamp: Date.now() } });
+    } catch {}
+  },
+
+  trackBusinessMetrics(metrics: BusinessMetrics, userId?: string): void {
+    try {
+      logger.debug('analytics.business', { metrics, userId });
+      void sendEventToApi({ eventType: 'business_metric', eventName: 'business_metrics', properties: { ...metrics, timestamp: Date.now() } });
+    } catch {}
+  },
+
+  trackEngagement(metrics: EngagementMetrics, userId?: string): void {
+    try {
+      trackEngagement({ ...metrics, timestamp: Date.now() }, userId);
+      void sendEventToApi({ eventType: 'user_engagement', eventName: 'engagement_metrics', properties: { ...metrics, timestamp: Date.now() } });
+    } catch {}
+  },
+
+  trackConversion(type: string, value: number, currency: string = 'BRL', userId?: string, additionalProps: Record<string, any> = {}): void {
+    try {
+      this.track('conversion', 'conversion_event', { type, value, currency, timestamp: Date.now(), ...additionalProps }, userId);
+    } catch {}
+  },
+};
 
 // Capture basic performance metrics in the browser
 export function capturePerformanceMetrics(userId?: string): void {
@@ -56,7 +141,7 @@ export function capturePerformanceMetrics(userId?: string): void {
           try { fcpObserver.disconnect(); } catch {}
           try { lcpObserver.disconnect(); } catch {}
 
-          analytics.trackPerformance(
+          trackPerformance(
             {
               pageLoadTime: typeof pageLoadTime === 'number' ? pageLoadTime : 0,
               firstContentfulPaint: typeof firstContentfulPaint === 'number' ? firstContentfulPaint : 0,
@@ -74,7 +159,7 @@ export function capturePerformanceMetrics(userId?: string): void {
     } else {
       // Fallback: still send page load time if available
       win.addEventListener('load', () => {
-        analytics.trackPerformance(
+        trackPerformance(
           {
             pageLoadTime: typeof pageLoadTime === 'number' ? pageLoadTime : 0,
             firstContentfulPaint: 0,
@@ -116,7 +201,7 @@ export function captureEngagementMetrics(userId?: string): () => void {
 
     const interval = window.setInterval(() => {
       const timeOnPage = Math.round((Date.now() - startTime) / 1000);
-      analytics.trackEngagement(
+      trackEngagement(
         {
           timeOnPage,
           scrollDepth: maxScrollDepth,
@@ -152,7 +237,7 @@ export function setupErrorTracking(userId?: string): void {
   try {
     const onError = (message: string | Event, source?: string, lineno?: number, colno?: number, error?: Error) => {
       const err = error || new Error(typeof message === 'string' ? message : 'Browser error');
-      analytics.trackError(err, 'global_error_handler', userId, {
+      trackError(err, 'global_error_handler', userId, {
         source,
         lineno,
         colno,
@@ -164,7 +249,7 @@ export function setupErrorTracking(userId?: string): void {
       let err: Error;
       if (reason instanceof Error) err = reason;
       else err = new Error(typeof reason === 'string' ? reason : 'Unhandled rejection');
-      analytics.trackError(err, 'unhandled_rejection', userId);
+      trackError(err, 'unhandled_rejection', userId);
     };
 
     window.addEventListener('error', onError as any);
@@ -174,4 +259,17 @@ export function setupErrorTracking(userId?: string): void {
   } catch (error) {
     logger.error('Failed to setup error tracking', { component: 'analytics-client' }, error as Error);
   }
+}
+
+// Evento customizado simples (cliente)
+export function trackCustomEvent(
+  category: string,
+  action: string,
+  label?: string,
+  value?: number,
+  userId?: string
+): void {
+  try {
+    browserAnalytics.track('user_action' as AnalyticsEventType, action, { category, label, value, timestamp: Date.now() }, userId);
+  } catch {}
 }

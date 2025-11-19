@@ -165,8 +165,25 @@ export function AnalyticsDashboard() {
         ],
       };
       
-      setData(mockData);
-      
+      // Tentar carregar dados reais do endpoint; fallback para mock em caso de falha
+      try {
+        const qs = selectedDate ? `?date=${encodeURIComponent(selectedDate)}` : '';
+        const res = await fetch(`/api/analytics${qs}`);
+        if (res.ok) {
+          const payload = await res.json();
+          const incoming = (payload && typeof payload === 'object') ? (payload.data ?? payload) : null;
+          if (incoming) {
+            setData(incoming);
+          } else {
+            setData(fallbackData);
+          }
+        } else {
+          setData(fallbackData);
+        }
+      } catch (fetchErr) {
+        setData(fallbackData);
+      }
+
       // Rastreia visualização do dashboard
       track('page_view', 'analytics_dashboard_viewed', {
         dateFilter: selectedDate,

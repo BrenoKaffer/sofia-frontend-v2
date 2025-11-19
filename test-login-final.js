@@ -14,8 +14,8 @@ async function testLoginFinal() {
     console.log('\n1️⃣ Testando login com teste@sofia.com...');
     
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: 'teste@sofia.com',
-      password: 'teste123'
+      email: process.env.E2E_TEST_EMAIL || '',
+      password: process.env.E2E_TEST_PASSWORD || ''
     });
     
     if (error) {

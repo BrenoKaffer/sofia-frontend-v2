@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pagarmeService } from '@/lib/pagarme-service';
 import { logger } from '@/lib/logger';
+import crypto from 'crypto';
+import { redisCache, CACHE_TTL } from '@/lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
     const signature = request.headers.get('x-hub-signature-256') || '';
+
+    // Idempotência: chave via header ou hash do corpo+assinatura
+    const idempotencyHeader = request.headers.get('Idempotency-Key') || '';
+    const derivedKey = crypto.createHash('sha256').update(body + signature).digest('hex');
+    const idempotencyKey = idempotencyHeader || derivedKey;
+    const cacheKey = `webhook:payments:${idempotencyKey}`;
+
+    // Verifica duplicidade
+    const alreadyProcessed = await redisCache.exists(cacheKey);
+    if (alreadyProcessed) {
+      logger.info('Webhook idempotente ignorado (já processado)', { metadata: { cacheKey } });
+      return NextResponse.json({ received: true, idempotent: true });
+    }
     
     // Validar webhook (opcional - requer configuração de secret)
     const webhookSecret = process.env.PAGARME_WEBHOOK_SECRET;
@@ -60,6 +75,7 @@ export async function POST(request: NextRequest) {
         });
     }
 
+    await redisCache.set(cacheKey, { processedAt: Date.now(), event: webhookData.type }, CACHE_TTL.SHORT);
     return NextResponse.json({ received: true });
 
   } catch (error) {
@@ -207,7 +223,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-hub-signature-256',
+      'Access-Control-Allow-Headers': 'Content-Type, x-hub-signature-256, Idempotency-Key',
     },
   });
 }

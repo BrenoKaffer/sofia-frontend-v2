@@ -40,8 +40,8 @@ async function globalSetup(config: FullConfig) {
         data: {
           action: 'create-test-user',
           user: {
-            email: 'test@example.com',
-            password: 'testpassword123',
+            email: process.env.E2E_TEST_EMAIL || 'test@example.com',
+            password: process.env.E2E_TEST_PASSWORD || 'testpassword123',
             name: 'Test User'
           }
         }
