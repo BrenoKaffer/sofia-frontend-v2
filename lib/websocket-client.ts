@@ -2,11 +2,21 @@ import { logger } from './logger';
 
 // Tipos para WebSocket
 export interface WebSocketMessage {
-  type: 'subscribe' | 'unsubscribe' | 'ping' | 'pong' | 'data' | 'error' | 'auth';
+  type:
+    | 'subscribe'
+    | 'unsubscribe'
+    | 'ping'
+    | 'pong'
+    | 'data'
+    | 'error'
+    | 'auth'
+    | 'automation_command';
   channel?: string;
   data?: any;
   token?: string;
   timestamp?: number;
+  // Campos para comandos de automação
+  command?: string;
 }
 
 export interface WebSocketConfig {
@@ -215,6 +225,16 @@ export class WebSocketClient {
     } else {
       logger.warn('Tentativa de envio com WebSocket não conectado');
     }
+  }
+
+  // Enviar comando de automação
+  public sendAutomationCommand(command: string, data?: any): boolean {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.isAuthenticated()) {
+      this.send({ type: 'automation_command', command, data, timestamp: Date.now() });
+      return true;
+    }
+    logger.warn('Não foi possível enviar comando de automação: WebSocket não autenticado ou desconectado');
+    return false;
   }
 
   // Inscrever-se em canal

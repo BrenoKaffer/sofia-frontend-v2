@@ -245,8 +245,10 @@ export default function DashboardPage() {
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
-  // Helper para headers condicionais ao token
-  const buildHeaders = (token?: string) => (token ? { Authorization: `Bearer ${token}` } : {});
+  // Helper para headers condicionais ao token (tipado)
+  const buildHeaders = (token?: string | null): Record<string, string> => (
+    token ? { Authorization: `Bearer ${token}` } : {}
+  );
 
 
   // Função para buscar preferências do usuário (roletas monitoradas)

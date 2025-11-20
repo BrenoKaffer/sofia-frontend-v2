@@ -183,7 +183,7 @@ export default function BuilderPage() {
   const builderRef = useRef<HTMLDivElement | null>(null)
   const [isTesting, setIsTesting] = useState(false)
   const [isTestReportOpen, setIsTestReportOpen] = useState(false)
-  const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ step: number; nodeId: string; label: string; action: string }>; results: Array<{ nodeId: string; label: string; type: NodeType; subtype?: string; pass?: boolean }>; signals: Array<{ nodeId: string; label: string; acao: string; mensagem?: string; prioridade?: string }>; summary: { visited: number; totalNodes: number; totalConnections: number; durationMs: number }; resolver?: { mode: string; derivedNumbers: number[]; telemetry: any }; compiled?: { activation: any; signal: any } }>({
+const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ step: number; nodeId: string; label: string; action: string }>; results: Array<{ nodeId: string; label: string; type: NodeType; subtype?: string; pass?: boolean }>; signals: Array<{ nodeId: string; label: string; acao: string; mensagem?: string; prioridade?: string }>; summary: { visited: number; totalNodes: number; totalConnections: number; durationMs: number; source?: string; sampleSize?: number; effectiveWindow?: number }; resolver?: { mode: string; derivedNumbers: number[]; telemetry: any; gated?: boolean; gateReasons?: string[] }; compiled?: { activation: any; signal: any } }>({
     errors: [],
     logs: [],
     results: [],

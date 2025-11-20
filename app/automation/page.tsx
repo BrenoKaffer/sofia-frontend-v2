@@ -41,6 +41,7 @@ interface SystemStatus {
   totalProfit: number;
   systemHealth: 'healthy' | 'warning' | 'error';
   lastUpdate: Date;
+  emergencyStop?: boolean;
 }
 
 interface AutomationMetrics {
@@ -322,7 +323,11 @@ export default function AutomationPage() {
           </TabsContent>
 
           <TabsContent value="betting" className="space-y-4">
-            <BettingAutomationPanel />
+            <BettingAutomationPanel 
+              tableId="roulette-1"
+              suggestedBets={[]}
+              strategyName="default"
+            />
           </TabsContent>
 
           <TabsContent value="sessions" className="space-y-4">

@@ -24,6 +24,8 @@ export interface UseWebSocketReturn {
   // Métodos de controle
   connect: (token?: string) => Promise<void>;
   disconnect: () => void;
+  // Comandos
+  sendAutomationCommand: (command: string, data?: any) => boolean;
   
   // Gerenciamento de canais
   subscribe: (channel: WebSocketChannel, callback: (data: any) => void) => () => void;
@@ -162,6 +164,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }
   }, []);
 
+  // Enviar comandos de automação
+  const sendAutomationCommand = useCallback((command: string, data?: any) => {
+    if (!clientRef.current) {
+      return false;
+    }
+    return clientRef.current.sendAutomationCommand(command, data);
+  }, []);
+
   // Gerenciamento de canais
   const subscribe = useCallback((channel: WebSocketChannel, callback: (data: any) => void) => {
     if (!clientRef.current) {
@@ -240,6 +250,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     // Métodos de controle
     connect,
     disconnect,
+    
+    // Comandos
+    sendAutomationCommand,
     
     // Gerenciamento de canais
     subscribe,

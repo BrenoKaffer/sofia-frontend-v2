@@ -10,6 +10,7 @@ export interface SystemStatus {
   totalProfit: number
   systemHealth: SystemHealth
   lastUpdate: Date
+  emergencyStop?: boolean
 }
 
 export interface AutomationMetrics {

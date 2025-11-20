@@ -197,6 +197,10 @@ export default function BankrollPage() {
   // Verificar se a meta diária foi atingida
   const dailyProfit = bankrollData.netProfit; // Simplificado para demo
   const dailyGoalProgress = (dailyProfit / dailyGoal) * 100;
+  // Derivados calculados usados na UI
+  const profitPercentage: number = (bankrollData.netProfit / bankrollData.initialBankroll) * 100;
+  const riskPercentage: number = (bankrollData.maxDrawdown / bankrollData.initialBankroll) * 100;
+  const maxBetAmount: number = bankrollData.currentBankroll * (maxBetPercentage / 100);
   
   // Simular alerta de meta atingida
   useEffect(() => {

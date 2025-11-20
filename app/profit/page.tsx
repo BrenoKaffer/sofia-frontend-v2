@@ -121,7 +121,15 @@ export default function ProfitPage() {
         const raw = await res.json();
         const dataArray = Array.isArray(raw) ? raw : (raw?.data || []);
 
-        const strategies = dataArray.map((item: any) => ({
+        interface StrategyKpi {
+          name: string;
+          profit: number;
+          sessions: number;
+          winRate: number;
+          color: string;
+        }
+
+        const strategies: StrategyKpi[] = dataArray.map((item: any) => ({
           name: item.strategy_id || item.strategy_name || 'Estratégia Desconhecida',
           profit: Number(item.total_net_profit_loss ?? item.total_net_payout ?? 0) || 0,
           sessions: Number(item.total_signals_generated ?? item.total_activations ?? 0) || 0,
@@ -140,9 +148,9 @@ export default function ProfitPage() {
             return sum + (typeof v === 'number' ? v : 0);
           }, 0)
         );
-        const sessionsPerDay = strategies.reduce((acc, st) => acc + Math.max(1, Math.round(st.sessions / seriesLength)), 0);
+        const sessionsPerDay = strategies.reduce((acc: number, st: StrategyKpi) => acc + Math.max(1, Math.round(st.sessions / seriesLength)), 0);
         const avgWinRate = strategies.length
-          ? Math.round(strategies.reduce((acc, st) => acc + st.winRate, 0) / strategies.length)
+          ? Math.round(strategies.reduce((acc: number, st: StrategyKpi) => acc + st.winRate, 0) / strategies.length)
           : 0;
         const computed = profitsPerDay.map((p, idx) => ({
           date: `${String(idx + 1).padStart(2, '0')}/01`,
