@@ -1,4 +1,5 @@
 // Serviço de notificações push
+import { useState, useEffect } from 'react';
 export interface NotificationData {
   title: string;
   body: string;
@@ -88,29 +89,7 @@ class PushNotificationService {
       throw error;
     }
   }
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('Service Worker desativado em desenvolvimento');
-      throw new Error('Service Worker desativado em desenvolvimento');
-    }
-
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/'
-      });
-
-      console.log('Service Worker registrado:', registration);
-      this.registration = registration;
-
-      // Aguardar ativação
-      await this.waitForServiceWorkerActivation(registration);
-      
-      return registration;
-    } catch (error) {
-      console.error('Erro ao registrar Service Worker:', error);
-      throw error;
-    }
-  }
+  
 
   private async waitForServiceWorkerActivation(registration: ServiceWorkerRegistration): Promise<void> {
     return new Promise((resolve) => {
@@ -301,6 +280,3 @@ export function usePushNotifications() {
     getActive: pushNotificationService.getActiveNotifications.bind(pushNotificationService)
   };
 }
-
-// Importações necessárias para o hook
-import { useState, useEffect } from 'react';

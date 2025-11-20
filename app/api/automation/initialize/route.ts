@@ -38,10 +38,14 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = (await safeJson(response)) || {};
+      const backendError =
+        typeof errorData === 'object' && errorData !== null && 'error' in (errorData as Record<string, unknown>)
+          ? (errorData as any).error
+          : undefined;
       return NextResponse.json(
-        { 
-          success: false, 
-          error: errorData.error || 'Falha ao inicializar sistema no backend' 
+        {
+          success: false,
+          error: backendError || 'Falha ao inicializar sistema no backend',
         },
         { status: response.status }
       );

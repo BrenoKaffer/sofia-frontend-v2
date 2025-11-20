@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const body = await request.json();
+  const { id } = await ctx.params;
   const newLog = {
     id: `log-${Math.random().toString(36).slice(2, 8)}`,
     timestamp: new Date(),

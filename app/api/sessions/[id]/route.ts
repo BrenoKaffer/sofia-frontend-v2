@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const updates = await request.json();
+  const { id } = await ctx.params;
   const updatedSession = {
-    id: params.id,
+    id,
     name: updates.name ?? 'Sessão Atualizada',
     strategy: updates.strategy ?? {
       id: 'strat-1',
@@ -45,6 +46,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   return NextResponse.json(updatedSession);
 }
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
-  return NextResponse.json({ success: true, deletedId: params.id });
+export async function DELETE(_request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  return NextResponse.json({ success: true, deletedId: id });
 }

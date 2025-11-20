@@ -135,4 +135,4 @@ export async function OPTIONS() {
   })
 }
 
-export { compileBuilderToJS }
+// Removido export para manter compatibilidade com regras de rotas do Next

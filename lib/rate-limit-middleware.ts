@@ -4,8 +4,77 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withRateLimit, RATE_LIMIT_CONFIGS } from './rate-limiter';
 import { logger } from './logger';
+
+// Edge-safe rate limiting (sem Redis/ioredis)
+// Implementação leve usando armazenamento em memória por instância
+type RateLimitConfig = {
+  windowMs: number;
+  maxRequests: number;
+  skipSuccessfulRequests?: boolean;
+  skipFailedRequests?: boolean;
+};
+
+export const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
+  public: { windowMs: 15 * 60 * 1000, maxRequests: 100 },
+  auth: { windowMs: 15 * 60 * 1000, maxRequests: 5 },
+  realtime: { windowMs: 60 * 1000, maxRequests: 60 },
+  ml: { windowMs: 5 * 60 * 1000, maxRequests: 20 },
+  admin: { windowMs: 60 * 60 * 1000, maxRequests: 100 },
+} as const;
+
+// Store global por instância do edge runtime
+interface EdgeStoreItem {
+  count: number;
+  expiresAt: number;
+}
+
+const edgeStore: Map<string, EdgeStoreItem> = (globalThis as any).__edgeRateLimitStore ?? new Map();
+(globalThis as any).__edgeRateLimitStore = edgeStore;
+
+function getClientKey(req: NextRequest, key?: string) {
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const ua = req.headers.get('user-agent') || 'unknown';
+  const path = new URL(req.url).pathname;
+  return `${key || 'public'}:${ip}:${path}:${ua}`;
+}
+
+export async function withRateLimit(
+  req: NextRequest,
+  type: keyof typeof RATE_LIMIT_CONFIGS,
+  customConfig?: Partial<RateLimitConfig>
+): Promise<NextResponse | null> {
+  const config = { ...RATE_LIMIT_CONFIGS[type], ...(customConfig || {}) } as RateLimitConfig;
+  const now = Date.now();
+  const key = getClientKey(req, type);
+  const current = edgeStore.get(key);
+
+  if (!current || current.expiresAt <= now) {
+    edgeStore.set(key, { count: 1, expiresAt: now + config.windowMs });
+    return null;
+  }
+
+  if (current.count < config.maxRequests) {
+    current.count += 1;
+    edgeStore.set(key, current);
+    return null;
+  }
+
+  const retryAfter = Math.ceil((current.expiresAt - now) / 1000);
+  const response = NextResponse.json(
+    {
+      error: 'Rate limit exceeded',
+      message: `Too many requests. Try again in ${retryAfter} seconds.`,
+      retryAfter,
+    },
+    { status: 429 }
+  );
+  response.headers.set('X-RateLimit-Limit', config.maxRequests.toString());
+  response.headers.set('X-RateLimit-Remaining', '0');
+  response.headers.set('X-RateLimit-Reset', current.expiresAt.toString());
+  response.headers.set('Retry-After', retryAfter.toString());
+  return response;
+}
 
 // Mapeamento de rotas para tipos de rate limiting
 const ROUTE_RATE_LIMIT_MAP: Record<string, keyof typeof RATE_LIMIT_CONFIGS> = {

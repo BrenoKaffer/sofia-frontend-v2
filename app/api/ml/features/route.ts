@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     const data = await resp.json();
     // Cache curto (60s)
-    apiCache.set(cacheKey, data, 60_000);
+    apiCache.set(cacheKey, data, { ttl: 60_000 });
 
     return NextResponse.json(data);
   } catch (error: any) {

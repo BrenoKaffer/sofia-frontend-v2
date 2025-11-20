@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 
+type ResultItem = {
+  id: string;
+  type: string;
+  value: number;
+  amount: number;
+  outcome: 'win' | 'loss';
+  profit: number;
+  timestamp: string;
+};
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const config = body?.config ?? {};
   const suggestedBets = (body?.suggestedBets ?? []).slice(0, 10);
 
-  const results = suggestedBets.map((bet: any, i: number) => ({
+  const results: ResultItem[] = suggestedBets.map((bet: any, i: number) => ({
     id: `bet_${Date.now()}_${i}`,
     type: bet.type ?? 'number',
     value: bet.value ?? Math.floor(Math.random() * 37),
@@ -15,7 +25,7 @@ export async function POST(request: Request) {
     timestamp: new Date().toISOString(),
   }));
 
-  const wins = results.filter(r => r.outcome === 'win').length;
+  const wins = results.filter((r: ResultItem) => r.outcome === 'win').length;
   const losses = results.length - wins;
 
   const data = {
