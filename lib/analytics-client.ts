@@ -15,13 +15,34 @@ import type {
 
 // Safe client-side stubs
 const trackPerformance = (metrics: Record<string, any>, userId?: string) => {
-  try { logger.debug('analytics.performance', { metrics, userId }); } catch {}
+  try {
+    logger.debug('analytics.performance', {
+      userId,
+      component: 'Analytics',
+      action: 'PERFORMANCE',
+      metadata: { metrics },
+    });
+  } catch {}
 };
 const trackEngagement = (metrics: Record<string, any>, userId?: string) => {
-  try { logger.debug('analytics.engagement', { metrics, userId }); } catch {}
+  try {
+    logger.debug('analytics.engagement', {
+      userId,
+      component: 'Analytics',
+      action: 'ENGAGEMENT',
+      metadata: { metrics },
+    });
+  } catch {}
 };
 const trackError = (error: Error, context: string, userId?: string, properties?: Record<string, any>) => {
-  try { logger.error('analytics.error', { context, userId, properties }, error); } catch {}
+  try {
+    logger.error('analytics.error', {
+      userId,
+      component: 'Analytics',
+      action: context,
+      metadata: properties,
+    }, error);
+  } catch {}
 };
 
 // Envia evento para API (best-effort; falhas são silenciosas)
@@ -43,7 +64,12 @@ async function sendEventToApi(payload: Record<string, any>): Promise<void> {
 export const browserAnalytics = {
   track(type: AnalyticsEventType, name: string, properties: Record<string, any> = {}, userId?: string): void {
     try {
-      logger.info('analytics.track', { type, name, userId, properties });
+      logger.info('analytics.track', {
+        userId,
+        component: 'Analytics',
+        action: name,
+        metadata: { type, properties },
+      });
       void sendEventToApi({ eventType: type, eventName: name, properties, timestamp: Date.now() });
     } catch {}
   },
@@ -72,7 +98,12 @@ export const browserAnalytics = {
 
   trackBusinessMetrics(metrics: BusinessMetrics, userId?: string): void {
     try {
-      logger.debug('analytics.business', { metrics, userId });
+      logger.debug('analytics.business', {
+        userId,
+        component: 'Analytics',
+        action: 'BUSINESS_METRICS',
+        metadata: { metrics },
+      });
       void sendEventToApi({ eventType: 'business_metric', eventName: 'business_metrics', properties: { ...metrics, timestamp: Date.now() } });
     } catch {}
   },
