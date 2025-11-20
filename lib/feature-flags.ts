@@ -47,7 +47,7 @@ export const FEATURE_FLAGS = {
 // Configuração padrão das feature flags
 const defaultFlags: Record<string, boolean> = {
   // Modo MVP habilitado por padrão; pode ser desativado via env
-  [FEATURE_FLAGS.MVP_MODE]: (process.env.NEXT_PUBLIC_MVP_MODE ?? 'true') === 'true',
+  [FEATURE_FLAGS.MVP_MODE]: (process.env.NEXT_PUBLIC_MVP_MODE ?? 'false') === 'true',
   // Autenticação - habilitadas por padrão para melhor UX
   [FEATURE_FLAGS.ENHANCED_AUTH_FLOW]: true,
   [FEATURE_FLAGS.TWO_FACTOR_AUTH]: false,
