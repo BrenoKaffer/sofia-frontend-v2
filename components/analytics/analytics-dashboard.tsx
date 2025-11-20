@@ -165,6 +165,9 @@ export function AnalyticsDashboard() {
         ],
       };
       
+      // Fallback seguro em caso de erro ao buscar dados reais
+      const fallbackData: DashboardData = mockData;
+      
       // Tentar carregar dados reais do endpoint; fallback para mock em caso de falha
       try {
         const qs = selectedDate ? `?date=${encodeURIComponent(selectedDate)}` : '';

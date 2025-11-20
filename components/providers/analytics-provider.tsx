@@ -15,20 +15,35 @@ import {
 // Removed server-only analytics import to avoid bundling ioredis in client
 import { logger } from '@/lib/logger';
 
-// Safe client-side stubs for analytics
+// Safe client-side stubs for analytics (padronizados com LogContext)
 const trackEvent = (type: string, name: string, properties: Record<string, any> = {}, userId?: string) => {
   try {
-    logger.debug('analytics.track', { type, name, userId, properties });
+    logger.info('analytics.track', {
+      userId,
+      component: 'AnalyticsProvider',
+      action: 'track',
+      metadata: { type, name, properties }
+    });
   } catch {}
 };
 const trackPageView = (page: string, userId?: string, properties: Record<string, any> = {}) => {
   try {
-    logger.debug('analytics.page_view', { page, userId, properties });
+    logger.info('analytics.page', {
+      userId,
+      component: 'AnalyticsProvider',
+      action: 'page_view',
+      metadata: { page, properties }
+    });
   } catch {}
 };
 const trackError = (error: Error, context: string, userId?: string, properties: Record<string, any> = {}) => {
   try {
-    logger.error('analytics.error', { context, userId, properties }, error);
+    logger.error('analytics.error', {
+      userId,
+      component: 'AnalyticsProvider',
+      action: 'error',
+      metadata: { context, properties, timestamp: Date.now() }
+    }, error);
   } catch {}
 };
 const flush = () => {};

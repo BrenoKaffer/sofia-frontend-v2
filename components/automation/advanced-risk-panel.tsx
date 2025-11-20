@@ -206,7 +206,7 @@ export function AdvancedRiskPanel({ riskMetrics, advancedMetrics, riskAlerts }: 
                     <div className={`text-lg font-bold ${getRiskColor(risk.riskScore)}`}>
                       {formatNumber(risk.riskScore)}
                     </div>
-                    <Badge variant="outline" size="sm">
+                    <Badge variant="outline">
                       {getRiskLevel(risk.riskScore)}
                     </Badge>
                   </div>
