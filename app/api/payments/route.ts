@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pagarmeService, PagarmeOrder } from '@/lib/pagarme-service';
+export const runtime = 'nodejs'
+import { PagarmeOrder, getPagarmeService } from '@/lib/pagarme-service';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
@@ -48,6 +49,16 @@ export async function POST(request: NextRequest) {
       },
     };
 
+    // Validar chave da API em tempo de requisição
+    const apiKey = process.env.PAGARME_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'PAGARME_API_KEY não configurada' },
+        { status: 500 }
+      );
+    }
+
+    const pagarmeService = getPagarmeService();
     const result = await pagarmeService.createOrder(order);
 
     // Log do sucesso
@@ -106,6 +117,16 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const size = parseInt(searchParams.get('size') || '20');
     const status = searchParams.get('status');
+
+    const apiKey = process.env.PAGARME_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'PAGARME_API_KEY não configurada' },
+        { status: 500 }
+      );
+    }
+
+    const pagarmeService = getPagarmeService();
 
     if (orderId) {
       // Buscar pedido específico

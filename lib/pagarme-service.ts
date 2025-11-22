@@ -346,9 +346,13 @@ export class PagarmeService {
 }
 
 // Instância singleton do serviço
-// Verificação obrigatória da variável de ambiente
-if (!process.env.PAGARME_API_KEY) {
-  throw new Error('PAGARME_API_KEY é obrigatória. Configure a variável de ambiente.');
+// Remover validação em tempo de importação para não quebrar o build
+// Fornecer uma fábrica para criar instâncias quando necessário
+export function getPagarmeService(): PagarmeService {
+  const apiKey = process.env.PAGARME_API_KEY;
+  if (!apiKey) {
+    // Lançar erro apenas quando chamado, não em tempo de importação
+    throw new Error('PAGARME_API_KEY não configurada');
+  }
+  return new PagarmeService(apiKey);
 }
-
-export const pagarmeService = new PagarmeService(process.env.PAGARME_API_KEY);

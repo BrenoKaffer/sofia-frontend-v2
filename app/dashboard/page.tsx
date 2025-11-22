@@ -93,6 +93,15 @@ export default function DashboardPage() {
     batchMs: 500
   });
 
+  // Mapear status do realtime para os valores esperados pelo UI
+  type UiRealtimeStatus = 'connected' | 'reconnecting' | 'disconnected';
+  const toUiRealtimeStatus = (status?: string): UiRealtimeStatus | undefined => {
+    if (!status) return undefined;
+    if (status === 'connected') return 'connected';
+    if (status === 'connecting' || status === 'reconnecting') return 'reconnecting';
+    return 'disconnected';
+  };
+
   // Frases motivacionais reais sobre estratégias de roleta
   const motivationalPhrases = [
     "Disciplina e gestão de banca são fundamentais para o sucesso sustentável",
@@ -1345,7 +1354,7 @@ export default function DashboardPage() {
                     countdown={countdown} 
                     progressValue={progressValue} 
                     loading={loading_data}
-                    realtimeStatus={realtimeStatus}
+                    realtimeStatus={toUiRealtimeStatus(realtimeStatus)}
                     onGoToTable={(signal) => setSelectedActiveTable({
                       tableId: signal.table_id,
                       strategyName: signal.strategy_id,

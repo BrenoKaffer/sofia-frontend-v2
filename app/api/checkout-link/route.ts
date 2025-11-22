@@ -3,11 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Configurações da Pagar.me
 const PAGARME_API_URL = 'https://api.pagar.me/core/v5/orders';
 
-// Verificação obrigatória da variável de ambiente
-if (!process.env.PAGARME_SECRET_KEY) {
-  throw new Error('PAGARME_SECRET_KEY é obrigatória. Configure a variável de ambiente.');
-}
-
+// Não lançar erro em tempo de build; validar dentro dos handlers
 const PAGARME_SECRET_KEY = process.env.PAGARME_SECRET_KEY;
 
 interface CheckoutItem {
@@ -119,6 +115,14 @@ export async function POST(request: NextRequest) {
         created_at: mockResponse.created_at,
         expires_in: 3600
       });
+    }
+
+    // Em produção, validar a chave antes de prosseguir
+    if (!PAGARME_SECRET_KEY) {
+      return NextResponse.json(
+        { error: 'PAGARME_SECRET_KEY não configurada' },
+        { status: 500 }
+      );
     }
 
     // Fazer requisição real para a API da Pagar.me

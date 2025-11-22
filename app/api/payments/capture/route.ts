@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Configuração da API da Pagar.me
-// Verificação obrigatória da variável de ambiente
-if (!process.env.PAGARME_API_KEY) {
-  throw new Error('PAGARME_API_KEY é obrigatória. Configure a variável de ambiente.');
-}
-
 const PAGARME_API_KEY = process.env.PAGARME_API_KEY;
 const PAGARME_API_URL = 'https://api.pagar.me/1';
 
@@ -18,6 +13,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Dados obrigatórios não fornecidos' },
         { status: 400 }
+      );
+    }
+
+    // Validar chave de API
+    if (!PAGARME_API_KEY) {
+      return NextResponse.json(
+        { error: 'PAGARME_API_KEY não configurada' },
+        { status: 500 }
       );
     }
 

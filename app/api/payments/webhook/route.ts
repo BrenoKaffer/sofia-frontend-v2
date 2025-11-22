@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pagarmeService } from '@/lib/pagarme-service';
+export const runtime = 'nodejs'
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
 import { redisCache, CACHE_TTL } from '@/lib/redis';
@@ -25,7 +25,11 @@ export async function POST(request: NextRequest) {
     // Validar webhook (opcional - requer configuração de secret)
     const webhookSecret = process.env.PAGARME_WEBHOOK_SECRET;
     if (webhookSecret) {
-      const isValid = pagarmeService.validateWebhook(signature, body, webhookSecret);
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(body)
+        .digest('hex');
+      const isValid = signature === expectedSignature;
       if (!isValid) {
         logger.warn('Webhook inválido recebido', { 
           metadata: { signature } 
