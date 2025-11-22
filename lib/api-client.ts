@@ -29,8 +29,16 @@ class ApiClient {
 
   constructor() {
     // Configuração: preferir URLs definidas via env, com fallback para rotas internas /api
-    const sofiaBackendUrl = process.env.SOFIA_BACKEND_URL;
-    if (sofiaBackendUrl) {
+    const explicitApiBase = process.env.NEXT_PUBLIC_API_BASE_URL; // e.g., http://localhost:3002/api
+    const sofiaBackendUrl = process.env.SOFIA_BACKEND_URL; // e.g., http://localhost:3001
+
+    if (explicitApiBase) {
+      this.baseUrl = explicitApiBase;
+      // Se terminar com /api, usar /api/public; caso contrário, anexar /public
+      this.publicBaseUrl = explicitApiBase.endsWith('/api')
+        ? `${explicitApiBase}/public`
+        : `${explicitApiBase}/public`;
+    } else if (sofiaBackendUrl) {
       this.baseUrl = `${sofiaBackendUrl}/api`;
       this.publicBaseUrl = `${sofiaBackendUrl}/api/public`;
     } else {
@@ -154,6 +162,16 @@ class ApiClient {
   }
 
   /**
+   * Buscar status das roletas
+   */
+  async getRouletteStatus(tableId?: string) {
+    const params = new URLSearchParams();
+    if (tableId) params.append('table_id', tableId);
+    const queryString = params.toString();
+    return this.makeRequest(`${this.baseUrl}/roulette-status${queryString ? `?${queryString}` : ''}`);
+  }
+
+  /**
    * Buscar sinais recentes (histórico de sinais)
    */
   async getRecentSignals(tableId?: string, limit = 20, confidenceMin?: number) {
@@ -163,6 +181,17 @@ class ApiClient {
     if (confidenceMin) params.append('confidence_level', confidenceMin.toString());
     
     return this.makeRequest(`${this.baseUrl}/signals-history?${params}`);
+  }
+
+  /**
+   * Buscar sinais recentes do backend (rota específica /signals/recent)
+   */
+  async getSignalsRecent(tableId?: string, limit = 20, confidenceMin?: number) {
+    const params = new URLSearchParams();
+    if (tableId) params.append('table_id', tableId);
+    params.append('limit', limit.toString());
+    if (confidenceMin) params.append('confidence_min', confidenceMin.toString());
+    return this.makeRequest(`${this.baseUrl}/signals/recent?${params.toString()}`);
   }
 
   // Método para buscar sinais de IA

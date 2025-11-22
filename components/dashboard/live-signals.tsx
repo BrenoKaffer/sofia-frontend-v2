@@ -53,9 +53,10 @@ interface LiveSignalsProps {
   activeSignal?: GeneratedSignal | null;
   countdown?: number;
   progressValue?: number;
+  realtimeStatus?: 'connected' | 'reconnecting' | 'disconnected';
 }
 
-export function LiveSignals({ signals = [], loading = false, onGoToTable, activeSignal, countdown, progressValue }: LiveSignalsProps) {
+export function LiveSignals({ signals = [], loading = false, onGoToTable, activeSignal, countdown, progressValue, realtimeStatus }: LiveSignalsProps) {
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
 
   // Função para truncar texto
@@ -353,6 +354,21 @@ export function LiveSignals({ signals = [], loading = false, onGoToTable, active
               {isLive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               <span className="font-jakarta">{isLive ? 'Pausar' : 'Iniciar'}</span>
             </Button>
+            {(() => {
+              if (!realtimeStatus) return null;
+              const statusLabel = realtimeStatus === 'connected' ? 'Conectado' : realtimeStatus === 'reconnecting' ? 'Reconectando' : 'Desconectado';
+              const statusClasses =
+                realtimeStatus === 'connected'
+                  ? 'bg-green-500/10 text-green-700 border-green-500/30'
+                  : realtimeStatus === 'reconnecting'
+                  ? 'bg-yellow-500/10 text-yellow-700 border-yellow-500/30'
+                  : 'bg-red-500/10 text-red-700 border-red-500/30';
+              return (
+                <Badge variant="outline" className={`font-jakarta ${statusClasses}`}>
+                  Realtime: {statusLabel}
+                </Badge>
+              );
+            })()}
           </div>
         </div>
       </CardHeader>

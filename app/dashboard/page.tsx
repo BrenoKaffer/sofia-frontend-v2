@@ -19,6 +19,7 @@ import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { useDashboardPreferences } from '@/hooks/use-dashboard-preferences';
 import { withLazyLoading } from '@/components/lazy/lazy-component';
 import { apiClient } from '@/lib/api-client';
+import { useRealtimeSignals } from '@/hooks/use-websocket';
 import { usePerformanceMonitoring, useSmartMemo, useDebounce } from '@/hooks/use-performance';
 
 // Componentes lazy
@@ -85,6 +86,12 @@ export default function DashboardPage() {
   const [selectedActiveTable, setSelectedActiveTable] = useState<{ tableId: string; strategyName: string; suggestedBets: (string | number)[] } | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const lastActivityRef = useRef<number>(Date.now());
+  // Assinar sinais em tempo real e filtrar por mesa ativa (se houver)
+  const { signals: realtimeSignals, status: realtimeStatus } = useRealtimeSignals({ 
+    limit: 50,
+    tableId: selectedActiveTable?.tableId,
+    batchMs: 500
+  });
 
   // Frases motivacionais reais sobre estratégias de roleta
   const motivationalPhrases = [
@@ -269,6 +276,50 @@ export default function DashboardPage() {
       return [];
     }
   }, [getToken]);
+
+  // Mesclar sinais em tempo real com os carregados inicialmente
+  useEffect(() => {
+    try {
+      if (Array.isArray(realtimeSignals) && realtimeSignals.length > 0) {
+        setLiveSignalsData((prev) => {
+          const existingIds = new Set(prev.map((s) => s.id));
+          const normalized = realtimeSignals.map((s) => ({
+            id: s.id,
+            strategy_name: s.strategy_name,
+            strategy_id: s.strategy_id,
+            table_id: s.table_id,
+            suggested_bets: s.suggested_bets ?? s.bet_numbers ?? [],
+            bet_numbers: s.bet_numbers ?? s.suggested_bets ?? [],
+            suggested_units: typeof s.suggested_units === 'number' ? s.suggested_units : 1,
+            confidence_level: s.confidence_level,
+            confidence_score: typeof s.confidence_score === 'number' ? s.confidence_score : s.confidence_level,
+            confidence_factors: s.confidence_factors,
+            timestamp_generated: s.timestamp_generated,
+            expires_at: s.expires_at,
+            expected_return: s.expected_return,
+            is_validated: false,
+            type: 'pattern',
+            status: s.status ?? 'active',
+            message: s.message ?? ''
+          }));
+
+          const fresh = normalized.filter((s) => !existingIds.has(s.id));
+          const merged = [...fresh, ...prev];
+          return merged.slice(0, 100);
+        });
+      }
+      // Atualizar status de conexão
+      if (realtimeStatus === 'connected') {
+        setConnectionStatus('connected');
+      } else if (realtimeStatus === 'connecting') {
+        setConnectionStatus('reconnecting');
+      } else {
+        setConnectionStatus('disconnected');
+      }
+    } catch (e) {
+      console.warn('Falha ao mesclar sinais realtime:', e);
+    }
+  }, [realtimeSignals, realtimeStatus]);
  
   // Função para atualizar KPIs periodicamente
   const updateKPIs = useCallback(async () => {
@@ -391,10 +442,7 @@ export default function DashboardPage() {
       const token = await getToken();
       console.log('🔑 Token obtido:', token ? 'Sim' : 'Não');
       
-      const response = await apiClient.get('/roulette-history?limit=100', {
-        headers: buildHeaders(token),
-        timeout: 12000,
-      });
+      const response = await apiClient.getRouletteHistory(undefined, 100);
       const data: RouletteSpin[] = ((response as any)?.data ?? response) as RouletteSpin[];
       console.log('✅ Roulette history fetched successfully:', data);
       console.log('📊 Número de giros recebidos:', data.length);
@@ -421,10 +469,7 @@ export default function DashboardPage() {
       const token = await getToken();
       console.log('🔑 Token obtido:', token ? 'Sim' : 'Não');
       
-      const response = await apiClient.get('/roulette-status', {
-        headers: buildHeaders(token),
-        timeout: 10000,
-      });
+      const response = await apiClient.getRouletteStatus();
       const data = (response as any)?.data ?? response;
       console.log('✅ Roulette status fetched successfully:', data);
       console.log('📊 Tipo de dados retornados:', typeof data, Array.isArray(data) ? 'Array' : 'Object');
@@ -449,10 +494,7 @@ export default function DashboardPage() {
       const token = await getToken();
       console.log('🔑 Token para padrões obtido:', token ? 'Sim' : 'Não');
       
-      const response = await apiClient.get('/signals/recent?limit=5', {
-        headers: buildHeaders(token),
-        timeout: 15000,
-      });
+      const response = await apiClient.getSignalsRecent(undefined, 5);
       const rawDataAny: any = (response as any)?.data ?? response;
       console.log('✅ Recent signals fetched successfully:', rawDataAny);
       
@@ -480,10 +522,7 @@ export default function DashboardPage() {
       // Buscar as preferências atuais do usuário para filtrar
       let currentMonitoredTables: string[] = [];
       try {
-        const prefsResp = await apiClient.get('/user-preferences', {
-          headers: buildHeaders(token),
-          timeout: 5000,
-        });
+        const prefsResp = await apiClient.getUserPreferences();
         const preferences = (prefsResp as any)?.data ?? prefsResp;
         currentMonitoredTables = Array.isArray(preferences?.tables) ? preferences.tables : [];
       } catch (error) {
@@ -1306,6 +1345,7 @@ export default function DashboardPage() {
                     countdown={countdown} 
                     progressValue={progressValue} 
                     loading={loading_data}
+                    realtimeStatus={realtimeStatus}
                     onGoToTable={(signal) => setSelectedActiveTable({
                       tableId: signal.table_id,
                       strategyName: signal.strategy_id,

@@ -346,7 +346,13 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
         return
       }
       const data = await resp.json()
-      const list = Array.isArray(data) ? data : (data?.strategies || [])
+      const rawList = Array.isArray(data) ? data : (data?.strategies || [])
+      // Garanta que cada estratégia tenha arrays válidos para evitar crashes no render
+      const list = rawList.map((s: any) => ({
+        ...s,
+        nodes: Array.isArray(s?.nodes) ? s.nodes : (Array.isArray(s?.graph?.nodes) ? s.graph.nodes : []),
+        connections: Array.isArray(s?.connections) ? s.connections : (Array.isArray(s?.graph?.connections) ? s.graph.connections : [])
+      }))
       setStrategies(list)
       toast.success('Estratégias carregadas do servidor.')
     } catch (e: any) {
@@ -484,7 +490,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       if (list.length > 0) {
         const first = list[0]
         setCurrentStrategyId(first.id)
-        setNodes([...first.nodes])
+        setNodes(normalizeNodes(first.nodes))
         setConnections([...first.connections])
         setSelectedNode(null)
         setIsBuilderOpen(true)
@@ -535,6 +541,23 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
      setDraftStrategyName(`${tpl.name || 'Template'} (cópia)`) 
      setIsBuilderOpen(true)
      toast.success('Cópia criada. Edite e salve sua estratégia.')
+   }
+
+   // Normaliza nós carregados do servidor/arquivo para garantir posição e label
+   function normalizeNodes(arr: any[]): StrategyNode[] {
+     const GRID_X = 160
+     const GRID_Y = 120
+     return (Array.isArray(arr) ? arr : []).map((n: any, idx: number) => {
+       const hasPos = n && n.position && Number.isFinite(n.position.x) && Number.isFinite(n.position.y)
+       const fallbackPos = { x: 120 + (idx % 5) * GRID_X, y: 120 + Math.floor(idx / 5) * GRID_Y }
+       return {
+         id: String(n?.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+         type: (n?.type as NodeType) || 'condition',
+         subtype: n?.subtype,
+         position: hasPos ? n.position : fallbackPos,
+         data: { ...(n?.data || {}), label: n?.data?.label || n?.type || 'Nó' }
+       }
+     })
    }
 
    async function duplicateAndSaveTemplate(tpl: any) {
@@ -803,8 +826,8 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     const s = strategies.find(st => st.id === strategyId)
     if (!s) return
     setCurrentStrategyId(strategyId)
-    setNodes([...s.nodes])
-    setConnections([...s.connections])
+    setNodes(normalizeNodes(s.nodes))
+    setConnections(Array.isArray(s.connections) ? [...s.connections] : [])
     setSelectedNode(null)
     setDraftStrategyName(s.name || '')
     setSelectionMode((s.selectionMode as 'automatic' | 'hybrid' | 'manual') || 'automatic')
@@ -2055,7 +2078,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                             <div>
                               <div className="font-medium">{s.name}</div>
                               <div className="text-xs text-muted-foreground">
-                                {s.status === 'active' ? 'Ativa' : 'Pausada'} &bull; {s.nodes.length} nós &bull; atualizado {new Date(s.updatedAt).toLocaleString()}
+                                {s.status === 'active' ? 'Ativa' : 'Pausada'} &bull; {Array.isArray(s.nodes) ? s.nodes.length : 0} nós &bull; atualizado {new Date(s.updatedAt).toLocaleString()}
                               </div>
                             </div>
                             <div className="flex items-center">

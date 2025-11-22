@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Filter, Calendar, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser } from '@/hooks/use-user';
 import { apiClient } from '@/lib/api-client';
+import { useRealtimeSignals } from '@/hooks/use-websocket';
 
 // Interfaces
 interface SignalHistoryItem {
@@ -81,6 +82,14 @@ export default function RegistrosDePadroesPage() {
     items_per_page: 20
   });
 
+  // Assinar eventos em tempo real para auto-refresh e exibir status
+  const { status: realtimeStatus, lastUpdate } = useRealtimeSignals({
+    tableId: filters.table_id,
+    confidenceMin: filters.confidence_min,
+    limit: itemsPerPage,
+    batchMs: 1000
+  });
+
   // Função para buscar histórico de sinais
   const fetchSignalsHistory = useCallback(async (page: number = 1) => {
     try {
@@ -121,6 +130,14 @@ export default function RegistrosDePadroesPage() {
   useEffect(() => {
     fetchSignalsHistory(1);
   }, [fetchSignalsHistory]);
+
+  // Auto-refresh quando houver atualização em tempo real
+  useEffect(() => {
+    if (lastUpdate) {
+      fetchSignalsHistory(currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastUpdate]);
 
   // Handlers
   const handleApplyFilters = () => {
@@ -214,6 +231,22 @@ export default function RegistrosDePadroesPage() {
               <Calendar className="h-4 w-4" />
               Exportar
             </Button>
+            <Badge
+              variant="outline"
+              className={
+                realtimeStatus === 'connected'
+                  ? 'bg-green-600 text-white border-green-600'
+                  : realtimeStatus === 'connecting'
+                  ? 'bg-yellow-500 text-black border-yellow-500'
+                  : 'bg-red-600 text-white border-red-600'
+              }
+            >
+              {realtimeStatus === 'connected'
+                ? 'Realtime: Conectado'
+                : realtimeStatus === 'connecting'
+                ? 'Realtime: Reconectando'
+                : 'Realtime: Desconectado'}
+            </Badge>
           </div>
         </div>
 

@@ -131,31 +131,71 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 }
 
 // Hook específico para sinais em tempo real
-export function useRealtimeSignals() {
+export interface UseRealtimeSignalsOptions {
+  tableId?: string;
+  confidenceMin?: number;
+  limit?: number; // máximo de itens mantidos em memória
+  batchMs?: number; // janela para agrupar altas taxas
+}
+
+export function useRealtimeSignals(options: UseRealtimeSignalsOptions = {}) {
+  const { tableId, confidenceMin, limit = 50, batchMs = 500 } = options;
   const [signals, setSignals] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const { isConnected, subscribe } = useWebSocket({
+  const bufferRef = useRef<any[]>([]);
+  const flushTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { isConnected, status, subscribe } = useWebSocket({
     autoConnect: true
   });
 
   useEffect(() => {
-    const unsubscribe = subscribe('signal', (data) => {
+    const flush = () => {
+      if (bufferRef.current.length === 0) return;
+      const batch = bufferRef.current;
+      bufferRef.current = [];
       setSignals(prev => {
-        // Adicionar novo sinal e manter apenas os últimos 50
-        const updated = [data, ...prev].slice(0, 50);
-        return updated;
+        const merged = [...batch.reverse(), ...prev];
+        return merged.slice(0, limit);
       });
       setLastUpdate(new Date());
+    };
+
+    const unsubscribe = subscribe('signal', (data) => {
+      try {
+        // Filtrar por mesa e confiança mínima, se definidos
+        const passTable = tableId ? (data.table_id === tableId) : true;
+        const passConfidence = typeof confidenceMin === 'number' ? ((data.confidence_level ?? data.confidence ?? 0) >= confidenceMin) : true;
+        if (!passTable || !passConfidence) return;
+
+        bufferRef.current.push(data);
+        if (!flushTimerRef.current) {
+          flushTimerRef.current = setTimeout(() => {
+            flushTimerRef.current = null;
+            flush();
+          }, batchMs);
+        }
+      } catch (e) {
+        // evitar quebra em dados malformados
+        console.warn('Realtime signal parse error:', e);
+      }
     });
 
-    return unsubscribe;
-  }, [subscribe]);
+    return () => {
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+      unsubscribe();
+    };
+  }, [subscribe, tableId, confidenceMin, limit, batchMs]);
 
   return {
     signals,
     lastUpdate,
-    isConnected
+    isConnected,
+    status
   };
 }
 

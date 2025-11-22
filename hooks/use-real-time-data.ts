@@ -128,6 +128,15 @@ export function useRealTimeData<T = any>(options: UseRealTimeDataOptions = {}) {
       updateData(result as T, result.cacheAge);
       
     } catch (error) {
+      // Ignorar aborts/timeout silenciosamente para evitar ruído em navegação/re-render
+      if (error && (error as any).name === 'AbortError') {
+        setState(prev => ({ ...prev, isLoading: false }));
+        // Reagendar polling normalmente
+        if (isActiveRef.current && retryCountRef.current === 0) {
+          pollingRef.current = setTimeout(fetchRealtimeData, pollingInterval);
+        }
+        return;
+      }
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       
       // Implementar retry logic

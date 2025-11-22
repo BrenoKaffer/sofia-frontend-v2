@@ -209,28 +209,43 @@ class Logger {
         console.log('Dados sendo enviados para API:', JSON.stringify(logData, null, 2));
       }
 
-      // Fazer chamada para a API /api/logs
-      const response = await fetch('/api/logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-session-id': this.sessionId,
-        },
-        body: JSON.stringify(logData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
-        throw new Error(`API Error ${response.status}: ${errorData.error || errorData.message || 'Erro desconhecido'}`);
-      }
-
-      const result = await response.json();
-      
-      if (this.isDevelopment) {
-        console.debug('Log persistido com sucesso via API:', result.message);
+      // Enviar logs usando sendBeacon quando disponível para evitar AbortError em unload/navegação
+      if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+        const blob = new Blob([JSON.stringify(logData)], { type: 'application/json' });
+        // Best-effort: se sendBeacon retornar false, não fazer fallback para fetch (evita ERR_ABORTED)
+        (navigator as any).sendBeacon('/api/logs', blob);
+        if (this.isDevelopment) {
+          console.debug('Log tentado via sendBeacon (best-effort)');
+        }
+        return; // Não continuar com fetch para evitar aborts em transições
+      } else {
+        // Ambiente sem sendBeacon
+        const response = await fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-session-id': this.sessionId,
+          },
+          body: JSON.stringify(logData),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+          throw new Error(`API Error ${response.status}: ${errorData.error || errorData.message || 'Erro desconhecido'}`);
+        }
+        const result = await response.json();
+        if (this.isDevelopment) {
+          console.debug('Log persistido com sucesso via API:', result.message);
+        }
       }
 
     } catch (error: any) {
+      // Ignorar AbortError (comum em transições de rota/fechamento de aba)
+      if (error?.name === 'AbortError') {
+        if (this.isDevelopment) {
+          console.debug('Persistência de log abortada (provável unload/navegação), ignorando');
+        }
+        return;
+      }
       // Verificar se é erro de conectividade ou de rede
       const isNetworkError = error.message?.includes('Failed to fetch') || 
                             error.message?.includes('Network') ||
