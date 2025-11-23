@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { apiCallWithRetry, ApiError, retryConfigs } from '@/lib/api-retry';
 
-// Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+// Configuração do Backend SOFIA (env primeiro, fallback para localhost)
+const BACKEND_BASE = process.env.SOFIA_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const SOFIA_BACKEND_URL = `${BACKEND_BASE}/api`;
 
 interface StrategyDescription {
   strategy_name: string;

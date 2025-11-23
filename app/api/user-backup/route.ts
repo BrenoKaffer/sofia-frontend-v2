@@ -3,8 +3,9 @@ import { writeFile, readFile, readdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 
-// Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+// Configuração do Backend SOFIA (env primeiro, fallback para localhost)
+const BACKEND_BASE = process.env.SOFIA_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const SOFIA_BACKEND_URL = `${BACKEND_BASE}/api`;
 const BACKUP_DIR = join(process.cwd(), 'backups');
 
 // Garantir que o diretório de backup existe

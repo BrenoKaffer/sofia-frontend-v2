@@ -78,6 +78,14 @@ const FIELD_HELP: Record<string, { label?: string; description: string; example?
   setor: { label: 'Setor', description: 'Setor da roleta europeia: Voisins, Tiers ou Orphelins.', example: 'Voisins' }
 }
 
+// Rótulos em português para selects, mantendo valores internos originais
+const SELECT_LABELS_PT: Record<string, Record<string, string>> = {
+  selectionMode: { automatic: 'automático', hybrid: 'híbrido', manual: 'manual' },
+  operador: { AND: 'E', OR: 'OU', NOT: 'NÃO' },
+  acao: { emitir_sinal: 'emitir sinal' },
+  prioridade: { normal: 'normal' }
+}
+
 // Mapeamento de cores reais da roleta europeia
 const RED_NUMBERS = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]
 const BLACK_NUMBERS = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]
@@ -1166,6 +1174,31 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     }
   }
 
+  // Botão único de teste: tenta histórico real quando possível e faz fallback para teste local
+  async function unifiedTest() {
+    if (isTesting || isValidatingServer) return
+    const limit = Math.max(1, Math.min(500, Number(realHistoryLimit) || 60))
+    if (serverToken) {
+      try {
+        const headers: HeadersInit = { 'Authorization': `Bearer ${serverToken}` }
+        const resp = await fetch(`/api/roulette-history?limit=${limit}`, { headers })
+        const data = await resp.json().catch(() => ({}))
+        const ok = resp.ok && (data as any)?.success && Array.isArray((data as any).data)
+        const spins = ok ? (((data as any).data as any[]).map((d: any) => Number(d.number)).filter((n: number) => Number.isFinite(n))) : []
+        if (ok && spins.length > 0) {
+          setSimulatedHistoryInput(spins.join(','))
+          setHistorySource('real')
+          return testStrategy()
+        }
+        toast.message('Histórico real indisponível. Executando teste local.')
+      } catch {
+        toast.message('Falha ao consultar histórico real. Executando teste local.')
+      }
+    }
+    setHistorySource('manual')
+    return testStrategy()
+  }
+
   async function validateSignalOnServer() {
     if (isValidatingServer) return
     const signalId = validationSignalId || (testReport.signals[0]?.nodeId || '')
@@ -1392,9 +1425,11 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(f.options || []).map((opt) => (
-                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                  ))}
+                  {(f.options || []).map((opt) => {
+                    const labelMap = SELECT_LABELS_PT[f.key || ''] || {}
+                    const label = labelMap[opt] || opt
+                    return <SelectItem key={opt} value={opt}>{label}</SelectItem>
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -1549,15 +1584,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
             const cfg = selectedNode.data.config || {}
             const selectedNums: number[] = Array.isArray(cfg.numeros) ? cfg.numeros : []
             const mode = String(cfg.selectionMode || 'manual').toLowerCase()
-            const action = String(cfg.acao || 'emitir_sinal').toLowerCase()
-            if (action !== 'apostar') {
-              return (
-                <div key={f.key}>
-                  <Label className="text-xs">{f.label}</Label>
-                  <div className="text-[10px] text-muted-foreground mb-1">Disponível apenas quando Ação = apostar.</div>
-                </div>
-              )
-            }
+            // No MVP, o seletor de números deve estar sempre disponível
             const toggleNumber = (num: number) => {
               let next = Array.isArray(selectedNums) ? [...selectedNums] : []
               if (next.includes(num)) next = next.filter(n => n !== num)
@@ -1574,13 +1601,17 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                 ...selectedNode.data,
                 config: { ...(selectedNode.data.config || {}), numeros: uniq } 
               } })
+              // Se o usuário começar a selecionar números e o modo for automático, mudar para manual
+              if (uniq.length > 0 && selectionMode === 'automatic') {
+                setSelectionMode('manual')
+              }
             }
             const invertSelection = () => {
               const all = Array.from({ length: 37 }, (_, i) => i)
               const next = all.filter(n => !selectedNums.includes(n))
               setSelection(next)
             }
-            const selectNone = () => setSelection([])
+            const selectNone = () => { setSelection([]); }
             const selectReds = () => setSelection(RED_NUMBERS)
             const selectBlacks = () => setSelection(BLACK_NUMBERS)
             const selectZero = () => setSelection([0])
@@ -1636,9 +1667,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
             return (
               <div key={f.key}>
                 <Label className="text-xs">{f.label}</Label>
-                {mode !== 'manual' ? (
-                  <div className="text-[10px] text-muted-foreground mb-1">Modo {mode}: seleção manual é ignorada.</div>
-                ) : null}
                 <div className="mt-1 pr-1">
                   <div className="flex flex-wrap gap-1 mb-2">
                     <Button size="sm" variant="outline" onClick={selectNone}>Limpar</Button>
@@ -1664,8 +1692,9 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                     <Button size="sm" variant="outline" disabled={!selectedNums.length} onClick={() => addNeighbors(1)}>+ Vizinhos ±1</Button>
                     <Button size="sm" variant="outline" disabled={!selectedNums.length} onClick={() => addNeighbors(2)}>+ Vizinhos ±2</Button>
                   </div>
-                  <div className="grid grid-cols-9 gap-1">
-                    {Array.from({ length: 37 }, (_, i) => i).map((num) => {
+                  {/* Seletor circular estilo roleta europeia */}
+                  <div className="relative mx-auto" style={{ width: 240, height: 240 }}>
+                    {EUROPEAN_WHEEL.map((num, i) => {
                       const active = selectedNums.includes(num)
                       const isRed = RED_NUMBERS.includes(num)
                       const isGreen = GREEN_NUMBERS.includes(num)
@@ -1675,18 +1704,28 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                         : isGreen
                         ? (active ? 'bg-green-600 hover:bg-green-700 text-white border-green-700' : 'text-green-600 border-green-300 hover:bg-green-50')
                         : (active ? 'bg-black hover:bg-black text-white border-black' : 'text-white border-white hover:bg-white/10 font-normal')
+                      const N = EUROPEAN_WHEEL.length
+                      const angle = (2 * Math.PI * i) / N - Math.PI / 2
+                      const r = 100
+                      const cx = 120
+                      const cy = 120
+                      const left = cx + r * Math.cos(angle) - 14
+                      const top = cy + r * Math.sin(angle) - 14
                       return (
                         <Button
-                          key={`n-${num}`}
+                          key={`wheel-n-${num}`}
                           size="sm"
                           variant={active ? 'default' : 'outline'}
-                          className={`h-7 w-7 p-0 ${style}`}
+                          className={`h-7 w-7 p-0 absolute ${style}`}
+                          style={{ left, top }}
                           onClick={() => toggleNumber(num)}
                         >
                           {num}
                         </Button>
                       )
                     })}
+                    {/* Centro decorativo */}
+                    <div className="absolute rounded-full border border-white/30" style={{ left: 90, top: 90, width: 60, height: 60 }} />
                   </div>
                 </div>
 
@@ -1695,6 +1734,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                   <div>Resumo: total {selectedNums.length}; Vermelhos {redsCount}; Pretos {blacksCount}; Zero {zeroCount}</div>
                   <div>Par {evenCount}; Ímpar {oddCount}; Dúzias [ {dozen1Count}, {dozen2Count}, {dozen3Count} ]</div>
                   <div>Colunas [ {col1Count}, {col2Count}, {col3Count} ]</div>
+                  <div className="mt-1">MVP: ação = "Emitir Sinal"; a seleção de números é opcional e serve para visualização/futuras apostas.</div>
                 </div>
               </div>
             )
@@ -2471,25 +2511,13 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
         </Card>
       </div>
       <Separator className="my-4" />
-      <DialogFooter>
+      <DialogFooter className="sm:justify-start">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Modo de seleção</Label>
-              <Select value={selectionMode} onValueChange={(val) => setSelectionMode(val as 'automatic' | 'hybrid' | 'manual')}>
-                <SelectTrigger className="h-8 w-[160px]">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="automatic">automatic</SelectItem>
-                  <SelectItem value="hybrid">hybrid</SelectItem>
-                  <SelectItem value="manual">manual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Modo de seleção oculto no MVP */}
             <div className="flex items-center gap-2 mt-5">
               <Switch checked={gatingEnabled} onCheckedChange={setGatingEnabled} />
-              <Label className="text-xs">Gating</Label>
+              <Label className="text-xs">Limites (gating)</Label>
             </div>
             <div className="space-y-1 mt-5">
               <Label className="text-xs">Amostra real (giros)</Label>
@@ -2507,83 +2535,17 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
               />
               <p className="text-[10px] text-muted-foreground">1–500; usado ao testar com histórico real.</p>
             </div>
-            <div className="mt-5 flex items-center gap-2">
-              {backendHealth ? (
-                <>
-                  {backendHealth.status === 'healthy' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : backendHealth.status === 'degraded' ? (
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <Badge variant="outline">
-                    Backend: {backendHealth.status}
-                    {backendHealth.metrics?.responseTime ? ` • ${Math.round(backendHealth.metrics.responseTime)} ms` : ''}
-                  </Badge>
-                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={refreshBackendHealth} disabled={isHealthLoading}>
-                    {isHealthLoading ? 'Atualizando...' : 'Atualizar'}
-                  </Button>
-                </>
-              ) : (
-                <Button size="sm" variant="ghost" className="h-7 px-2" onClick={refreshBackendHealth} disabled={isHealthLoading}>
-                  {isHealthLoading ? 'Atualizando...' : 'Ver status'}
-                </Button>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+            {/* Bloco de status do backend removido para simplificação da UI */}
 
+            {/* Botão de teste movido para o lado esquerdo */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" onClick={() => {
-                    try {
-                      localStorage.removeItem('builder-preferences')
-                    } catch {}
-                    setSelectionMode('automatic')
-                    setGatingEnabled(false)
-                    setRealHistoryLimit(60)
-                    setHistorySource('manual')
-                    toast.success('Preferências redefinidas')
-                  }}>
-                    <RotateCcw className="mr-2 h-4 w-4" /> Redefinir preferências
+                  <Button variant="secondary" onClick={unifiedTest} disabled={isTesting || isValidatingServer} className="mt-5">
+                    <Play className="mr-2 h-4 w-4" /> {isTesting ? 'Testando...' : 'Testar'}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Restaura preferências do Builder para padrão</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" onClick={testStrategyWithRealHistory} disabled={isTesting || isValidatingServer}>
-                    <Play className="mr-2 h-4 w-4" /> {isTesting ? 'Buscando...' : 'Testar com histórico real'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Valida contra histórico real do backend</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" onClick={testStrategy} disabled={isTesting}>
-                    <Play className="mr-2 h-4 w-4" /> {isTesting ? 'Testando...' : 'Testar Estratégia'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Simula execução local usando histórico manual</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button onClick={saveStrategy}>
-                    <Save className="mr-2 h-4 w-4" /> Salvar
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Grava a estratégia atual</TooltipContent>
+                <TooltipContent>Executa o teste (usa histórico real quando disponível)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -2839,8 +2801,8 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="hit">hit</SelectItem>
-                            <SelectItem value="miss">miss</SelectItem>
+                  <SelectItem value="hit">acerto</SelectItem>
+                  <SelectItem value="miss">erro</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

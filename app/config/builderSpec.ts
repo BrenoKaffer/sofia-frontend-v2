@@ -133,13 +133,6 @@ export const builderSpec: BuilderSpec = {
             nodes: [
               {
                 type: 'condition',
-                subtype: 'repetition',
-                label: 'Repetição de Evento',
-                description: 'Verifica se um evento (cor, número, setor) se repete N vezes seguidas.',
-                defaultConfig: { evento: 'vermelho', ocorrencias: 3 }
-              },
-              {
-                type: 'condition',
                 subtype: 'absence',
                 label: 'Ausência de Evento',
                 description: 'Verifica se um evento está ausente há X rodadas.',
@@ -154,94 +147,67 @@ export const builderSpec: BuilderSpec = {
               },
               {
                 type: 'condition',
-                subtype: 'pattern',
-                label: 'Padrão Customizado',
-                description: 'Busca uma sequência específica no histórico (ex.: vermelho, preto, vermelho).',
-                defaultConfig: { sequencia: ['vermelho', 'preto', 'vermelho'], modo: 'exato' }
-              },
-              {
-                type: 'condition',
-                subtype: 'break',
-                label: 'Quebra de Padrão',
-                description: 'Detecta quando uma sequência é interrompida (ex.: 6 pretos → vermelho).',
-                defaultConfig: { evento: 'preto', minimo: 6 }
+                subtype: 'repetition',
+                label: 'Repetição de Evento',
+                description: 'Verifica se um evento (cor, número, setor) se repete N vezes seguidas.',
+                defaultConfig: { evento: 'vermelho', ocorrencias: 3 }
               },
               {
                 type: 'condition',
                 subtype: 'neighbors',
-                label: 'Vizinhos / Setor',
-                description: 'Verifica ocorrências em torno de um número ou setor do cilindro.',
+                label: 'Vizinhos',
+                description: 'Seleciona vizinhos ao redor de um número de referência (raio ±N na roda europeia).',
                 defaultConfig: { numero: 17, raio: 2, includeZero: true }
-              },
-              {
-                type: 'condition',
-                subtype: 'repeat-number',
-                label: 'Número Repetido',
-                description: 'Verifica se um número se repete N vezes seguidas.',
-                defaultConfig: { numero: 7, ocorrencias: 2 }
-              },
-              {
-                type: 'condition',
-                subtype: 'time-window',
-                label: 'Janela Temporal',
-                description: 'Ativa quando o tamanho do histórico está entre início e fim.',
-                defaultConfig: { inicio: 10, fim: 50 }
-              },
-              {
-                type: 'condition',
-                subtype: 'sequence',
-                label: 'Sequência Exata',
-                description: 'Verifica se as últimas rodadas correspondem exatamente à sequência.',
-                defaultConfig: { sequencia: ['vermelho', 'preto', 'vermelho'] }
-              },
-              {
-                type: 'condition',
-                subtype: 'sequence_custom',
-                label: 'Sequência Custom',
-                description: 'Busca uma sequência com modo exato ou parcial.',
-                defaultConfig: { sequencia: ['vermelho', 'preto'], modo: 'exato' }
-              },
-              {
-                type: 'condition',
-                subtype: 'specific-number',
-                label: 'Número Específico',
-                description: 'Verifica presença ou ausência de um número específico.',
-                defaultConfig: { numero: 7, modo: 'ocorreu' }
-              },
-              {
-                type: 'condition',
-                subtype: 'alternation',
-                label: 'Alternância',
-                description: 'Verifica alternância entre duas categorias (cor ou paridade).',
-                defaultConfig: { eixo: 'cor', comprimento: 4 }
-              },
-              {
-                type: 'condition',
-                subtype: 'setorDominante',
-                label: 'Setor Dominante',
-                description: 'Detecta predominância de um setor (Voisins/Tiers/Orphelins) em janela.',
-                defaultConfig: { setor: 'Voisins', janela: 6, frequenciaMinima: 4 }
-              },
-              {
-                type: 'condition',
-                subtype: 'dozen_hot',
-                label: 'Dezena Quente',
-                description: 'Detecta dezenas (1–12, 13–24, 25–36) com alta frequência na janela.',
-                defaultConfig: { janela: 12, frequenciaMinima: 5 }
-              },
-              {
-                type: 'condition',
-                subtype: 'column_hot',
-                label: 'Coluna Quente',
-                description: 'Detecta colunas (1ª, 2ª, 3ª) com alta frequência na janela.',
-                defaultConfig: { janela: 12, frequenciaMinima: 5 }
               },
               {
                 type: 'condition',
                 subtype: 'mirror',
                 label: 'Espelho',
-                description: 'Seleciona o oposto diametral do último número na roda.',
-                defaultConfig: { raio: 0, includeZero: true }
+                description: 'Deriva o oposto diametral do último número e seus vizinhos pelo raio.',
+                defaultConfig: { raio: 1, includeZero: false }
+              }
+              ,
+              {
+                type: 'condition',
+                subtype: 'specific-number',
+                label: 'Número Específico',
+                description: 'Inclui um número específico para a derivação do sinal.',
+                defaultConfig: { numero: 0 }
+              },
+              {
+                type: 'condition',
+                subtype: 'alternation',
+                label: 'Alternância',
+                description: 'Prevê a próxima categoria por alternância (cor ou paridade).',
+                defaultConfig: { eixo: 'cor' }
+              },
+              {
+                type: 'condition',
+                subtype: 'setorDominante',
+                label: 'Setor Dominante',
+                description: 'Seleciona um setor dominante (Voisins/Tiers/Orphelins) manual ou automaticamente.',
+                defaultConfig: { setor: 'Voisins de Zero', auto: false, janela: 18, frequenciaMinima: 0 }
+              },
+              {
+                type: 'condition',
+                subtype: 'dozen_hot',
+                label: 'Dúzias Quentes',
+                description: 'Detecta dúzias com alta frequência em uma janela.',
+                defaultConfig: { janela: 12, frequenciaMinima: 5 }
+              },
+              {
+                type: 'condition',
+                subtype: 'column_hot',
+                label: 'Colunas Quentes',
+                description: 'Detecta colunas com alta frequência em uma janela.',
+                defaultConfig: { janela: 12, frequenciaMinima: 5 }
+              },
+              {
+                type: 'condition',
+                subtype: 'sequence_custom',
+                label: 'Sequência Personalizada',
+                description: 'Verifica correspondência com uma sequência definida e prevê o próximo.',
+                defaultConfig: { sequencia: [1,2,3], tolerancia: 0 }
               }
             ]
           },
@@ -251,7 +217,7 @@ export const builderSpec: BuilderSpec = {
               {
                 type: 'logic',
                 label: 'Operador Lógico',
-                description: 'Combina condições com AND / OR / NOT.',
+                description: 'Combina condições com AND/OR/NOT.',
                 defaultConfig: { operador: 'AND' }
               }
             ]
@@ -269,14 +235,7 @@ export const builderSpec: BuilderSpec = {
                   prioridade: 'normal',
                   selectionMode: 'manual',
                   numeros: [],
-                  stake: 1.0,
-                  protecaoTipo: 'martingale',
-                  protecaoLimite: 3,
-                  limiteRodadas: 5,
-                  excludeZero: false,
-                  maxNumbersAuto: 18,
-                  maxNumbersHybrid: 24,
-                  minManualHybrid: 1
+                  stake: 1.0
                 }
               }
             ]
@@ -299,10 +258,6 @@ export const builderSpec: BuilderSpec = {
           'trigger': [
             { label: 'Janela de Análise', type: 'number', key: 'janela' }
           ],
-          'condition:repetition': [
-            { label: 'Evento', type: 'select', options: ['vermelho', 'preto', 'par', 'ímpar', 'zero'], key: 'evento' },
-            { label: 'Ocorrências', type: 'number', key: 'ocorrencias' }
-          ],
           'condition:absence': [
             { label: 'Evento', type: 'select', options: ['zero', 'vermelho', 'preto', 'numero'], key: 'evento' },
             { label: 'Número alvo (0–36, opcional)', type: 'number', key: 'numeroAlvo' },
@@ -313,76 +268,53 @@ export const builderSpec: BuilderSpec = {
             { label: 'Janela de análise', type: 'number', key: 'janela' },
             { label: 'Frequência mínima', type: 'slider', min: 0, max: 1, step: 0.05, key: 'frequenciaMinima' }
           ],
-          'condition:pattern': [
-            { label: 'Sequência', type: 'array', key: 'sequencia' },
-            { label: 'Modo', type: 'select', options: ['exato', 'parcial'], key: 'modo' }
-          ],
-          'condition:break': [
+          'condition:repetition': [
             { label: 'Evento', type: 'select', options: ['vermelho', 'preto', 'par', 'ímpar', 'zero'], key: 'evento' },
-            { label: 'Mínimo de sequência', type: 'number', key: 'minimo' }
-          ],
-          'condition:neighbors': [
-            { label: 'Número base', type: 'number', key: 'numero' },
-            { label: 'Raio', type: 'slider', key: 'raio', min: 0, max: 6, step: 1 },
-            { label: 'Incluir Zero', type: 'checkbox', key: 'includeZero' }
-          ],
-          'condition:repeat-number': [
-            { label: 'Número', type: 'number', key: 'numero' },
             { label: 'Ocorrências', type: 'number', key: 'ocorrencias' }
           ],
-          'condition:time-window': [
-            { label: 'Início', type: 'number', key: 'inicio' },
-            { label: 'Fim', type: 'number', key: 'fim' }
-          ],
-          'condition:sequence': [
-            { label: 'Sequência', type: 'array', key: 'sequencia' }
-          ],
-          'condition:sequence_custom': [
-            { label: 'Sequência', type: 'array', key: 'sequencia' },
-            { label: 'Modo', type: 'select', options: ['exato', 'parcial'], key: 'modo' }
-          ],
-          'condition:specific-number': [
-            { label: 'Número', type: 'number', key: 'numero' },
-            { label: 'Modo', type: 'select', options: ['ocorreu', 'ausente'], key: 'modo' }
-          ],
-          'condition:alternation': [
-            { label: 'Eixo', type: 'select', options: ['cor', 'paridade'], key: 'eixo' },
-            { label: 'Comprimento', type: 'number', key: 'comprimento' }
-          ],
-          'condition:setorDominante': [
-            { label: 'Setor', type: 'select', options: ['Voisins', 'Tiers', 'Orphelins'], key: 'setor' },
-            { label: 'Janela (N últimas rodadas)', type: 'number', key: 'janela' },
-            { label: 'Frequência mínima no setor', type: 'number', key: 'frequenciaMinima' }
-          ],
-          'condition:dozen_hot': [
-            { label: 'Janela de análise', type: 'number', key: 'janela' },
-            { label: 'Ocorrências mínimas na dezena', type: 'number', key: 'frequenciaMinima' }
-          ],
-          'condition:column_hot': [
-            { label: 'Janela de análise', type: 'number', key: 'janela' },
-            { label: 'Ocorrências mínimas na coluna', type: 'number', key: 'frequenciaMinima' }
+          'condition:neighbors': [
+            { label: 'Número de referência (0–36)', type: 'number', key: 'numero' },
+            { label: 'Raio (±N na roda)', type: 'number', key: 'raio' },
+            { label: 'Incluir Zero', type: 'checkbox', key: 'includeZero' }
           ],
           'condition:mirror': [
-            { label: 'Raio (vizinhos do espelho)', type: 'slider', key: 'raio', min: 0, max: 6, step: 1 },
+            { label: 'Raio (±N na roda)', type: 'number', key: 'raio' },
             { label: 'Incluir Zero', type: 'checkbox', key: 'includeZero' }
+          ],
+          'condition:specific-number': [
+            { label: 'Número (0–36)', type: 'number', key: 'numero' }
+          ],
+          'condition:alternation': [
+            { label: 'Eixo', type: 'select', options: ['cor', 'paridade'], key: 'eixo' }
+          ],
+          'condition:setorDominante': [
+            { label: 'Modo Automático', type: 'checkbox', key: 'auto' },
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Frequência mínima (0–1)', type: 'slider', min: 0, max: 1, step: 0.05, key: 'frequenciaMinima' },
+            { label: 'Setor', type: 'select', options: ['Voisins de Zero', 'Tiers du Cylindre', 'Orphelins'], key: 'setor' }
+          ],
+          'condition:dozen_hot': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Frequência mínima (ocorrências)', type: 'number', key: 'frequenciaMinima' }
+          ],
+          'condition:column_hot': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Frequência mínima (ocorrências)', type: 'number', key: 'frequenciaMinima' }
+          ],
+          'condition:sequence_custom': [
+            { label: 'Sequência (lista de números)', type: 'array', key: 'sequencia' },
+            { label: 'Tolerância (erros permitidos)', type: 'number', key: 'tolerancia' }
           ],
           'logic': [
             { label: 'Operador', type: 'select', options: ['AND', 'OR', 'NOT'], key: 'operador' }
           ],
           'signal': [
-            { label: 'Ação', type: 'select', options: ['emitir_sinal', 'notificar', 'apostar'], key: 'acao' },
+            { label: 'Ação', type: 'select', options: ['emitir_sinal'], key: 'acao' },
             { label: 'Mensagem', type: 'text', key: 'mensagem' },
-            { label: 'Prioridade', type: 'select', options: ['normal', 'alta', 'baixa'], key: 'prioridade' },
+            { label: 'Prioridade', type: 'select', options: ['normal'], key: 'prioridade' },
             { label: 'Modo de Seleção', type: 'select', options: ['manual', 'automatic', 'hybrid'], key: 'selectionMode' },
             { label: 'Números (0–36)', type: 'array', key: 'numeros' },
-            { label: 'Stake', type: 'number', key: 'stake' },
-            { label: 'Proteção', type: 'select', options: ['martingale', 'fibonacci', 'flat'], key: 'protecaoTipo' },
-            { label: 'Limite da Proteção', type: 'number', key: 'protecaoLimite' },
-            { label: 'Rodadas de Execução', type: 'number', key: 'limiteRodadas' },
-            { label: 'Excluir Zero', type: 'checkbox', key: 'excludeZero' },
-            { label: 'Máx. números (modo automático)', type: 'number', key: 'maxNumbersAuto' },
-            { label: 'Máx. números (modo híbrido)', type: 'number', key: 'maxNumbersHybrid' },
-            { label: 'Mín. manuais (modo híbrido)', type: 'number', key: 'minManualHybrid' }
+            { label: 'Stake', type: 'number', key: 'stake' }
           ]
         }
       }

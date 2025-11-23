@@ -4,8 +4,9 @@ export const runtime = 'nodejs'
 
 function jsonLog(obj: any) { try { console.log(JSON.stringify(obj)) } catch { /* noop */ } }
 
-// Configuração do Backend SOFIA
-const SOFIA_BACKEND_URL = 'http://localhost:3001/api';
+// Configuração do Backend SOFIA (env primeiro, fallback para localhost)
+const BACKEND_BASE = process.env.SOFIA_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const SOFIA_BACKEND_URL = `${BACKEND_BASE}/api`;
 
 export async function POST(request: NextRequest) {
   try {
