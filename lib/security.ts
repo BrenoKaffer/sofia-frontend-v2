@@ -393,9 +393,12 @@ export const SecurityMiddlewares = {
   ),
 };
 
-export default {
+// Export default nomeado para evitar export anônimo
+export const Security = {
   RateLimitConfigs,
   InputValidator,
   AuthUtils,
   SecurityMiddlewares,
 };
+
+export default Security;

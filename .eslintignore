@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+build/
+*.min.js
+*.d.ts
+test-qr-validation.js
+test-*.js
+scripts/**
+playwright-report/**
+*.js
+backups/**

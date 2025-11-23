@@ -113,6 +113,7 @@ const PerformanceMetrics = memo(({ data }: { data: Record<string, PerformanceMet
     </div>
   );
 });
+PerformanceMetrics.displayName = 'PerformanceMetrics';
 
 // Componente para métricas de erro
 const ErrorMetrics = memo(({ data }: { data: Record<string, ErrorMetric> }) => {
@@ -192,6 +193,7 @@ const ErrorMetrics = memo(({ data }: { data: Record<string, ErrorMetric> }) => {
     </div>
   );
 });
+ErrorMetrics.displayName = 'ErrorMetrics';
 
 // Componente para métricas de uso
 const UsageMetrics = memo(({ data }: { data: Record<string, UsageMetric> }) => {
@@ -254,6 +256,7 @@ const UsageMetrics = memo(({ data }: { data: Record<string, UsageMetric> }) => {
     </div>
   );
 });
+UsageMetrics.displayName = 'UsageMetrics';
 
 // Componente principal do dashboard de métricas
 function MetricsDashboard() {
@@ -264,7 +267,7 @@ function MetricsDashboard() {
   const cache = useSmartCache('metrics_data');
   const { track } = useMonitoring({ componentName: 'MetricsDashboard' });
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = React.useCallback(async () => {
     try {
       setLoading(true);
       track.userAction('metrics_fetch_start');
@@ -297,7 +300,7 @@ function MetricsDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cache, track]);
 
   useEffect(() => {
     fetchMetrics();
@@ -305,7 +308,7 @@ function MetricsDashboard() {
     // Atualizar a cada 30 segundos
     const interval = setInterval(fetchMetrics, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchMetrics]);
 
   if (loading && !metricsData) {
     return (

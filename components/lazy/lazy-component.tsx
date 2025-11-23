@@ -95,8 +95,7 @@ class ErrorBoundary extends React.Component<
 
 // Hook para lazy loading dinâmico
 export function useLazyComponent<P extends object>(
-  importFn: () => Promise<{ default: ComponentType<P> }>,
-  deps: React.DependencyList = []
+  importFn: () => Promise<{ default: ComponentType<P> }>
 ) {
   const [Component, setComponent] = React.useState<ComponentType<P> | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -110,10 +109,10 @@ export function useLazyComponent<P extends object>(
         setLoading(true);
         setError(null);
         
-        const module = await importFn();
+        const loadedModule = await importFn();
         
         if (mounted) {
-          setComponent(() => module.default);
+          setComponent(() => loadedModule.default);
         }
       } catch (err) {
         if (mounted) {
@@ -131,7 +130,7 @@ export function useLazyComponent<P extends object>(
     return () => {
       mounted = false;
     };
-  }, deps);
+  }, [importFn]);
 
   return { Component, loading, error };
 }

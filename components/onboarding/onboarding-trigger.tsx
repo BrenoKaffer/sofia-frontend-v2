@@ -24,25 +24,29 @@ export function OnboardingTrigger({ userId, userEmail }: OnboardingTriggerProps)
       const onboardingCompleted = localStorage.getItem('onboarding_completed');
       const lastLoginDate = localStorage.getItem('last_login_date');
       const today = new Date().toDateString();
+      const welcomeShown = localStorage.getItem('welcome_modal_shown') === 'true';
 
-      // Se nunca completou o onboarding ou é o primeiro login do dia
-      if (!onboardingCompleted || lastLoginDate !== today) {
+      // Considera "novo" apenas na primeira visita do navegador e se ainda não completou o onboarding
+      if (!welcomeShown && !onboardingCompleted) {
         setIsNewUser(true);
-        
-        // Se nunca completou o onboarding, mostrar modal de boas-vindas
-        if (!onboardingCompleted) {
-          setTimeout(() => {
-            setShowWelcome(true);
-          }, 1500); // Delay para não aparecer imediatamente
-        }
+        setTimeout(() => {
+          setShowWelcome(true);
+          // Marcar que o modal de boas-vindas já foi exibido uma vez
+          localStorage.setItem('welcome_modal_shown', 'true');
+        }, 1500);
+      } else {
+        // Usuário já viu o modal ao menos uma vez
+        setIsNewUser(false);
       }
 
-      // Atualizar data do último login
-      localStorage.setItem('last_login_date', today);
+      // Mantém controle diário caso ainda seja útil para outros recursos
+      if (lastLoginDate !== today) {
+        localStorage.setItem('last_login_date', today);
+      }
     };
 
     checkNewUser();
-  }, [userId]);
+  }, []);
 
   const startOnboarding = () => {
     setShowWelcome(false);
@@ -51,12 +55,14 @@ export function OnboardingTrigger({ userId, userEmail }: OnboardingTriggerProps)
 
   const skipOnboarding = () => {
     localStorage.setItem('onboarding_completed', 'true');
+    localStorage.setItem('welcome_modal_shown', 'true');
     setShowWelcome(false);
     setIsNewUser(false);
   };
 
   const restartOnboarding = () => {
     localStorage.removeItem('onboarding_completed');
+    // Não remove o flag de "modal visto" para evitar reabrir em cada página
     router.push('/onboarding');
   };
 
