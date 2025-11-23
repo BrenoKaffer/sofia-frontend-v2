@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Cliente Supabase usando service role (server-side)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+// Evitar tentativa de pré-renderização: rota dinâmica
+export const dynamic = 'force-dynamic';
+
+function getSupabaseSafe() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) return null;
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
 
 // GET /api/logs — lista logs com filtros e paginação
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseSafe();
+    if (!supabase) {
+      return NextResponse.json({ success: true, data: [], total: 0, disabled: true, message: 'Supabase não configurado — retornando lista vazia' });
+    }
     const { searchParams } = new URL(request.url);
 
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -68,6 +77,10 @@ export async function GET(request: NextRequest) {
 // POST /api/logs — cria um novo log
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseSafe();
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Supabase não configurado — criação de log desativada', disabled: true }, { status: 200 });
+    }
     const body = await request.json();
     const sessionId = request.headers.get('x-session-id') || body.session_id || null;
     const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0] || null;
@@ -115,6 +128,10 @@ export async function POST(request: NextRequest) {
 // DELETE /api/logs — remove logs mais antigos que a data informada
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = getSupabaseSafe();
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Supabase não configurado — deleção desativada', disabled: true }, { status: 200 });
+    }
     const { searchParams } = new URL(request.url);
     const olderThan = searchParams.get('olderThan');
     const cutoffIso = olderThan ? new Date(olderThan).toISOString() : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();

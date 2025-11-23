@@ -1,24 +1,43 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Configuração do Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Evitar tentativa de pré-renderização: esta rota é dinâmica
+export const dynamic = 'force-dynamic';
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables');
+// Inicialização segura do Supabase apenas dentro dos handlers
+function getSupabaseSafe() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) return null;
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
 }
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
 
 // GET - Obter estatísticas dos logs
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseSafe();
+    if (!supabase) {
+      const { searchParams } = new URL(request.url);
+      const hours = parseInt(searchParams.get('hours') || '24');
+      return NextResponse.json({
+        period: {
+          hours,
+          startDate: null,
+          endDate: null,
+          totalLogs: 0
+        },
+        levelStats: [],
+        contextStats: [],
+        hourlyStats: [],
+        recentErrors: [],
+        userActivity: [],
+        metrics: { errorRate: 0, warnRate: 0, healthScore: 100 },
+        disabled: true,
+        message: 'Supabase não configurado — retornando estatísticas vazias'
+      });
+    }
     const { searchParams } = new URL(request.url);
     
     // Parâmetros de período
@@ -174,6 +193,13 @@ export async function GET(request: NextRequest) {
 // POST - Executar limpeza de logs antigos
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseSafe();
+    if (!supabase) {
+      return NextResponse.json({
+        error: 'Supabase não configurado — limpeza desativada',
+        disabled: true
+      }, { status: 200 });
+    }
     const body = await request.json();
     const daysToKeep = body.daysToKeep || 30;
 
