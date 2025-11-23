@@ -4,14 +4,12 @@ import { createClient } from '@supabase/supabase-js';
 // Evita tentativa de inicialização durante a build e força execução dinâmica
 export const dynamic = 'force-dynamic';
 
-function getSupabaseClient() {
+// Inicialização segura, apenas quando envs existem
+function getSupabaseSafe() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Prioriza chave de service role no ambiente de servidor; usa ANON como fallback controlado
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    return null;
-  }
-  return createClient(url, key);
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
 interface LogMetrics {
@@ -48,39 +46,36 @@ interface LogMetrics {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Supabase não configurado (URL ou chave ausente)'
-        },
-        { status: 500 }
-      );
-    }
-
+    const supabase = getSupabaseSafe();
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '24h';
-    
-    // Calcular datas baseado no período
     const endDate = new Date();
     const startDate = new Date();
-    
     switch (period) {
-      case '1h':
-        startDate.setHours(startDate.getHours() - 1);
-        break;
-      case '24h':
-        startDate.setHours(startDate.getHours() - 24);
-        break;
-      case '7d':
-        startDate.setDate(startDate.getDate() - 7);
-        break;
-      case '30d':
-        startDate.setDate(startDate.getDate() - 30);
-        break;
-      default:
-        startDate.setHours(startDate.getHours() - 24);
+      case '1h': startDate.setHours(startDate.getHours() - 1); break;
+      case '24h': startDate.setHours(startDate.getHours() - 24); break;
+      case '7d': startDate.setDate(startDate.getDate() - 7); break;
+      case '30d': startDate.setDate(startDate.getDate() - 30); break;
+      default: startDate.setHours(startDate.getHours() - 24);
+    }
+    if (!supabase) {
+      // Fallback amigável: resposta vazia quando envs faltam
+      return NextResponse.json({
+        success: true,
+        data: {
+          overview: {
+            total_logs: 0, error_count: 0, warn_count: 0, info_count: 0, debug_count: 0, error_rate: 0, warn_rate: 0
+          },
+          hourly_stats: [],
+          top_errors: [],
+          user_activity: [],
+          context_breakdown: []
+        },
+        period,
+        generated_at: new Date().toISOString(),
+        disabled: true,
+        message: 'Supabase não configurado — métricas vazias'
+      });
     }
 
     // 1. Obter estatísticas gerais usando a função SQL
