@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-function getSupabaseSafe() {
+async function getSupabaseSafe() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
+  const { createClient } = await import('@supabase/supabase-js');
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseSafe();
+    const supabase = await getSupabaseSafe();
     if (!supabase) {
       return NextResponse.json({ success: true, data: [], total: 0, disabled: true }, { status: 200 });
     }
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseSafe();
+    const supabase = await getSupabaseSafe();
     const body = await request.json();
     const sessionId = request.headers.get('x-session-id') || body.session_id || null;
     const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0] || null;
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = getSupabaseSafe();
+    const supabase = await getSupabaseSafe();
     const { searchParams } = new URL(request.url);
     const olderThan = searchParams.get('olderThan');
     const cutoffIso = olderThan ? new Date(olderThan).toISOString() : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();

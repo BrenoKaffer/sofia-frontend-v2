@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Evitar tentativa de pré-renderização: esta rota é dinâmica
@@ -6,10 +5,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // Inicialização segura do Supabase apenas dentro dos handlers
-function getSupabaseSafe() {
+async function getSupabaseSafe() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !supabaseServiceKey) return null;
+  const { createClient } = await import('@supabase/supabase-js');
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
@@ -18,7 +18,7 @@ function getSupabaseSafe() {
 // GET - Obter estatísticas dos logs
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseSafe();
+    const supabase = await getSupabaseSafe();
     if (!supabase) {
       const { searchParams } = new URL(request.url);
       const hours = parseInt(searchParams.get('hours') || '24');
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
 // POST - Executar limpeza de logs antigos
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseSafe();
+    const supabase = await getSupabaseSafe();
     if (!supabase) {
       return NextResponse.json({
         error: 'Supabase não configurado — limpeza desativada',
