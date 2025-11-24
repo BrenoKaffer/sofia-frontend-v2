@@ -3,19 +3,21 @@ import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error('Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+function getAdminClient() {
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = envUrl || 'https://placeholder.supabase.co';
+  const key = envKey || 'placeholder-key';
+  return {
+    client: createClient(url, key, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }),
+    configured: Boolean(envUrl && envKey),
+  };
 }
-
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
 
 export async function GET() {
   return NextResponse.json({ status: 'ok' });
@@ -23,6 +25,10 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const { client: supabase, configured } = getAdminClient();
+    if (!configured) {
+      return NextResponse.json({ error: 'Supabase não configurado' }, { status: 200 });
+    }
     const body = await req.json();
     const action: string = body?.action;
 

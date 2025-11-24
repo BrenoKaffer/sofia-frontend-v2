@@ -3,23 +3,34 @@ import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 
-// Configuração do Supabase usando service role key para operações administrativas
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables')
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+// Inicialização segura (lazy) com fallback para evitar erro no build
+function getAdminClient() {
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const url = envUrl || 'https://placeholder.supabase.co'
+  const key = envKey || 'placeholder-key'
+  return {
+    client: createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    }),
+    configured: Boolean(envUrl && envKey)
   }
-})
+}
 
 export async function GET() {
   try {
+    const { client: supabase, configured } = getAdminClient()
+    if (!configured) {
+      const summary = { total: 0, passed: 0, failed: 0, warning: 0, info: 1, unexpected: 0 }
+      return NextResponse.json({
+        timestamp: new Date().toISOString(),
+        testType: 'DEFERRED_CONSTRAINTS_SOLUTION',
+        problemSolved: false,
+        nextAction: 'Configure variáveis do Supabase para executar testes',
+        tests: [{ name: 'Ambiente Supabase', status: 'info', details: { message: 'Supabase não configurado — testes skipados' } }],
+        summary,
+      })
+    }
     const tests = []
 
     // Teste 1: Verificar se constraints estão configuradas como DEFERRED

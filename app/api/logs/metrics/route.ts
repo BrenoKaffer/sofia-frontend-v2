@@ -6,12 +6,16 @@ export const dynamic = 'force-dynamic';
 // Garantir execução em runtime Node.js para evitar Edge com libs do Supabase
 export const runtime = 'nodejs';
 
-// Inicialização segura, apenas quando envs existem
+// Inicialização segura com fallback, evitando erro "supabaseKey is required" no build
 function getSupabaseSafe() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = envUrl || 'https://placeholder.supabase.co';
+  const key = envKey || 'placeholder-key';
+  return {
+    client: createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } }),
+    configured: Boolean(envUrl && envKey)
+  };
 }
 
 interface LogMetrics {
@@ -48,7 +52,7 @@ interface LogMetrics {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseSafe();
+    const { client: supabase, configured } = getSupabaseSafe();
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '24h';
     const endDate = new Date();
@@ -60,7 +64,7 @@ export async function GET(request: NextRequest) {
       case '30d': startDate.setDate(startDate.getDate() - 30); break;
       default: startDate.setHours(startDate.getHours() - 24);
     }
-    if (!supabase) {
+    if (!configured) {
       // Fallback amigável: resposta vazia quando envs faltam
       return NextResponse.json({
         success: true,
