@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Evitar tentativa de pré-renderização: esta rota é dinâmica
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Inicialização segura do Supabase apenas dentro dos handlers
 function getSupabaseSafe() {

@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // Evita tentativa de inicialização durante a build e força execução dinâmica
 export const dynamic = 'force-dynamic';
+// Garantir execução em runtime Node.js para evitar Edge com libs do Supabase
+export const runtime = 'nodejs';
 
 // Inicialização segura, apenas quando envs existem
 function getSupabaseSafe() {
