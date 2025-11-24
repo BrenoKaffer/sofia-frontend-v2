@@ -16,6 +16,7 @@ interface OnboardingTriggerProps {
 export function OnboardingTrigger({ userId, userEmail }: OnboardingTriggerProps) {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [showHelpCard, setShowHelpCard] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,16 +28,15 @@ export function OnboardingTrigger({ userId, userEmail }: OnboardingTriggerProps)
       const welcomeShown = localStorage.getItem('welcome_modal_shown') === 'true';
 
       // Considera "novo" apenas na primeira visita do navegador e se ainda não completou o onboarding
-      if (!welcomeShown && !onboardingCompleted) {
-        setIsNewUser(true);
+      const computedIsNewUser = !welcomeShown && !onboardingCompleted;
+      setIsNewUser(computedIsNewUser);
+
+      if (computedIsNewUser) {
         setTimeout(() => {
           setShowWelcome(true);
           // Marcar que o modal de boas-vindas já foi exibido uma vez
           localStorage.setItem('welcome_modal_shown', 'true');
         }, 1500);
-      } else {
-        // Usuário já viu o modal ao menos uma vez
-        setIsNewUser(false);
       }
 
       // Mantém controle diário caso ainda seja útil para outros recursos
@@ -47,6 +47,17 @@ export function OnboardingTrigger({ userId, userEmail }: OnboardingTriggerProps)
 
     checkNewUser();
   }, []);
+
+  // Controla a exibição do card de ajuda independentemente de isNewUser
+  useEffect(() => {
+    const dismissed = localStorage.getItem('help_card_dismissed') === 'true';
+    // Exibe apenas para usuários não-novos e que não tenham dispensado
+    if (!isNewUser) {
+      setShowHelpCard(!dismissed);
+    } else {
+      setShowHelpCard(false);
+    }
+  }, [isNewUser]);
 
   const startOnboarding = () => {
     setShowWelcome(false);
@@ -117,7 +128,7 @@ export function OnboardingTrigger({ userId, userEmail }: OnboardingTriggerProps)
       </Dialog>
 
       {/* Botão Flutuante para Reiniciar Onboarding (apenas para usuários que já completaram) */}
-      {!isNewUser && (
+      {showHelpCard && !isNewUser && (
         <div className="fixed bottom-4 right-4 z-50">
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
@@ -136,7 +147,10 @@ export function OnboardingTrigger({ userId, userEmail }: OnboardingTriggerProps)
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => setIsNewUser(false)}
+                    onClick={() => {
+                      setShowHelpCard(false);
+                      localStorage.setItem('help_card_dismissed', 'true');
+                    }}
                     className="h-6 w-6 p-0"
                   >
                     <X className="h-3 w-3" />

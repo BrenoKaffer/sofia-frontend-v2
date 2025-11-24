@@ -1,10 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { z } from 'zod';
+import { SecurityMiddlewares } from '@/lib/security';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 Iniciando criação de PIX...');
-    const body = await request.json();
-    console.log('📥 Dados recebidos:', JSON.stringify(body, null, 2));
+    // Segurança e rate limiting
+    const guard = SecurityMiddlewares.publicApi(request);
+    if (guard) return guard;
+
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    console.log('🚀 Iniciando criação de PIX...', { requestId });
+    const raw = await request.json();
+
+    // Validação forte com Zod
+    const schema = z.object({
+      amount: z.number().int().positive(), // em centavos
+      pix_expiration_date: z.string().datetime().optional(),
+      customer: z.object({
+        name: z.string().min(2),
+        email: z.string().email(),
+        type: z.enum(['individual','corporation']).optional(),
+        document_number: z.string().regex(/^\d{11,14}$/),
+      }),
+      postback_url: z.string().url().optional(),
+    });
+    const parsed = schema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 });
+    }
+    const body = parsed.data;
     
     // Validação básica dos dados recebidos
     if (!body.customer || !body.amount) {
@@ -16,11 +41,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Configuração da API Pagar.me
-    const pagarmeApiKey = process.env.PAGARME_API_KEY;
-    console.log('🔑 API Key configurada:', pagarmeApiKey ? 'SIM' : 'NÃO');
+    const pagarmeSecret = process.env.PAGARME_SECRET_KEY;
+    console.log('🔑 Secret Key configurada:', pagarmeSecret ? 'SIM' : 'NÃO');
     
-    if (!pagarmeApiKey) {
-      console.error('PAGARME_API_KEY não configurada');
+    if (!pagarmeSecret) {
+      console.error('PAGARME_SECRET_KEY não configurada');
       return NextResponse.json(
         { success: false, error: 'Configuração de pagamento não encontrada' },
         { status: 500 }
@@ -72,15 +97,22 @@ export async function POST(request: NextRequest) {
     };
 
     // Chamada real para a API da Pagar.me (API v5)
-    console.log('🌐 Fazendo chamada para Pagar.me...');
-    console.log('🔗 URL:', 'https://api.pagar.me/core/v5/orders');
-    console.log('🔑 Authorization header:', `Basic ${Buffer.from(`${pagarmeApiKey}:`).toString('base64').substring(0, 20)}...`);
+    console.log('🌐 Fazendo chamada para Pagar.me...', { requestId });
+
+    const idempotencyKey = Buffer.from(
+      crypto.createHash('sha256').update(JSON.stringify({
+        customer: body.customer,
+        amount: body.amount,
+        payments: 'pix'
+      })).digest('hex')
+    ).toString('hex');
     
     const pagarmeResponse = await fetch('https://api.pagar.me/core/v5/orders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${pagarmeApiKey}:`).toString('base64')}`
+        'Authorization': `Basic ${Buffer.from(`${pagarmeSecret}:`).toString('base64')}`,
+        'Idempotency-Key': idempotencyKey
       },
       body: JSON.stringify({
         customer: {
@@ -122,33 +154,7 @@ export async function POST(request: NextRequest) {
 
     if (!pagarmeResponse.ok) {
       const errorData = await pagarmeResponse.json();
-      console.error('❌ Erro da Pagar.me - Status:', pagarmeResponse.status);
-      console.error('❌ Erro da Pagar.me - Dados:', JSON.stringify(errorData, null, 2));
-      console.error('❌ Dados enviados:', JSON.stringify({
-        customer: {
-          name: pixData.customer.name,
-          email: pixData.customer.email,
-          document: pixData.customer.documents[0].number,
-          document_type: pixData.customer.documents[0].type,
-          type: 'individual',
-          phones: {
-            mobile_phone: {
-              country_code: '55',
-              area_code: '11',
-              number: '999999999'
-            }
-          }
-        },
-        items: pixData.items,
-        payments: [
-          {
-            payment_method: 'pix',
-            pix: {
-              expires_in: 86400
-            }
-          }
-        ]
-      }, null, 2));
+      console.error('❌ Erro da Pagar.me', { status: pagarmeResponse.status, requestId, message: errorData?.message, errors: errorData?.errors?.[0] });
       
       return NextResponse.json(
         { 
@@ -161,6 +167,7 @@ export async function POST(request: NextRequest) {
     }
 
     const orderResult = await pagarmeResponse.json();
+    console.log('✅ PIX criado na Pagar.me', { requestId, order_id: orderResult?.id, charge_id: orderResult?.charges?.[0]?.id, status: orderResult?.status });
 
     // Verificar se o pedido foi criado com sucesso e extrair dados do PIX
     if (orderResult.id && orderResult.charges && orderResult.charges.length > 0) {
@@ -220,12 +227,16 @@ export async function GET() {
 // Método para verificar status do pagamento PIX
 export async function PUT(request: NextRequest) {
   try {
+    // Segurança e rate limiting
+    const guard = SecurityMiddlewares.publicApi(request);
+    if (guard) return guard;
+
     const { searchParams } = new URL(request.url);
-    const transactionId = searchParams.get('transaction_id');
+    const orderId = searchParams.get('order_id') || searchParams.get('transaction_id');
     
-    if (!transactionId) {
+    if (!orderId) {
       return NextResponse.json(
-        { success: false, error: 'ID da transação é obrigatório' },
+        { success: false, error: 'ID do pedido é obrigatório' },
         { status: 400 }
       );
     }
@@ -237,31 +248,37 @@ export async function PUT(request: NextRequest) {
       
       return NextResponse.json({
         success: true,
-        transaction_id: transactionId,
+        order_id: orderId,
         status: isPaid ? 'paid' : 'waiting_payment',
         paid_at: isPaid ? new Date().toISOString() : null
       });
     }
 
-    // Em produção, verificar status real na Pagar.me
-    const pagarmeApiKey = process.env.PAGARME_API_KEY;
-    const response = await fetch(`https://api.pagar.me/1/transactions/${transactionId}`, {
+    // Em produção, verificar status real na Pagar.me via API v5 (Basic)
+    const pagarmeSecret = process.env.PAGARME_SECRET_KEY;
+    const response = await fetch(`https://api.pagar.me/core/v5/orders/${orderId}`, {
       headers: {
-        'Authorization': `Bearer ${pagarmeApiKey}`
+        'Authorization': `Basic ${Buffer.from(`${pagarmeSecret}:`).toString('base64')}`,
+        'Content-Type': 'application/json'
       }
     });
 
     if (!response.ok) {
-      throw new Error('Erro ao verificar status do pagamento');
+      throw new Error('Erro ao verificar status do pedido');
     }
 
-    const transaction = await response.json();
-    
+    const order = await response.json();
+
+    const charges = order?.charges || [];
+    const hasPaid = charges.some((c: any) => c.status === 'paid');
+    const paidAt = charges.find((c: any) => c.status === 'paid')?.paid_at || null;
+    const status = hasPaid ? 'paid' : (charges[0]?.status || 'waiting_payment');
+
     return NextResponse.json({
       success: true,
-      transaction_id: transactionId,
-      status: transaction.status,
-      paid_at: transaction.paid_at
+      order_id: orderId,
+      status,
+      paid_at: paidAt
     });
 
   } catch (error) {

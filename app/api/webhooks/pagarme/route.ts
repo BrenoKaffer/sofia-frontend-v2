@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { createServerClient } from '@/lib/supabase';
 
 // Função para verificar a assinatura do webhook
 function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -178,22 +179,54 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Log do evento recebido
-    console.log('Webhook recebido:', {
-      event: eventType,
-      timestamp: new Date().toISOString(),
-      data: webhookData
-    });
+    // Persistir evento rapidamente e responder 200 (ack) para confiabilidade
+    try {
+      const supabase = createServerClient();
+      const objectId = webhookData?.id || webhookData?.data?.id || webhookData?.object?.id || null;
 
-    // Processar o evento
-    await processWebhookEvent(eventType, webhookData);
+      // Verificar idempotência básica por objectId + eventType
+      if (objectId) {
+        const existing = await supabase
+          .from('payment_webhooks')
+          .select('id, processed')
+          .eq('object_id', objectId)
+          .eq('event_type', eventType)
+          .limit(1)
+          .maybeSingle();
 
-    // Retornar sucesso
+        if (existing?.data) {
+          console.log('Webhook duplicado ignorado', { eventType, objectId });
+        } else {
+          await supabase.from('payment_webhooks').insert({
+            event_type: eventType,
+            object_id: objectId,
+            payload: webhookData,
+            signature,
+            processed: false,
+            received_at: new Date().toISOString()
+          });
+        }
+      } else {
+        // Sem objectId — armazenar apenas o payload
+        await supabase.from('payment_webhooks').insert({
+          event_type: eventType,
+          object_id: null,
+          payload: webhookData,
+          signature,
+          processed: false,
+          received_at: new Date().toISOString()
+        });
+      }
+    } catch (persistError) {
+      console.error('Falha ao persistir webhook', persistError);
+    }
+
+    // Retornar sucesso imediatamente (ack) para evitar retries
     return NextResponse.json(
-      { 
-        success: true, 
-        message: 'Webhook processado com sucesso',
-        event: eventType 
+      {
+        success: true,
+        message: 'Webhook recebido',
+        event: eventType
       },
       { status: 200 }
     );

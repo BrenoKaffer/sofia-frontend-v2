@@ -99,6 +99,73 @@ jest.mock('next/server', () => ({
   }
 }));
 
+// Mock Supabase client to avoid network calls in tests
+jest.mock('@supabase/supabase-js', () => {
+  const mockFrom = () => ({
+    select: jest.fn().mockResolvedValue({ data: [], error: null }),
+    insert: jest.fn().mockResolvedValue({ data: [], error: null }),
+    upsert: jest.fn().mockResolvedValue({ data: [], error: null }),
+    update: jest.fn().mockResolvedValue({ data: [], error: null }),
+    delete: jest.fn().mockResolvedValue({ data: [], error: null }),
+    eq: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({ data: null, error: null }),
+    gte: jest.fn().mockReturnThis(),
+    lte: jest.fn().mockReturnThis(),
+    not: jest.fn().mockReturnThis(),
+  });
+  const mockClient = {
+    rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
+    from: jest.fn(mockFrom),
+    auth: {
+      admin: {
+        createUser: jest.fn().mockResolvedValue({ data: { user: { id: 'test-user', user_metadata: {} } }, error: null }),
+        deleteUser: jest.fn().mockResolvedValue({ data: null, error: null }),
+        listUsers: jest.fn().mockResolvedValue({ data: { users: [] }, error: null }),
+      },
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'test-user', email: 'test@example.com' } }, error: null }),
+    },
+  };
+  return {
+    createClient: jest.fn(() => mockClient),
+    SupabaseClient: class {},
+  };
+});
+
+// Mock project Supabase helpers
+jest.mock('@/lib/supabase', () => {
+  const mockFrom = () => ({
+    select: jest.fn().mockResolvedValue({ data: [], error: null }),
+    insert: jest.fn().mockResolvedValue({ data: [], error: null }),
+    upsert: jest.fn().mockResolvedValue({ data: [], error: null }),
+    update: jest.fn().mockResolvedValue({ data: [], error: null }),
+    delete: jest.fn().mockResolvedValue({ data: [], error: null }),
+    eq: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({ data: null, error: null }),
+    gte: jest.fn().mockReturnThis(),
+    lte: jest.fn().mockReturnThis(),
+    not: jest.fn().mockReturnThis(),
+  });
+  const mockClient = {
+    rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
+    from: jest.fn(mockFrom),
+    auth: {
+      admin: {
+        createUser: jest.fn().mockResolvedValue({ data: { user: { id: 'test-user', user_metadata: {} } }, error: null }),
+        deleteUser: jest.fn().mockResolvedValue({ data: null, error: null }),
+        listUsers: jest.fn().mockResolvedValue({ data: { users: [] }, error: null }),
+      },
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'test-user', email: 'test@example.com' } }, error: null }),
+    },
+  };
+  return {
+    getSupabaseClient: () => mockClient,
+    supabase: mockClient,
+    createServerClient: () => mockClient,
+  };
+});
+
 // Mock Next.js router
 jest.mock('next/router', () => ({
   useRouter() {

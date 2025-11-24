@@ -85,8 +85,8 @@ export function PagarMeCheckout({
         cancel_url: `${window.location.origin}/payment/cancel`
       };
 
-      // Criar link de pagamento
-      const response = await fetch('/api/payments/checkout-link', {
+      // Criar link de pagamento (usar endpoint alinhado)
+      const response = await fetch('/api/checkout-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,7 +101,8 @@ export function PagarMeCheckout({
       }
 
       // Redirecionar para o checkout hospedado da Pagar.me
-      window.location.href = result.checkout_url;
+      // Backend retorna { url } conforme contrato alinhado
+      window.location.href = result.url;
 
     } catch (error) {
       console.error('Erro ao criar checkout:', error);

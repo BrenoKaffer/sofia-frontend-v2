@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { z } from 'zod';
+import { SecurityMiddlewares } from '@/lib/security';
 
 // Configurações da Pagar.me
 const PAGARME_API_URL = 'https://api.pagar.me/core/v5/orders';
@@ -34,7 +37,43 @@ interface CheckoutRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CheckoutRequest = await request.json();
+    // Segurança e rate limiting (API pública)
+    const guard = SecurityMiddlewares.publicApi(request);
+    if (guard) return guard;
+
+    const raw = await request.json();
+    const schema = z.object({
+      payment_settings: z.object({
+        accepted_payment_methods: z.array(z.string()).min(1),
+        credit_card_settings: z.object({
+          operation_type: z.string().optional(),
+          installments: z.array(z.object({
+            number: z.number().int().positive(),
+            total: z.number().int().positive()
+          })).min(1)
+        })
+      }),
+      cart_settings: z.object({
+        items: z.array(z.object({
+          amount: z.number().int().positive(),
+          name: z.string().min(1),
+          default_quantity: z.number().int().positive().optional()
+        })).min(1)
+      }),
+      name: z.string().optional(),
+      type: z.string().optional(),
+      success_url: z.string().url().optional(),
+      cancel_url: z.string().url().optional()
+    });
+
+    const parsed = schema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Dados inválidos', details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const body: CheckoutRequest = parsed.data as any;
 
     // Validação básica
     if (!body.cart_settings?.items?.length) {
@@ -43,6 +82,23 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Validar e normalizar success_url/cancel_url para evitar open redirect
+    const origin = request.nextUrl.origin;
+    const allowedBase = process.env.NEXT_PUBLIC_SITE_URL || origin;
+    const normalizeUrl = (u?: string) => {
+      if (!u) return undefined;
+      try {
+        const parsed = new URL(u);
+        // Permitir apenas o mesmo host/domínio configurado
+        if (parsed.host !== new URL(allowedBase).host) {
+          return undefined;
+        }
+        return parsed.toString();
+      } catch {
+        return undefined;
+      }
+    };
 
     // Preparar dados para a API da Pagar.me
     const pagarmeData = {
@@ -72,8 +128,8 @@ export async function POST(request: NextRequest) {
             expires_in: 3600, // 1 hora
             default_payment_method: 'credit_card',
             accepted_payment_methods: body.payment_settings.accepted_payment_methods,
-            success_url: body.success_url || `${request.nextUrl.origin}/payment/success`,
-            cancel_url: body.cancel_url || `${request.nextUrl.origin}/payment/cancel`,
+            success_url: normalizeUrl(body.success_url) || `${origin}/payment/success`,
+            cancel_url: normalizeUrl(body.cancel_url) || `${origin}/payment/cancel`,
             customer_editable: true,
             billing_address_editable: true,
             skip_checkout_success_page: false,
@@ -126,11 +182,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Fazer requisição real para a API da Pagar.me
+    // Idempotency-Key baseado no payload
+    const idempotencyKey = crypto.createHash('sha256').update(JSON.stringify(pagarmeData)).digest('hex');
+
     const response = await fetch(PAGARME_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${PAGARME_SECRET_KEY}:`).toString('base64')}`
+        'Authorization': `Basic ${Buffer.from(`${PAGARME_SECRET_KEY}:`).toString('base64')}`,
+        'Idempotency-Key': idempotencyKey
       },
       body: JSON.stringify(pagarmeData)
     });
