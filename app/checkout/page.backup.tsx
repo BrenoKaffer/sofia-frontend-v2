@@ -247,44 +247,46 @@ export default function CheckoutPage() {
 
   // Validações com Zod
   const getSchema = () => {
-    const base = z.object({
+    const commonShape = {
       email: z.string().email({ message: 'Email inválido' }),
       emailConfirm: z.string().email({ message: 'Confirmação inválida' }),
       fullName: z.string().min(5, { message: 'Nome completo é obrigatório' }),
       cpf: z.string().refine((v) => validateCPF(v), { message: 'CPF inválido' }),
       phone: z.string().refine((v) => v.replace(/\D/g, '').length >= 10 && v.replace(/\D/g, '').length <= 11, { message: 'Telefone inválido' }),
       coupon: z.string().optional().default('')
-    }).superRefine((data, ctx) => {
+    } as const;
+
+    const shape = paymentMethod === 'credit_card'
+      ? {
+          ...commonShape,
+          cardNumber: z.string().refine((v) => validateCardNumber(v), { message: 'Número do cartão inválido' }),
+          expiryDate: z.string().refine((v) => {
+            if (v.length < 5) return false;
+            const [month, year] = v.split('/');
+            const currentDate = new Date();
+            const currentYear = currentDate.getFullYear() % 100;
+            const currentMonth = currentDate.getMonth() + 1;
+            const expMonth = parseInt(month);
+            const expYear = parseInt(year);
+            if (expMonth < 1 || expMonth > 12) return false;
+            if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) return false;
+            return true;
+          }, { message: 'Data de expiração inválida' }),
+          cvv: z.string().min(3, { message: 'CVV deve ter pelo menos 3 dígitos' }),
+          cardName: z.string().min(3, { message: 'Nome do titular é obrigatório' }).regex(/^[a-zA-ZÀ-ÿ\s]+$/, { message: 'Nome deve conter apenas letras' })
+        }
+      : {
+          ...commonShape,
+          cardNumber: z.string().optional().default(''),
+          expiryDate: z.string().optional().default(''),
+          cvv: z.string().optional().default(''),
+          cardName: z.string().optional().default('')
+        };
+
+    return z.object(shape).superRefine((data, ctx) => {
       if (data.email.toLowerCase() !== data.emailConfirm.toLowerCase()) {
         ctx.addIssue({ code: 'custom', message: 'Emails não conferem', path: ['emailConfirm'] });
       }
-    });
-
-    if (paymentMethod === 'credit_card') {
-      return base.extend({
-        cardNumber: z.string().refine((v) => validateCardNumber(v), { message: 'Número do cartão inválido' }),
-        expiryDate: z.string().refine((v) => {
-          if (v.length < 5) return false;
-          const [month, year] = v.split('/');
-          const currentDate = new Date();
-          const currentYear = currentDate.getFullYear() % 100;
-          const currentMonth = currentDate.getMonth() + 1;
-          const expMonth = parseInt(month);
-          const expYear = parseInt(year);
-          if (expMonth < 1 || expMonth > 12) return false;
-          if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) return false;
-          return true;
-        }, { message: 'Data de expiração inválida' }),
-        cvv: z.string().min(3, { message: 'CVV deve ter pelo menos 3 dígitos' }),
-        cardName: z.string().min(3, { message: 'Nome do titular é obrigatório' }).regex(/^[a-zA-ZÀ-ÿ\s]+$/, { message: 'Nome deve conter apenas letras' })
-      });
-    }
-    // PIX não requer campos de cartão
-    return base.extend({
-      cardNumber: z.string().optional().default(''),
-      expiryDate: z.string().optional().default(''),
-      cvv: z.string().optional().default(''),
-      cardName: z.string().optional().default('')
     });
   };
 
