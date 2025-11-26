@@ -286,7 +286,21 @@ export default function CheckoutPageV1() {
         const pixDataPayload = { ...baseData, payment_method: 'pix', pix_expiration_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() };
         const response = await fetch('/api/create-pix', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pixDataPayload) });
         const result = await response.json();
-        if (result.success && result.qr_code_url) { setProcessingStep('PIX gerado com sucesso!'); setLoadingMessage(''); setTimeout(() => { setPixData({ qr_code: result.qr_code_url, qr_code_url: result.qr_code, expires_at: result.expires_at, pix_key: result.pix_key, amount: result.amount, order_id: result.order_id }); }, 1000); }
+        if (result.success && result.qr_code_url) {
+          setProcessingStep('PIX gerado com sucesso!');
+          setLoadingMessage('');
+          try { window.open(result.qr_code_url, '_blank'); } catch {}
+          setTimeout(() => {
+            setPixData({
+              qr_code: result.qr_code_url,
+              qr_code_url: result.qr_code,
+              expires_at: result.expires_at,
+              pix_key: result.pix_key,
+              amount: result.amount,
+              order_id: result.order_id
+            });
+          }, 1000);
+        }
         else { throw new Error(result.error || 'Erro ao gerar PIX'); }
       }
     } catch { setError('Erro ao processar pagamento. Tente novamente.'); setProcessingStep(''); setLoadingMessage(''); }
