@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           tangible: false
         }
       ],
-      postback_url: body.postback_url || `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/pagarme`
+      postback_url: body.postback_url || `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/pagarme`
     };
 
     // Chamada real para a API da Pagar.me (API v5)

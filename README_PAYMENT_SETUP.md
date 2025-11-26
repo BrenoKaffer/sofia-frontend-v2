@@ -63,7 +63,7 @@ PAGARME_ENCRYPTION_KEY=ek_test_...
 PAGARME_WEBHOOK_SECRET=whsec_...
 
 # URLs da aplicação
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=http://localhost:3002
 WEBHOOK_URL=https://seudominio.com/api/webhooks/pagarme
 
 # Supabase (já configurado)

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimitMiddleware } from './lib/rate-limit-middleware';
-import { auth } from './lib/auth-server';
 import { edgeApiAuth } from './lib/api-auth-server';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { userHasAccess, userIsBlocked, userIsAdmin, userIsSuperAdmin, AccountStatus } from '@/lib/user-status';
@@ -106,6 +105,10 @@ function isProtectedApiRoute(pathname: string): boolean {
 }
 
 export default async function middleware(request: NextRequest) {
+  // Detecta ambiente de desenvolvimento e ausência de variáveis do Supabase
+  const isDevEnv = process.env.NODE_ENV !== 'production'
+  const supabaseEnvMissing = !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
   // Liberar o sandbox do resolver em desenvolvimento sem exigir autenticação
   if (request.nextUrl.pathname.startsWith('/strategies/resolver-sandbox')) {
     return NextResponse.next();
@@ -125,7 +128,11 @@ export default async function middleware(request: NextRequest) {
 
     // Verifica autenticação para APIs protegidas
     // Bypass de autenticação para APIs protegidas em desenvolvimento
-    const isAuthBypassEnabled = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true' || process.env.AUTH_DEV_BYPASS === 'true';
+    const isAuthBypassEnabled = (
+      process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true' ||
+      process.env.AUTH_DEV_BYPASS === 'true' ||
+      (isDevEnv && supabaseEnvMissing)
+    );
     if (isAuthBypassEnabled && isProtectedApiRoute(request.nextUrl.pathname)) {
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set('x-auth-bypass', 'true');
@@ -166,7 +173,11 @@ export default async function middleware(request: NextRequest) {
   
   // Aplica autenticação personalizada para rotas protegidas da aplicação
   if (isProtectedRoute(request.nextUrl.pathname)) {
-    const isAuthBypassEnabled = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true' || process.env.AUTH_DEV_BYPASS === 'true';
+    const isAuthBypassEnabled = (
+      process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true' ||
+      process.env.AUTH_DEV_BYPASS === 'true' ||
+      (isDevEnv && supabaseEnvMissing)
+    );
     if (isAuthBypassEnabled) {
       const response = NextResponse.next();
       response.headers.set('x-auth-bypass', 'true');

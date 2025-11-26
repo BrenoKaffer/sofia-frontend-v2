@@ -4,13 +4,24 @@ import { createBrowserClient } from '@supabase/ssr'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Durante o build, as variáveis podem não estar disponíveis
-// Só lança erro se não estivermos em build time
-if ((!supabaseUrl || !supabaseAnonKey) && typeof window !== 'undefined') {
-  throw new Error('Missing Supabase environment variables')
+// Em desenvolvimento, não devemos quebrar o app se variáveis do Supabase faltarem.
+// Em vez de lançar erro no cliente, usamos placeholders e registramos um aviso.
+const isBrowser = typeof window !== 'undefined'
+const isDevEnv = process.env.NODE_ENV !== 'production'
+const devBypass = (process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true') || (process.env.AUTH_DEV_BYPASS === 'true')
+
+if ((!supabaseUrl || !supabaseAnonKey) && isBrowser) {
+  if (isDevEnv || devBypass) {
+    // Aviso leve em desenvolvimento/bypass
+    console.warn('[Supabase] Variáveis públicas ausentes. Usando credenciais placeholder no cliente para evitar falhas em dev.')
+  } else {
+    // Em produção, ainda evitamos quebrar hard aqui para permitir renderização básica,
+    // mas registramos um erro claro para facilitar diagnóstico.
+    console.error('[Supabase] Variáveis públicas ausentes. Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY.')
+  }
 }
 
-// Valores padrão para build time
+// Valores padrão (placeholders) quando variáveis não estão definidas
 const defaultUrl = supabaseUrl || 'https://placeholder.supabase.co'
 const defaultKey = supabaseAnonKey || 'placeholder-key'
 

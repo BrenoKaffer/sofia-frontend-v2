@@ -81,7 +81,10 @@ class Logger {
     // Padrão mais silencioso em dev: INFO
     this.logLevel = levelMap[envLogLevel] ?? (this.isDevelopment ? LogLevel.INFO : LogLevel.INFO);
     const useMock = (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') || (process.env.USE_MOCK_DATA === 'true');
-    this.persistToDatabase = !useMock; // Desabilita persistência em modo mock
+    const enableLogsEnv = process.env.NEXT_PUBLIC_ENABLE_LOGS === 'true';
+    // Em desenvolvimento, só persiste se habilitado explicitamente via NEXT_PUBLIC_ENABLE_LOGS
+    // Em produção, persiste por padrão, exceto em modo mock
+    this.persistToDatabase = !useMock && (this.isDevelopment ? enableLogsEnv : true);
     this.sessionId = this.generateSessionId();
     
     // Configurar Supabase apenas se as variáveis estiverem disponíveis

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { supabase } from './supabase';
+import { createServerClient } from './supabase';
 
 // Tipos para autenticação (sem dependências do Node.js)
 export interface ApiKey {
@@ -36,6 +36,8 @@ export interface AuthResult {
 // Versão simplificada para Edge Runtime
 export class EdgeApiAuthManager {
   private static instance: EdgeApiAuthManager;
+  // Cliente Supabase seguro para Edge/Server
+  private supabase = createServerClient();
 
   public static getInstance(): EdgeApiAuthManager {
     if (!EdgeApiAuthManager.instance) {
@@ -61,7 +63,7 @@ export class EdgeApiAuthManager {
 
       const keyHash = await this.simpleHash(apiKey);
 
-      const { data: keyData, error } = await supabase
+      const { data: keyData, error } = await this.supabase
         .from('api_keys')
         .select('*')
         .eq('key_hash', keyHash)
@@ -78,7 +80,7 @@ export class EdgeApiAuthManager {
       }
 
       // Atualizar último uso
-      await supabase
+      await this.supabase
         .from('api_keys')
         .update({ last_used_at: new Date().toISOString() })
         .eq('id', keyData.id);
@@ -96,7 +98,7 @@ export class EdgeApiAuthManager {
 
   async validateJWT(token: string): Promise<AuthResult> {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser(token);
+      const { data: { user }, error } = await this.supabase.auth.getUser(token);
       
       if (error || !user) {
         return { success: false, error: 'Token JWT inválido' };
@@ -153,7 +155,7 @@ export class EdgeApiAuthManager {
         created_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('api_keys')
         .insert([keyData])
         .select()
@@ -171,7 +173,7 @@ export class EdgeApiAuthManager {
 
   async getUserApiKeys(userId: string): Promise<ApiKey[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('api_keys')
         .select('*')
         .eq('user_id', userId)
@@ -189,7 +191,7 @@ export class EdgeApiAuthManager {
 
   async revokeApiKey(keyId: string, userId: string): Promise<boolean> {
     try {
-      const { error } = await supabase
+      const { error } = await this.supabase
         .from('api_keys')
         .update({ is_active: false })
         .eq('id', keyId)

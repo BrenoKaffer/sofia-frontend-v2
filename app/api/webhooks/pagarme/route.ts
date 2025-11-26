@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { createServerClient } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { sendPasswordSetupEmail } from '@/lib/email';
+
+// Normaliza o payload do webhook da Pagar.me para um formato interno
+function normalizeOrderData(data: any) {
+  const id = data?.id || data?.order?.id || data?.data?.id || data?.object?.id || null;
+  const customer = data?.customer || data?.order?.customer || data?.data?.customer || data?.object?.customer || null;
+  const amount =
+    data?.amount ||
+    data?.order?.amount ||
+    data?.data?.amount ||
+    data?.charges?.[0]?.amount ||
+    data?.order?.charges?.[0]?.amount || null;
+  const items = data?.items || data?.order?.items || data?.data?.items || [];
+  return { id, customer, amount, items };
+}
 
 // Função para verificar a assinatura do webhook
 function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -40,7 +55,7 @@ async function processWebhookEvent(eventType: string, data: any) {
 // Handler para pagamento aprovado
 async function handleOrderPaid(data: any) {
   try {
-    const { id: orderId, customer, amount, items } = data;
+    const { id: orderId, customer, amount, items } = normalizeOrderData(data);
     
     console.log('Pagamento aprovado:', {
       orderId,
@@ -49,18 +64,77 @@ async function handleOrderPaid(data: any) {
       items
     });
 
-    // Aqui você pode:
-    // 1. Atualizar o status do pedido no banco de dados
-    // 2. Enviar e-mail de confirmação para o cliente
-    // 3. Ativar a licença do sistema
-    // 4. Registrar logs de auditoria
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase Admin não configurado');
+      return;
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    // Exemplo de atualização no banco (adapte conforme sua estrutura)
-    /*
-    await updateOrderStatus(orderId, 'paid');
-    await activateUserLicense(customer.email);
-    await sendConfirmationEmail(customer.email, orderId);
-    */
+    const email = customer?.email;
+    const full_name = customer?.name || customer?.name || null;
+    const cpf = customer?.document || customer?.cpf || null;
+    if (!email) {
+      console.warn('Pagamento aprovado sem email de cliente — ignorando criação de usuário');
+      return;
+    }
+
+    // 1) Criar/garantir usuário de auth
+    let userId: string | null = null;
+    try {
+      const { data: list } = await supabase.auth.admin.listUsers();
+      const existing = list?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      if (existing) {
+        userId = existing.id;
+      } else {
+        const tempPassword = crypto.randomBytes(16).toString('hex');
+        const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { full_name, cpf },
+        });
+        if (createErr) throw createErr;
+        userId = created.user.id;
+      }
+    } catch (authErr) {
+      console.error('Erro ao criar/recuperar usuário auth:', authErr);
+      return;
+    }
+
+    // 2) Upsert perfil com premium
+    try {
+      if (userId) {
+        await supabase.from('user_profiles').upsert({
+          user_id: userId,
+          full_name,
+          cpf,
+          email,
+          account_status: 'premium',
+        }, { onConflict: 'user_id' });
+      }
+    } catch (profileErr) {
+      console.error('Erro ao upsert perfil premium:', profileErr);
+    }
+
+    // 3) Gerar link de recuperação e enviar email
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo: `${siteUrl}/reset-password` },
+      });
+      if (linkErr) throw linkErr;
+      const actionLink = (linkData as any)?.action_link || (linkData as any)?.properties?.action_link;
+      const setupLink = actionLink || `${siteUrl}/reset-password`;
+      await sendPasswordSetupEmail({ to: email, name: full_name, setupLink });
+    } catch (emailErr) {
+      console.error('Erro ao enviar email de criação de senha:', emailErr);
+    }
 
     // Log para desenvolvimento
     console.log(`✅ Pedido ${orderId} processado com sucesso`);
@@ -181,7 +255,12 @@ export async function POST(request: NextRequest) {
 
     // Persistir evento rapidamente e responder 200 (ack) para confiabilidade
     try {
-      const supabase = createServerClient();
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Supabase Admin não configurado');
+      }
+      const supabase = createClient(supabaseUrl, supabaseServiceKey, { auth: { autoRefreshToken: false, persistSession: false } });
       const objectId = webhookData?.id || webhookData?.data?.id || webhookData?.object?.id || null;
 
       // Verificar idempotência básica por objectId + eventType
@@ -221,7 +300,10 @@ export async function POST(request: NextRequest) {
       console.error('Falha ao persistir webhook', persistError);
     }
 
-    // Retornar sucesso imediatamente (ack) para evitar retries
+    // Processar evento após persistir
+    await processWebhookEvent(eventType, webhookData?.data || webhookData);
+
+    // Retornar sucesso (ack)
     return NextResponse.json(
       {
         success: true,

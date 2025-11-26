@@ -13,10 +13,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Configuração da API Pagar.me
-    const pagarmeApiKey = process.env.PAGARME_API_KEY;
+    const pagarmeSecret = process.env.PAGARME_SECRET_KEY;
     
-    if (!pagarmeApiKey) {
-      console.error('PAGARME_API_KEY não configurada');
+    if (!pagarmeSecret) {
+      console.error('PAGARME_SECRET_KEY não configurada');
       return NextResponse.json(
         { success: false, error: 'Configuração de pagamento não encontrada' },
         { status: 500 }
@@ -57,24 +57,43 @@ export async function POST(request: NextRequest) {
         cvv: body.card.cvv
       },
       payment_method: 'credit_card',
-      postback_url: body.postback_url || `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/pagarme`
+      postback_url: body.postback_url || `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/pagarme`
     };
 
     // Remover simulação - usar sempre a API real
     // Chamada real para a API v5 da Pagar.me
 
     // Chamada real para a API v5 da Pagar.me
+    // Adiciona Idempotency-Key para evitar pedidos duplicados
+    const idempotencyKey = Buffer.from(
+      require('crypto').createHash('sha256').update(JSON.stringify({
+        customer: {
+          document: subscriptionData.customer.documents[0].number,
+          email: subscriptionData.customer.email
+        },
+        amount: subscriptionData.plan.amount,
+        method: 'credit_card',
+        card: {
+          holder_name: subscriptionData.card.holder_name,
+          exp_month: subscriptionData.card.exp_month,
+          exp_year: subscriptionData.card.exp_year
+        }
+      })).digest('hex')
+    ).toString('hex');
+
     const pagarmeResponse = await fetch('https://api.pagar.me/core/v5/orders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${pagarmeApiKey}:`).toString('base64')}`
+        'Authorization': `Basic ${Buffer.from(`${pagarmeSecret}:`).toString('base64')}`,
+        'Idempotency-Key': idempotencyKey
       },
       body: JSON.stringify({
         customer: {
           name: subscriptionData.customer.name,
           email: subscriptionData.customer.email,
           document: subscriptionData.customer.documents[0].number,
+          document_type: subscriptionData.customer.documents[0].type,
           type: 'individual',
           phones: {
             mobile_phone: {
