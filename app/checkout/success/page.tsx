@@ -33,6 +33,16 @@ function CheckoutSuccessContent() {
     }
   }, [orderId, checkoutId]);
 
+  // Redirect automático para o dashboard quando o pagamento estiver confirmado
+  useEffect(() => {
+    if (orderData?.status === 'paid') {
+      const t = setTimeout(() => {
+        window.location.href = '/dashboard?welcome=true';
+      }, 2500);
+      return () => clearTimeout(t);
+    }
+  }, [orderData]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -95,7 +105,7 @@ function CheckoutSuccessContent() {
           <Button asChild className="w-full bg-green-600 hover:bg-green-700">
             <Link href="/dashboard">
               <ArrowRight className="w-4 h-4 mr-2" />
-              Ir para Dashboard
+              Acessar SOFIA PRO
             </Link>
           </Button>
 

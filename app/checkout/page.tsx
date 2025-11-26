@@ -565,7 +565,7 @@ export default function CheckoutPage() {
         if (json.success && json.status === 'paid') { if (!stopped) { stopped = true; window.location.href = `/checkout/success?order_id=${pixData.order_id}&mode=pix`; } }
       } catch {}
     };
-    checkStatus(); const id = setInterval(checkStatus, 10000);
+    checkStatus(); const id = setInterval(checkStatus, 5000);
     return () => { stopped = true; clearInterval(id); };
   }, [pixData?.order_id]);
 
@@ -577,6 +577,7 @@ export default function CheckoutPage() {
 
   const copyPixCode = () => { if (pixData) navigator.clipboard.writeText(pixData.qr_code_url); };
   const [checkingPix, setCheckingPix] = useState(false);
+  const [pixCheckMessage, setPixCheckMessage] = useState<string>('');
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
@@ -676,20 +677,33 @@ export default function CheckoutPage() {
             <div className="flex items-center justify-between bg-white p-3 rounded border"><span className="text-sm font-mono text-gray-700 truncate">{pixData.qr_code_url.substring(0, 40)}...</span><button onClick={copyPixCode} className="ml-2 p-1 text-green-600 hover:bg-green-50 rounded"><Copy className="w-4 h-4" /></button></div>
           </div>
             <div className="text-center text-sm text-gray-600 mb-6"><p className="font-semibold text-gray-800 text-lg">{formatPrice(19700, currency)}</p><p>{tr('valid_until')}: {new Date(pixData.expires_at).toLocaleString(countryMap[country].locale)}</p></div>
+          {pixCheckMessage && (
+            <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+              {pixCheckMessage}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <button
               onClick={async () => {
                 if (!pixData?.order_id || checkingPix) return;
                 setCheckingPix(true);
+                setPixCheckMessage('Verificando pagamento...');
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 7000);
                 try {
                   const res = await fetch(`/api/create-pix?order_id=${pixData.order_id}`, { method: 'PUT', signal: controller.signal });
                   const json = await res.json();
                   if (json.success && json.status === 'paid') {
+                    setPixCheckMessage('Pagamento confirmado! Redirecionando...');
                     window.location.href = `/checkout/success?order_id=${pixData.order_id}&mode=pix`;
+                  } else if (json.success) {
+                    setPixCheckMessage('Pagamento ainda não compensado. Aguarde alguns segundos e tente novamente.');
+                  } else {
+                    setPixCheckMessage('Não foi possível verificar o pagamento agora. Tente novamente.');
                   }
-                } catch {}
+                } catch {
+                  setPixCheckMessage('Erro ao verificar pagamento. Tente novamente.');
+                }
                 finally {
                   clearTimeout(timeoutId);
                   setCheckingPix(false);
