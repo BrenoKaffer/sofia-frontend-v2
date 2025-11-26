@@ -588,8 +588,8 @@ export default function CheckoutPage() {
         customer: {
           email: formData.email,
           document_number: formData.cpf.replace(/\D/g, ''),
-          // Para PIX usar o nome completo informado, com fallback para texto i18n
-          name: paymentMethod === 'credit_card' ? formData.cardName : (formData.fullName || tr('pix_customer_name')),
+          // Para PIX usar sempre o nome completo informado pelo usuário
+          name: paymentMethod === 'credit_card' ? formData.cardName : formData.fullName,
           type: 'individual',
           // Enviar telefone bruto; a API vai normalizar country/area/number
           phone: formData.phone,

@@ -57,21 +57,25 @@ export async function POST(request: NextRequest) {
     // Helper para normalizar telefone para o formato esperado pela API v5 da Pagar.me
     const normalizePhone = (raw?: string) => {
       const digits = (raw || '').replace(/\D/g, '');
-      let country_code = '55';
-      let area_code = '11';
-      let number = '999999999';
+      if (!digits) return undefined;
+      // Se vier com DDI (12+ dígitos): cc(2) + DDD(2) + número
       if (digits.length >= 12) {
-        country_code = digits.slice(0, 2);
-        area_code = digits.slice(2, 4);
-        number = digits.slice(4);
-      } else if (digits.length === 11) {
-        area_code = digits.slice(0, 2);
-        number = digits.slice(2);
-      } else if (digits.length === 10) {
-        area_code = digits.slice(0, 2);
-        number = digits.slice(2);
+        return {
+          country_code: digits.slice(0, 2),
+          area_code: digits.slice(2, 4),
+          number: digits.slice(4)
+        };
       }
-      return { country_code, area_code, number };
+      // Brasil: 10 ou 11 dígitos
+      if (digits.length === 11 || digits.length === 10) {
+        return {
+          country_code: '55',
+          area_code: digits.slice(0, 2),
+          number: digits.slice(2)
+        };
+      }
+      // Número inválido: não enviar
+      return undefined;
     };
 
     // Dados para criar o pagamento PIX na Pagar.me (usado como referência)
@@ -137,17 +141,15 @@ export async function POST(request: NextRequest) {
         'Idempotency-Key': idempotencyKey
       },
       body: JSON.stringify({
-        customer: {
-          name: pixData.customer.name,
-          email: pixData.customer.email,
-          document: pixData.customer.documents[0].number,
-          document_type: pixData.customer.documents[0].type,
-          type: 'individual',
-          code: body.customer.code || body.customer.email,
-          phones: {
-            mobile_phone: normalizePhone(body.customer.phone)
-          }
-        },
+      customer: {
+        name: body.customer.name,
+        email: body.customer.email,
+        document: body.customer.document_number,
+        document_type: 'cpf',
+        type: 'individual',
+        code: body.customer.code || body.customer.email,
+        ...(normalizePhone(body.customer.phone) ? { phones: { mobile_phone: normalizePhone(body.customer.phone)! } } : {})
+      },
         items: [{
           id: 'item_1',
           title: 'Plano SaaS Mensal',

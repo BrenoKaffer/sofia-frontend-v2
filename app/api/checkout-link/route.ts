@@ -111,21 +111,22 @@ export async function POST(request: NextRequest) {
     // Helper para normalizar telefone para o formato esperado pela API v5 da Pagar.me
     const normalizePhone = (raw?: string) => {
       const digits = (raw || '').replace(/\D/g, '');
-      let country_code = '55';
-      let area_code = '11';
-      let number = '999999999';
+      if (!digits) return undefined;
       if (digits.length >= 12) {
-        country_code = digits.slice(0, 2);
-        area_code = digits.slice(2, 4);
-        number = digits.slice(4);
-      } else if (digits.length === 11) {
-        area_code = digits.slice(0, 2);
-        number = digits.slice(2);
-      } else if (digits.length === 10) {
-        area_code = digits.slice(0, 2);
-        number = digits.slice(2);
+        return {
+          country_code: digits.slice(0, 2),
+          area_code: digits.slice(2, 4),
+          number: digits.slice(4)
+        };
       }
-      return { country_code, area_code, number };
+      if (digits.length === 11 || digits.length === 10) {
+        return {
+          country_code: '55',
+          area_code: digits.slice(0, 2),
+          number: digits.slice(2)
+        };
+      }
+      return undefined;
     };
 
     // Preparar dados para a API da Pagar.me
@@ -142,9 +143,7 @@ export async function POST(request: NextRequest) {
         document: body.customer.document,
         type: body.customer.type || 'individual',
         code: body.customer.code || body.customer.email,
-        phones: {
-          mobile_phone: normalizePhone(body.customer.phone)
-        }
+        ...(normalizePhone(body.customer.phone) ? { phones: { mobile_phone: normalizePhone(body.customer.phone)! } } : {})
       } : undefined,
       payments: [
         {
