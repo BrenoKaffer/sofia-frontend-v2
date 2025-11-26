@@ -425,9 +425,10 @@ export default function CheckoutPage() {
         return len >= 10 && len <= 15;
       }, { message: tr('invalid_phone') }),
       coupon: z.string().optional().default('')
-    }).refine((data) => data.email.toLowerCase() === data.emailConfirm.toLowerCase(), {
-      message: tr('emails_mismatch'),
-      path: ['emailConfirm']
+    }).superRefine((data, ctx) => {
+      if (data.email.toLowerCase() !== data.emailConfirm.toLowerCase()) {
+        ctx.addIssue({ code: 'custom', message: tr('emails_mismatch'), path: ['emailConfirm'] });
+      }
     });
     if (paymentMethod === 'credit_card') {
       return base.extend({

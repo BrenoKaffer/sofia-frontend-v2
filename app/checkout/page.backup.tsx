@@ -254,9 +254,10 @@ export default function CheckoutPage() {
       cpf: z.string().refine((v) => validateCPF(v), { message: 'CPF inválido' }),
       phone: z.string().refine((v) => v.replace(/\D/g, '').length >= 10 && v.replace(/\D/g, '').length <= 11, { message: 'Telefone inválido' }),
       coupon: z.string().optional().default('')
-    }).refine((data) => data.email.toLowerCase() === data.emailConfirm.toLowerCase(), {
-      message: 'Emails não conferem',
-      path: ['emailConfirm']
+    }).superRefine((data, ctx) => {
+      if (data.email.toLowerCase() !== data.emailConfirm.toLowerCase()) {
+        ctx.addIssue({ code: 'custom', message: 'Emails não conferem', path: ['emailConfirm'] });
+      }
     });
 
     if (paymentMethod === 'credit_card') {
