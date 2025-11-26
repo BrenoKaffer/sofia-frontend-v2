@@ -202,6 +202,7 @@ export default function CheckoutPage() {
       creating_payment_code: 'Criando código de pagamento',
       pix_generated_success: 'PIX gerado com sucesso!',
       pix_generate_error: 'Erro ao gerar PIX',
+      cta_generate_pix: 'Gerar PIX',
       redirecting_dashboard: 'Redirecionando para o dashboard...',
       btn_access_dashboard: 'Acessar Dashboard',
       btn_view_subscription: 'Ver detalhes da assinatura'
@@ -273,6 +274,7 @@ export default function CheckoutPage() {
       creating_payment_code: 'Creating payment code',
       pix_generated_success: 'PIX generated successfully!',
       pix_generate_error: 'Error generating PIX',
+      cta_generate_pix: 'Generate PIX',
       redirecting_dashboard: 'Redirecting to dashboard...',
       btn_access_dashboard: 'Access Dashboard',
       btn_view_subscription: 'View subscription details'
@@ -344,6 +346,7 @@ export default function CheckoutPage() {
       creating_payment_code: 'Creando código de pago',
       pix_generated_success: '¡PIX generado con éxito!',
       pix_generate_error: 'Error al generar PIX',
+      cta_generate_pix: 'Generar PIX',
       redirecting_dashboard: 'Redirigiendo al panel...',
       btn_access_dashboard: 'Acceder al Panel',
       btn_view_subscription: 'Ver detalles de la suscripción'
@@ -914,7 +917,7 @@ export default function CheckoutPage() {
                       </div>
                     ) : (
                       <>
-                        <Lock className="w-5 h-5 mr-2" />{tr('cta_activate')} – {formatPrice(displayAmount, currency)}{tr('per_month')}
+                        <Lock className="w-5 h-5 mr-2" />{paymentMethod === 'credit_card' ? tr('cta_activate') : tr('cta_generate_pix')} – {formatPrice(displayAmount, currency)}{tr('per_month')}
                       </>
                     )}
                   </button>
@@ -989,7 +992,7 @@ export default function CheckoutPage() {
             <div className="flex items-center"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>{processingStep || 'Processando...'}</div>
           ) : (
             <>
-              <Lock className="w-5 h-5 mr-2" />{tr('cta_activate')} – {formatPrice(displayAmount, currency)}{tr('per_month')}
+              <Lock className="w-5 h-5 mr-2" />{paymentMethod === 'credit_card' ? tr('cta_activate') : tr('cta_generate_pix')} – {formatPrice(displayAmount, currency)}{tr('per_month')}
             </>
           )}
         </button>

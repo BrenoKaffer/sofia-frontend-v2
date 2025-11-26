@@ -241,18 +241,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Em desenvolvimento, simular verificação de status
-    if (process.env.NODE_ENV === 'development') {
-      // Simular que 30% dos PIX são pagos após algum tempo
-      const isPaid = Math.random() > 0.7;
-      
-      return NextResponse.json({
-        success: true,
-        order_id: orderId,
-        status: isPaid ? 'paid' : 'waiting_payment',
-        paid_at: isPaid ? new Date().toISOString() : null
-      });
-    }
+    // Em todos os ambientes, verificar status real na Pagar.me via API v5 (Basic)
 
     // Em produção, verificar status real na Pagar.me via API v5 (Basic)
     const pagarmeSecret = process.env.PAGARME_SECRET_KEY;
