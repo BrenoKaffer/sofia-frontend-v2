@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
         email: z.string().email(),
         type: z.enum(['individual','corporation']).optional(),
         document_number: z.string().regex(/^\d{11,14}$/),
+        phone: z.string().optional(),
+        code: z.string().optional()
       }),
       postback_url: z.string().url().optional(),
     });
@@ -52,7 +54,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Dados para criar o pagamento PIX na Pagar.me
+    // Helper para normalizar telefone para o formato esperado pela API v5 da Pagar.me
+    const normalizePhone = (raw?: string) => {
+      const digits = (raw || '').replace(/\D/g, '');
+      let country_code = '55';
+      let area_code = '11';
+      let number = '999999999';
+      if (digits.length >= 12) {
+        country_code = digits.slice(0, 2);
+        area_code = digits.slice(2, 4);
+        number = digits.slice(4);
+      } else if (digits.length === 11) {
+        area_code = digits.slice(0, 2);
+        number = digits.slice(2);
+      } else if (digits.length === 10) {
+        area_code = digits.slice(0, 2);
+        number = digits.slice(2);
+      }
+      return { country_code, area_code, number };
+    };
+
+    // Dados para criar o pagamento PIX na Pagar.me (usado como referência)
     const pixData = {
       amount: body.amount, // Valor em centavos
       payment_method: 'pix',
@@ -69,8 +91,8 @@ export async function POST(request: NextRequest) {
             number: body.customer.document_number
           }
         ],
-        phone_numbers: ['+5511999999999'], // Número padrão para teste
-        birthday: '1990-01-01' // Data padrão para teste
+        phone_numbers: ['+5511999999999'],
+        birthday: '1990-01-01'
       },
       billing: {
         name: body.customer.name || 'Cliente PIX',
@@ -121,12 +143,9 @@ export async function POST(request: NextRequest) {
           document: pixData.customer.documents[0].number,
           document_type: pixData.customer.documents[0].type,
           type: 'individual',
+          code: body.customer.code || body.customer.email,
           phones: {
-            mobile_phone: {
-              country_code: '55',
-              area_code: '11',
-              number: '999999999'
-            }
+            mobile_phone: normalizePhone(body.customer.phone)
           }
         },
         items: [{

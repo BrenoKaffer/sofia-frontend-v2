@@ -60,6 +60,14 @@ export async function POST(request: NextRequest) {
           default_quantity: z.number().int().positive().optional()
         })).min(1)
       }),
+      customer: z.object({
+        name: z.string().min(2),
+        email: z.string().email(),
+        document: z.string().regex(/^\d{11,14}$/),
+        phone: z.string().optional(),
+        code: z.string().optional(),
+        type: z.enum(['individual','corporation']).optional()
+      }).optional(),
       name: z.string().optional(),
       type: z.string().optional(),
       success_url: z.string().url().optional(),
@@ -73,7 +81,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const body: CheckoutRequest = parsed.data as any;
+    const body: CheckoutRequest & { customer?: { name: string; email: string; document: string; phone?: string; code?: string; type?: string } } = parsed.data as any;
 
     // Validação básica
     if (!body.cart_settings?.items?.length) {
@@ -100,6 +108,26 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    // Helper para normalizar telefone para o formato esperado pela API v5 da Pagar.me
+    const normalizePhone = (raw?: string) => {
+      const digits = (raw || '').replace(/\D/g, '');
+      let country_code = '55';
+      let area_code = '11';
+      let number = '999999999';
+      if (digits.length >= 12) {
+        country_code = digits.slice(0, 2);
+        area_code = digits.slice(2, 4);
+        number = digits.slice(4);
+      } else if (digits.length === 11) {
+        area_code = digits.slice(0, 2);
+        number = digits.slice(2);
+      } else if (digits.length === 10) {
+        area_code = digits.slice(0, 2);
+        number = digits.slice(2);
+      }
+      return { country_code, area_code, number };
+    };
+
     // Preparar dados para a API da Pagar.me
     const pagarmeData = {
       items: body.cart_settings.items.map(item => ({
@@ -108,19 +136,16 @@ export async function POST(request: NextRequest) {
         quantity: item.default_quantity || 1,
         code: `item_${Date.now()}`
       })),
-      customer: {
-        name: 'Cliente Teste',
-        email: 'cliente@teste.com',
-        document: '12345678901',
-        type: 'individual',
+      customer: body.customer ? {
+        name: body.customer.name,
+        email: body.customer.email,
+        document: body.customer.document,
+        type: body.customer.type || 'individual',
+        code: body.customer.code || body.customer.email,
         phones: {
-          mobile_phone: {
-            country_code: '55',
-            area_code: '11',
-            number: '999999999'
-          }
+          mobile_phone: normalizePhone(body.customer.phone)
         }
-      },
+      } : undefined,
       payments: [
         {
           payment_method: 'checkout',

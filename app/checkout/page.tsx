@@ -585,7 +585,17 @@ export default function CheckoutPage() {
     try {
       const finalAmount = couponCalculation ? couponCalculation.final_amount : 19700;
       const baseData = {
-  customer: { email: formData.email, document_number: formData.cpf.replace(/\D/g, ''), name: paymentMethod === 'credit_card' ? formData.cardName : tr('pix_customer_name'), type: 'individual' },
+        customer: {
+          email: formData.email,
+          document_number: formData.cpf.replace(/\D/g, ''),
+          // Para PIX usar o nome completo informado, com fallback para texto i18n
+          name: paymentMethod === 'credit_card' ? formData.cardName : (formData.fullName || tr('pix_customer_name')),
+          type: 'individual',
+          // Enviar telefone bruto; a API vai normalizar country/area/number
+          phone: formData.phone,
+          // Usar email como código único do cliente
+          code: formData.email
+        },
         amount: finalAmount,
         postback_url: 'https://sua-api.com/webhooks/pagarme',
         ...(couponData && { coupon: couponData.code })

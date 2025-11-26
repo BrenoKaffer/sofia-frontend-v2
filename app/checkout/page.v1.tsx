@@ -288,7 +288,14 @@ export default function CheckoutPageV1() {
     try {
       const finalAmount = couponCalculation ? couponCalculation.final_amount : 19700;
       const baseData = {
-        customer: { email: formData.email, document_number: formData.cpf.replace(/\D/g, ''), name: paymentMethod === 'credit_card' ? formData.cardName : 'Cliente PIX', type: 'individual' },
+        customer: {
+          email: formData.email,
+          document_number: formData.cpf.replace(/\D/g, ''),
+          name: paymentMethod === 'credit_card' ? formData.cardName : (formData.fullName || 'Cliente PIX'),
+          type: 'individual',
+          phone: formData.phone,
+          code: formData.email
+        },
         amount: finalAmount,
         postback_url: 'https://sua-api.com/webhooks/pagarme',
         ...(couponData && { coupon: couponData.code })
