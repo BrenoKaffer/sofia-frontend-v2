@@ -312,7 +312,6 @@ export default function CheckoutPageV1() {
         if (result.success && result.qr_code_url) {
           setProcessingStep('PIX gerado com sucesso!');
           setLoadingMessage('');
-          try { window.open(result.qr_code_url, '_blank'); } catch {}
           setTimeout(() => {
             setPixData({
               qr_code: result.qr_code_url,
