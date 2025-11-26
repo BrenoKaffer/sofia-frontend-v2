@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Shield, Check, AlertCircle, Lock, Star, Smartphone, Copy, ChevronDown, Tag } from 'lucide-react';
 import { useSofiaAuth } from '@/hooks/use-sofia-auth';
 import { z } from 'zod';
+import QRCode from 'qrcode';
 
 // Interfaces para tipagem
 interface FormData {
@@ -46,6 +47,32 @@ interface CouponCalculation {
   savings_percentage: number;
 }
 
+// Renderização local do QR para evitar latência de imagens externas
+function QrCanvas({ code, className = '' }: { code: string; className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!code || !canvasRef.current) return;
+    setReady(false);
+    QRCode.toCanvas(canvasRef.current, code, { width: 256, margin: 1 })
+      .then(() => setReady(true))
+      .catch(() => setReady(false));
+  }, [code]);
+
+  return (
+    <div className={`w-full h-full flex items-center justify-center ${className}`}>
+      {!ready && (
+        <div className="text-gray-500 text-center">
+          <Smartphone className="w-12 h-12 mx-auto mb-2" />
+          <p className="text-sm">Gerando QR Code…</p>
+        </div>
+      )}
+      <canvas ref={canvasRef} className="block" style={{ display: ready ? 'block' : 'none' }} />
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
   // Hook de autenticação
   const { userProfile, isAuthenticated } = useSofiaAuth();
@@ -76,6 +103,7 @@ export default function CheckoutPage() {
   const [couponCalculation, setCouponCalculation] = useState<CouponCalculation | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
+  const [checkingPix, setCheckingPix] = useState(false);
 
   // Validar cupom de desconto
   const validateCoupon = async (couponCode: string) => {
@@ -606,11 +634,7 @@ export default function CheckoutPage() {
           <div className="bg-gray-100 p-6 rounded-lg mb-6">
             <div className="w-48 h-48 mx-auto bg-white rounded-lg flex items-center justify-center">
               {pixData.qr_code ? (
-                <img 
-                  src={pixData.qr_code} 
-                  alt="QR Code PIX" 
-                  className="w-full h-full object-contain"
-                />
+                <QrCanvas code={pixData.qr_code_url} />
               ) : (
                 <div className="text-gray-500 text-center">
                   <Smartphone className="w-12 h-12 mx-auto mb-2" />
@@ -644,18 +668,26 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-2 gap-3 mb-6">
             <button
               onClick={async () => {
-                if (!pixData?.order_id) return;
+                if (!pixData?.order_id || checkingPix) return;
+                setCheckingPix(true);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 7000);
                 try {
-                  const res = await fetch(`/api/create-pix?order_id=${pixData.order_id}`, { method: 'PUT' });
+                  const res = await fetch(`/api/create-pix?order_id=${pixData.order_id}`, { method: 'PUT', signal: controller.signal });
                   const json = await res.json();
                   if (json.success && json.status === 'paid') {
                     window.location.href = `/checkout/success?order_id=${pixData.order_id}&mode=pix`;
                   }
                 } catch {}
+                finally {
+                  clearTimeout(timeoutId);
+                  setCheckingPix(false);
+                }
               }}
-              className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all"
+              disabled={checkingPix}
+              className={`w-full ${checkingPix ? 'bg-green-500' : 'bg-green-600'} text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all`}
             >
-              Já paguei, verificar
+              {checkingPix ? 'Verificando…' : 'Já paguei, verificar'}
             </button>
             <button
               onClick={() => {

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Shield, Check, AlertCircle, Lock, Star, Smartphone, Copy, ChevronDown, Tag } from 'lucide-react';
 import { useSofiaAuth } from '@/hooks/use-sofia-auth';
 import { z } from 'zod';
+import QRCode from 'qrcode';
 
 // Tipos
 interface FormData {
@@ -49,6 +50,27 @@ function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
 }
 
+// Renderização local do QR para evitar latência de imagens externas
+function QrCanvas({ code, className = '' }: { code: string; className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!code || !canvasRef.current) return;
+    setReady(false);
+    QRCode.toCanvas(canvasRef.current, code, { width: 256, margin: 1 })
+      .then(() => setReady(true))
+      .catch(() => setReady(false));
+  }, [code]);
+
+  return (
+    <div className={`w-full h-full flex items-center justify-center ${className}`}>
+      {!ready && <Skeleton className="w-48 h-48" />}
+      <canvas ref={canvasRef} className="block" style={{ display: ready ? 'block' : 'none' }} />
+    </div>
+  );
+}
+
 export default function CheckoutPageV1() {
   const { userProfile, isAuthenticated } = useSofiaAuth();
 
@@ -78,6 +100,7 @@ export default function CheckoutPageV1() {
   const [couponData, setCouponData] = useState<CouponData | null>(null);
   const [couponCalculation, setCouponCalculation] = useState<CouponCalculation | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [checkingPix, setCheckingPix] = useState(false);
   const [couponError, setCouponError] = useState('');
 
   // Helpers de formatação
@@ -346,8 +369,8 @@ export default function CheckoutPageV1() {
           <p className="text-gray-600 mb-6">Escaneie o QR Code com seu banco ou copie o código PIX</p>
           <div className="bg-gray-100 p-6 rounded-lg mb-6">
             <div className="w-48 h-48 mx-auto bg-white rounded-lg flex items-center justify-center">
-              {pixData.qr_code ? (
-                <img src={pixData.qr_code} alt="QR Code PIX" className="w-full h-full object-contain" />
+              {pixData.qr_code_url ? (
+                <QrCanvas code={pixData.qr_code_url} />
               ) : (
                 <Skeleton className="w-40 h-40" />
               )}
@@ -359,7 +382,29 @@ export default function CheckoutPageV1() {
           </div>
           <div className="text-center text-sm text-gray-600 mb-6"><p className="font-semibold text-gray-800 text-lg">R$ 197,00</p><p>Válido até: {new Date(pixData.expires_at).toLocaleString('pt-BR')}</p></div>
           <div className="grid grid-cols-2 gap-3 mb-6">
-            <button onClick={async () => { if (!pixData?.order_id) return; try { const res = await fetch(`/api/create-pix?order_id=${pixData.order_id}`, { method: 'PUT' }); const json = await res.json(); if (json.success && json.status === 'paid') window.location.href = `/checkout/success?order_id=${pixData.order_id}&mode=pix`; } catch {} }} className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all">Já paguei, verificar</button>
+            <button
+              onClick={async () => {
+                if (!pixData?.order_id || checkingPix) return;
+                setCheckingPix(true);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 7000);
+                try {
+                  const res = await fetch(`/api/create-pix?order_id=${pixData.order_id}`, { method: 'PUT', signal: controller.signal });
+                  const json = await res.json();
+                  if (json.success && json.status === 'paid') {
+                    window.location.href = `/checkout/success?order_id=${pixData.order_id}&mode=pix`;
+                  }
+                } catch {}
+                finally {
+                  clearTimeout(timeoutId);
+                  setCheckingPix(false);
+                }
+              }}
+              disabled={checkingPix}
+              className={`w-full ${checkingPix ? 'bg-green-500' : 'bg-green-600'} text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-all`}
+            >
+              {checkingPix ? 'Verificando…' : 'Já paguei, verificar'}
+            </button>
             <button onClick={() => { setPixData(null); setPaymentMethod('credit_card'); }} className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-all">Voltar para cartão</button>
           </div>
           <button onClick={() => { setPixData(null); setPaymentMethod('credit_card'); }} className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-200 transition-all">Voltar para outras opções</button>
