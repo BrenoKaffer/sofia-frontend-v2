@@ -27,7 +27,7 @@ const wss = new WebSocket.Server({
 // Buscar dados reais do backend
 const fetchRealData = async (endpoint) => {
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.SOFIA_BACKEND_URL || '';
     const response = await fetch(`${backendUrl}/api/${endpoint}`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -380,9 +380,11 @@ app.get('/api/table-status', async (req, res) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor WebSocket rodando na porta ${PORT}`);
-  console.log(`📡 WebSocket endpoint: ws://localhost:${PORT}/ws`);
-  console.log(`🌐 API REST: http://localhost:${PORT}/api`);
-  console.log(`💡 Health check: http://localhost:${PORT}/api/health`);
+  const origin = process.env.NEXT_PUBLIC_WS_URL || process.env.SOFIA_BACKEND_WS_URL || `ws://0.0.0.0:${PORT}/ws`;
+  const apiOrigin = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.SOFIA_BACKEND_URL || `http://0.0.0.0:${PORT}`;
+  console.log(`📡 WebSocket endpoint: ${origin}`);
+  console.log(`🌐 API REST: ${apiOrigin}/api`);
+  console.log(`💡 Health check: ${apiOrigin}/api/health`);
 });
 
 // Graceful shutdown

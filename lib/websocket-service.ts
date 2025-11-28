@@ -26,7 +26,7 @@ export class WebSocketService {
 
   constructor(config: WebSocketConfig = {}) {
     this.config = {
-      url: config.url || process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8080/ws',
+      url: config.url || process.env.NEXT_PUBLIC_WEBSOCKET_URL || process.env.SOFIA_BACKEND_WS_URL || '',
       reconnectInterval: config.reconnectInterval || 3000,
       maxReconnectAttempts: config.maxReconnectAttempts || 10,
       heartbeatInterval: config.heartbeatInterval || 30000

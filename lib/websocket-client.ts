@@ -84,8 +84,9 @@ export class WebSocketClient {
   }
 
   private getDefaultUrl(): string {
-    if (typeof window === 'undefined') return 'ws://localhost:3000/api/websocket';
-    
+    if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_WS_URL || process.env.SOFIA_BACKEND_WS_URL || '';
+    const envUrl = process.env.NEXT_PUBLIC_WS_URL || process.env.SOFIA_BACKEND_WS_URL;
+    if (envUrl) return envUrl as string;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     return `${protocol}//${host}/api/websocket`;

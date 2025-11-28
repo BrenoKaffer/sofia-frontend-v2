@@ -296,9 +296,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        websocket_url: process.env.NODE_ENV === 'production' 
-          ? 'wss://your-domain.com/api/websocket'
-          : 'ws://localhost:3000/api/websocket',
+        websocket_url: process.env.NEXT_PUBLIC_WS_URL || process.env.SOFIA_BACKEND_WS_URL || '',
         available_channels: Object.values(CHANNELS),
         current_stats: stats,
         connection_info: {
