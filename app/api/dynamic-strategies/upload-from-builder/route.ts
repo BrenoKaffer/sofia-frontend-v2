@@ -138,4 +138,3 @@ export async function OPTIONS() {
 // Nota: não exportar utilitários adicionais a partir de rotas.
 // Next.js Route Handlers só permitem exports de metadados (ex: runtime)
 // e handlers HTTP (GET/POST/PUT/DELETE/OPTIONS, etc.).
-export { compileBuilderToJS }
