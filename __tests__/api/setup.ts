@@ -8,6 +8,7 @@ import { apiCache, cacheUtils } from '@/lib/api-cache';
 // Mock do sistema de autenticação customizado para testes
 jest.mock('@/lib/auth-server', () => ({
   auth: jest.fn(() => ({
+    userId: 'test-user-id',
     user: {
       id: 'test-user-id',
       email: 'test@example.com',
@@ -16,12 +17,15 @@ jest.mock('@/lib/auth-server', () => ({
     isAuthenticated: true
   })),
   requireAuth: jest.fn(() => ({
-    user: {
-      id: 'test-user-id',
-      email: 'test@example.com',
-      name: 'Test User'
-    },
-    isAuthenticated: true
+    success: true,
+    userId: 'test-user-id'
+  }))
+}));
+
+jest.mock('@/lib/auth-middleware', () => ({
+  requireAuth: jest.fn(() => ({
+    success: true,
+    userId: 'test-user-id'
   }))
 }));
 
