@@ -210,7 +210,7 @@ export default function AccountUpgradePage() {
 
         {/* Final CTA */}
         {!isPremium && (
-          <Card className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+          <Card className="bg-gradient-to-r from-[#8A3FF5] to-[#E53B78] text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -218,7 +218,7 @@ export default function AccountUpgradePage() {
                   <p className="text-purple-100">R$ 29,90/mês — Cancelamento imediato.</p>
                 </div>
                 <Button
-                  className="bg-white text-purple-600 hover:bg-gray-100"
+                  className="bg-white text-[#8A3FF5] hover:bg-gray-100"
                   onClick={handleUpgrade}
                 >
                   Ativar Premium
