@@ -5,18 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, X, Crown, Zap, Shield, BarChart3, Clock, Users, Smartphone } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
+import { useCurrentUserStatus } from '@/hooks/useUserStatus';
 import { useRouter } from 'next/navigation';
 
 export default function AccountUpgradePage() {
-  const { userProfile } = useAuth();
+  const { status } = useCurrentUserStatus();
   const router = useRouter();
 
-  const isPremium = userProfile?.plan_type === 'premium';
+  const isPremium = !!status?.isPremium;
 
   const handleUpgrade = () => {
-    // Navigate to checkout
-    window.location.href = 'https://sofia-checkout.vercel.app/checkout';
+    window.location.href = 'https://pay.v1sofia.com/?plan=premium&price_id=sofia-premium-mensal';
   };
 
   const features = [
@@ -84,8 +83,8 @@ export default function AccountUpgradePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 variant={isPremium ? "outline" : "default"}
                 disabled={!isPremium}
                 onClick={() => !isPremium && router.push('/dashboard')}
@@ -116,7 +115,7 @@ export default function AccountUpgradePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button 
+              <Button
                 className="w-full bg-purple-600 hover:bg-purple-700"
                 onClick={handleUpgrade}
                 disabled={isPremium}
@@ -218,7 +217,7 @@ export default function AccountUpgradePage() {
                   <h3 className="text-lg font-semibold mb-1">Desbloqueie todo o poder do Sofia Premium</h3>
                   <p className="text-purple-100">R$ 29,90/mês — Cancelamento imediato.</p>
                 </div>
-                <Button 
+                <Button
                   className="bg-white text-purple-600 hover:bg-gray-100"
                   onClick={handleUpgrade}
                 >
