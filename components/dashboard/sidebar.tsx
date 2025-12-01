@@ -39,7 +39,6 @@ import {
   RotateCcw,
   Database
 } from 'lucide-react';
-import React from 'react';
 import { useAuth } from '@/contexts/auth-context';
 
 const navigationSections = [
