@@ -90,9 +90,9 @@ const navigationSections = [
     ]
   },
   {
-    title: 'Plano',
+    title: 'Conta',
     items: [
-      { name: 'Plano Premium', href: '/upgrade', icon: Rocket },
+      { name: 'Meu Plano', href: '/account/upgrade', icon: Rocket },
     ]
   }
 ];
