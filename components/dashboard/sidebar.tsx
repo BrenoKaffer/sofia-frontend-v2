@@ -7,11 +7,11 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 // Remover ScrollArea para preservar posição de scroll manualmente
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { 
-  LayoutDashboard, 
-  Settings, 
-  BarChart3, 
-  FileText, 
+import {
+  LayoutDashboard,
+  Settings,
+  BarChart3,
+  FileText,
   User,
   Brain,
   X,
@@ -39,7 +39,7 @@ import {
   RotateCcw,
   Database
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
 import { useAuth } from '@/contexts/auth-context';
 
 const navigationSections = [
@@ -113,20 +113,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
     return initialState;
   });
   const { user } = useAuth();
-  // Preservar posição de scroll da sidebar
-  const [scrollTop, setScrollTop] = useState<number>(0);
-  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop((e.target as HTMLDivElement).scrollTop);
-    try { localStorage.setItem('sidebar-scroll', String((e.target as HTMLDivElement).scrollTop)); } catch {}
-  };
-  const restoreScrollProps = { onScroll, ref: (el: HTMLDivElement | null) => {
-    if (el) {
-      try {
-        const saved = Number(localStorage.getItem('sidebar-scroll') || '0');
-        if (!Number.isNaN(saved)) { el.scrollTop = saved; }
-      } catch {}
-    }
-  }};
+  // Removida persistência de scroll para evitar resets automáticos
 
   const toggleSection = (sectionTitle: string) => {
     setExpandedSections(prev => ({
@@ -151,7 +138,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
             </div>
           )}
         </div>
-        
+
         <Button
           variant="ghost"
           size="icon"
@@ -167,7 +154,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 px-3 py-4 overflow-y-auto" {...restoreScrollProps}>
+      <div className="flex-1 px-3 py-4 overflow-y-auto min-h-0 h-full scroll-smooth">
         <nav className="space-y-4">
           {navigationSections.map((section) => (
             <div key={section.title} className="space-y-2">
@@ -185,7 +172,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
                   )}
                 </button>
               )}
-              
+
               {/* Section Items */}
               {(collapsed || expandedSections[section.title]) && (
                 <div className="space-y-1">
@@ -243,17 +230,15 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <motion.aside
-        animate={{ width: collapsed ? 80 : 280 }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="hidden lg:block border-r bg-card/50 backdrop-blur-sm"
+      <aside
+        className={`hidden lg:flex flex-col border-r bg-card/50 backdrop-blur-sm ${collapsed ? 'w-20' : 'w-72'} h-screen`}
       >
         <SidebarContent />
-      </motion.aside>
+      </aside>
 
       {/* Mobile Sidebar */}
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-80 p-0">
+        <SheetContent side="left" className="w-80 p-0 overflow-y-auto">
           <SidebarContent />
         </SheetContent>
       </Sheet>
