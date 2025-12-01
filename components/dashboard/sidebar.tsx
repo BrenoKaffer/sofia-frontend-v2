@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// Remover ScrollArea para preservar posição de scroll manualmente
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { 
   LayoutDashboard, 
@@ -113,6 +113,20 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
     return initialState;
   });
   const { user } = useAuth();
+  // Preservar posição de scroll da sidebar
+  const [scrollTop, setScrollTop] = useState<number>(0);
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop((e.target as HTMLDivElement).scrollTop);
+    try { localStorage.setItem('sidebar-scroll', String((e.target as HTMLDivElement).scrollTop)); } catch {}
+  };
+  const restoreScrollProps = { onScroll, ref: (el: HTMLDivElement | null) => {
+    if (el) {
+      try {
+        const saved = Number(localStorage.getItem('sidebar-scroll') || '0');
+        if (!Number.isNaN(saved)) { el.scrollTop = saved; }
+      } catch {}
+    }
+  }};
 
   const toggleSection = (sectionTitle: string) => {
     setExpandedSections(prev => ({
@@ -153,7 +167,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-3 py-4">
+      <div className="flex-1 px-3 py-4 overflow-y-auto" {...restoreScrollProps}>
         <nav className="space-y-4">
           {navigationSections.map((section) => (
             <div key={section.title} className="space-y-2">
@@ -210,7 +224,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
             </div>
           ))}
         </nav>
-      </ScrollArea>
+      </div>
 
       {/* Footer */}
       <div className="border-t p-4">

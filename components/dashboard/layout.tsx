@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { OnboardingTrigger } from '@/components/onboarding/onboarding-trigger';
 import { motion } from 'framer-motion';
+import { MainSkeleton } from './main-skeleton';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,7 +29,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             className="p-6 lg:p-8 min-h-full flex flex-col"
           >
             <div className="flex-1">
-              {children}
+              <Suspense fallback={<MainSkeleton />}>{children}</Suspense>
             </div>
             
             {/* Footer */}
