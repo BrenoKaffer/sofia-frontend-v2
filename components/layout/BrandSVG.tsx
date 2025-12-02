@@ -22,11 +22,24 @@ export default function BrandSVG({ width = 226, height = 34 }: BrandSVGProps) {
     >
       {/* Static fill layer (brand green) */}
       <path d={dPath} fill="#6FFF00" />
-      {/* Animated stroke layer to simulate "desenhando" */}
+      {/* White brand text overlay to ensure contrast */}
+      <text
+        x="113"
+        y="23"
+        textAnchor="middle"
+        fontFamily="'Plus Jakarta Sans', 'Poppins', system-ui, sans-serif"
+        fontSize="20"
+        fontWeight="700"
+        fill="#FFFFFF"
+        letterSpacing="2"
+      >
+        SOFIA
+      </text>
+      {/* Animated stroke layer to simulate "desenhando" (white outline) */}
       <motion.path
         d={dPath}
         fill="none"
-        stroke="#6FFF00"
+        stroke="#FFFFFF"
         strokeWidth={1.5}
         initial={{ pathLength: 0, opacity: 0.9 }}
         animate={{ pathLength: 1, opacity: 1 }}
