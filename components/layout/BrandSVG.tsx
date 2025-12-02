@@ -26,10 +26,6 @@ export default function BrandSVG({ width = 603, height = 90 }: BrandSVGProps) {
           <stop offset="0.173077" stopColor="white" />
         </linearGradient>
         <linearGradient id="paint1_linear_1_5" x1="-6.272" y1="44.1" x2="619.728" y2="44.1" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#E9E9E9" />
-          <stop offset="1" stopColor="#E5E5E5" />
-        </linearGradient>
-        <linearGradient id="paint2_linear_1_5" x1="-6.272" y1="44.1" x2="619.728" y2="44.1" gradientUnits="userSpaceOnUse">
           <stop offset="0.822115" stopColor="#6FFF00" />
           <stop offset="1" stopColor="#0D1D00" />
         </linearGradient>
@@ -37,14 +33,14 @@ export default function BrandSVG({ width = 603, height = 90 }: BrandSVGProps) {
       {/* Camada base com gradiente cinza → branco */}
       <path d={dPrimary} fill="url(#paint0_linear_1_5)" />
       {/* Camada neutra (seção intermediária) */}
-      <path d="M482.468 80C482.468 82.6453 481.529 84.9066 479.652 86.784C477.775 88.6613 475.513 89.6 472.868 89.6C470.223 89.6 467.961 88.6613 466.084 86.784C464.207 84.9066 463.268 82.6453 463.268 80C463.268 77.3546 464.207 75.0933 466.084 73.216C467.961 71.3386 470.223 70.4 472.868 70.4C475.513 70.4 477.775 71.3386 479.652 73.216C481.529 75.0933 482.468 77.3546 482.468 80Z" fill="url(#paint1_linear_1_5)" />
+      <path d="M482.468 80C482.468 82.6453 481.529 84.9066 479.652 86.784C477.775 88.6613 475.513 89.6 472.868 89.6C470.223 89.6 467.961 88.6613 466.084 86.784C464.207 84.9066 463.268 82.6453 463.268 80C463.268 77.3546 464.207 75.0933 466.084 73.216C467.961 71.3386 470.223 70.4 472.868 70.4C475.513 70.4 477.775 71.3386 479.652 73.216C481.529 75.0933 482.468 77.3546 482.468 80Z" fill="white" />
       {/* Camada de destaque com gradiente verde → escuro */}
-      <path d={dAccent} fill="url(#paint2_linear_1_5)" />
+      <path d={dAccent} fill="url(#paint1_linear_1_5)" />
       {/* Animação de desenho sobre a camada de destaque */}
       <motion.path
         d={dAccent}
         fill="none"
-        stroke="url(#paint2_linear_1_5)"
+        stroke="url(#paint1_linear_1_5)"
         strokeWidth={1.6}
         initial={{ pathLength: 0, opacity: 0.9 }}
         animate={{ pathLength: 1, opacity: 1 }}
