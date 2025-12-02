@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import LogoSofia from './LogoSofia'
+import LogoTransition from './LogoTransition'
 
 interface PageTransitionProps {
   isVisible: boolean
@@ -17,7 +17,7 @@ export default function PageTransition({ isVisible }: PageTransitionProps) {
       exit={{ opacity: 0 }}
       transition={{ delay: 1.2, duration: 0.6, ease: 'easeInOut' }}
     >
-      <LogoSofia useExternal={false} />
+      <LogoTransition />
     </motion.div>
   )
 }
