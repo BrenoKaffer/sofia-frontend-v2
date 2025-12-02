@@ -30,7 +30,7 @@ export default function LogoSofia({ useExternal = false }: LogoSofiaProps) {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
-      <BrandSVG width={184} height={20} />
+      <BrandSVG width={603} height={90} />
     </motion.div>
   )
 }
