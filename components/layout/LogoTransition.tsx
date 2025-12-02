@@ -13,7 +13,7 @@ export default function LogoTransition() {
       className="relative"
     >
       <div className={`${styles.logoGlow} ${styles.animate}`}>
-        <BrandSVG width={226} height={34} />
+        <BrandSVG width={226} height={34} enableFlash />
       </div>
     </motion.div>
   )
