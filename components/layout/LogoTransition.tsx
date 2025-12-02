@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import BrandSVG from './BrandSVG'
-import GlowRing from '../ui/GlowRing'
+import styles from './LogoShimmer.module.css'
 
 export default function LogoTransition() {
   return (
@@ -12,9 +12,9 @@ export default function LogoTransition() {
       transition={{ duration: 0.8, ease: 'easeOut' }}
       className="relative"
     >
-      <GlowRing>
+      <div className={styles.shimmer}>
         <BrandSVG width={226} height={34} />
-      </GlowRing>
+      </div>
     </motion.div>
   )
 }
