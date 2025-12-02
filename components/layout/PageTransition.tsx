@@ -11,7 +11,7 @@ export default function PageTransition({ isVisible }: PageTransitionProps) {
   if (!isVisible) return null
   return (
     <motion.div
-      className="fixed inset-0 flex items-center justify-center bg-[#081217] z-[9999]"
+      className="fixed inset-0 flex items-center justify-center bg-black z-[9999]"
       initial={{ opacity: 1 }}
       animate={{ opacity: 0 }}
       exit={{ opacity: 0 }}
