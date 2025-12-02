@@ -12,7 +12,7 @@ export default function LogoTransition() {
       transition={{ duration: 0.8, ease: 'easeOut' }}
       className="relative"
     >
-      <div className={styles.shimmer}>
+      <div className={`${styles.logoGlow} ${styles.animate}`}>
         <BrandSVG width={226} height={34} />
       </div>
     </motion.div>
