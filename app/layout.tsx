@@ -8,7 +8,7 @@ import { MonitoringProvider } from '@/components/providers/MonitoringProvider';
 import ClientTransitionOverlay from '@/components/layout/ClientTransitionOverlay';
 
 export const metadata: Metadata = {
-  title: 'SOFIA - Sistema de Operação de Fichas Inteligentes',
+  title: 'SOFIA | Sistema de Fichas Inteligente e Autônomas',
   description: 'Inteligência artificial para análise de roleta online com padrões em tempo real',
   keywords: 'roleta, IA, padrões, apostas, análise, tempo real',
   authors: [{ name: 'SOFIA Team' }],
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   metadataBase: new URL('https://sofia-ai.com'),
   openGraph: {
-    title: 'SOFIA - Sistema de Operação de Fichas Inteligentes',
+    title: 'SOFIA | Sistema de Fichas Inteligente e Autônomas',
     description: 'Inteligência artificial para análise de roleta online',
     type: 'website',
     locale: 'pt_BR',
