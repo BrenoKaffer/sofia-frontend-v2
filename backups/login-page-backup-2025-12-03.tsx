@@ -75,9 +75,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#081217]">
+    <div className="min-h-screen flex">
       {/* Left side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-[#081217]">
+      <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-background via-background to-accent/5">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -93,42 +93,42 @@ export default function LoginPage() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring" }}
-              className="inline-flex items-center justify-center w-[72px] h-[72px] rounded-2xl mb-4 bg-[#0C1C25]"
+              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary to-accent rounded-2xl mb-4"
             >
               <Brain className="w-8 h-8 text-white" />
             </motion.div>
-            <h1 className="text-3xl font-heading font-bold text-[#34E13C]">
+            <h1 className="text-3xl font-heading font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               SOFIA
             </h1>
-            <p className="mt-2 font-sans text-[#B8C4CC]">
+            <p className="text-muted-foreground mt-2 font-sans">
               Sistema de Operação de Fichas Inteligentes
             </p>
           </div>
 
-          <Card className="border-0 rounded-[18px] shadow-[0px_6px_24px_rgba(0,0,0,0.45)] bg-[#090909] w-[420px]">
+          <Card className="border-0 shadow-2xl bg-card/50 backdrop-blur-sm">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-heading text-white">Bem-vindo de volta</CardTitle>
-              <CardDescription className="font-sans text-[#A0A8AF]">
+              <CardTitle className="text-2xl font-heading">Bem-vindo de volta</CardTitle>
+              <CardDescription className="font-sans">
                 Entre com suas credenciais para acessar o sistema
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="font-sans text-white">Email</Label>
+                  <Label htmlFor="email" className="font-sans">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="seu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 bg-[#0C1C25] text-[#E6ECF1] border border-[#0C1C25] rounded-[10px] placeholder:text-[#A0A8AF]"
+                    className="h-11"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="font-sans text-white">Senha</Label>
+                  <Label htmlFor="password" className="font-sans">Senha</Label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -136,7 +136,7 @@ export default function LoginPage() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-12 pr-10 bg-[#0C1C25] text-[#E6ECF1] border border-[#0C1C25] rounded-[10px] placeholder:text-[#A0A8AF]"
+                      className="h-11 pr-10"
                       required
                     />
                     <Button
@@ -164,14 +164,14 @@ export default function LoginPage() {
                     />
                     <Label
                       htmlFor="remember"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 font-sans text-[#C7D1D9]"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 font-sans"
                     >
                       Lembrar-me
                     </Label>
                   </div>
                   <Link
                     href="/forgot-password"
-                    className="text-sm hover:underline font-sans text-[#34E13C]"
+                    className="text-sm text-primary hover:underline font-sans"
                   >
                     Esqueceu a senha?
                   </Link>
@@ -179,7 +179,7 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-[#34E13C] to-[#0C1C25] hover:from-[#3CFB48] hover:to-[#11303D] text-white font-bold rounded-[12px]"
+                  className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
                   disabled={isLoading || isAuthLoading}
                   data-testid="login-button"
                 >
@@ -192,10 +192,10 @@ export default function LoginPage() {
                 </Button>
                 
                 <div className="text-center text-sm font-sans">
-                  <span className="text-[#A0A8AF]">Não tem uma conta? </span>
+                  <span className="text-muted-foreground">Não tem uma conta? </span>
                   <Link
                     href="/register"
-                    className="hover:underline font-medium text-[#34E13C]"
+                    className="text-primary hover:underline font-medium"
                   >
                     Cadastre-se
                   </Link>
@@ -204,13 +204,14 @@ export default function LoginPage() {
             </CardContent>
           </Card>
 
-
+          
 
         </motion.div>
       </div>
 
       {/* Right side - Branding */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-[#081217] to-[#0C1C25] relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1639322537228-f710d846310a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1932&q=80')] bg-cover bg-center opacity-10" />
         
         <div className="relative z-10 flex flex-col justify-center p-12 text-white">
           <motion.div
@@ -218,12 +219,12 @@ export default function LoginPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3, duration: 0.7 }}
           >
-            <h2 className="text-4xl font-heading font-bold mb-6 text-white">
+            <h2 className="text-4xl font-heading font-bold mb-6">
               A SOFIA pensa.
               <br />
-              <span className="text-[#34E13C]">Você apenas executa e lucra.</span>
+              <span className="text-accent">Você apenas executa e lucra.</span>
             </h2>
-            <p className="text-xl leading-relaxed font-sans text-[#B8C4CC]">
+            <p className="text-xl opacity-90 leading-relaxed font-sans">
               Inteligência artificial avançada para análise de roleta online.
               Padrões precisos em tempo real para maximizar seus resultados.
             </p>
