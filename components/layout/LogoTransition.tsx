@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import BrandSVG from './BrandSVG'
+import BrandSVG from './BrandSVGNew'
 import styles from './LogoShimmer.module.css'
 
 export default function LogoTransition() {
