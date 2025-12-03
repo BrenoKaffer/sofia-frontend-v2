@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import BrandSVG from './BrandSVG'
 import styles from './LogoShimmer.module.css'
-import TypewriterBrand from './TypewriterBrand'
 
 export default function LogoTransition() {
   return (
@@ -16,7 +15,6 @@ export default function LogoTransition() {
       <div className={`${styles.logoGlow} ${styles.animate}`}>
         <BrandSVG width={226} height={34} enableFlash />
       </div>
-      <TypewriterBrand />
     </motion.div>
   )
 }
