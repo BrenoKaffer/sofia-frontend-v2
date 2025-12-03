@@ -69,5 +69,11 @@
       "destination": "/api-docs",
       "permanent": true
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/billing/dunning/cron",
+      "schedule": "0 */6 * * *"
+    }
   ]
 }

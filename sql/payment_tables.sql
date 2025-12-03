@@ -241,6 +241,20 @@ CREATE INDEX idx_payment_webhooks_status ON public.payment_webhooks(status);
 CREATE INDEX idx_payment_webhooks_event_type ON public.payment_webhooks(event_type);
 CREATE INDEX idx_payment_webhooks_received_at ON public.payment_webhooks(received_at);
 
+CREATE TABLE public.webhook_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  event_id text NOT NULL UNIQUE,
+  event_type text NOT NULL,
+  hash text,
+  payload jsonb NOT NULL,
+  headers jsonb DEFAULT '{}',
+  received_at timestamp with time zone NOT NULL DEFAULT now(),
+  processed_at timestamp with time zone,
+  CONSTRAINT webhook_events_pkey PRIMARY KEY (id)
+);
+CREATE INDEX idx_webhook_events_type ON public.webhook_events(event_type);
+CREATE INDEX idx_webhook_events_processed ON public.webhook_events(processed_at);
+
 -- =====================================================
 -- TRIGGERS PARA UPDATED_AT
 -- =====================================================
