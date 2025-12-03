@@ -24,9 +24,8 @@ export default function BrandTextLogo({ width = 603, height = 110 }: Props) {
     >
       <defs>
         <linearGradient id="neonGradient" x1="0" y1="0" x2="603" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#00D2FF" />
-          <stop offset="0.5" stopColor="#6FFF00" />
-          <stop offset="1" stopColor="#00D2FF" />
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset="1" stopColor="#FFFFFF" />
         </linearGradient>
         <linearGradient id="sweepGradient" x1="0" y1="0" x2="603" y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#FFFFFF" />
@@ -58,7 +57,7 @@ export default function BrandTextLogo({ width = 603, height = 110 }: Props) {
       <text
         x="20"
         y={textY}
-        fill="#fff"
+        fill="#FFFFFF"
         fontFamily="Bruno Ace, Poppins, sans-serif"
         fontSize="60"
         letterSpacing="0.28em"
@@ -71,7 +70,7 @@ export default function BrandTextLogo({ width = 603, height = 110 }: Props) {
         x="20"
         y={textY}
         fill="none"
-        stroke="url(#neonGradient)"
+        stroke="#FFFFFF"
         strokeWidth="1.8"
         fontFamily="Bruno Ace, Poppins, sans-serif"
         fontSize="60"
@@ -96,4 +95,3 @@ export default function BrandTextLogo({ width = 603, height = 110 }: Props) {
     </motion.svg>
   )
 }
-
