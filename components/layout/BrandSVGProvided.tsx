@@ -67,6 +67,17 @@ export default function BrandSVGProvided({ width = 603, height = 90 }: BrandSVGP
         animate={{ pathLength: 1, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: -360 }}
         transition={{ duration: 2.2, ease: 'linear', repeat: Infinity }}
       />
+
+      <motion.path
+        d={dAccent}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.0}
+        strokeLinecap="round"
+        initial={{ pathLength: 0, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: 0 }}
+        animate={{ pathLength: 1, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: -360 }}
+        transition={{ duration: 2.2, ease: 'linear', repeat: Infinity }}
+      />
     </svg>
   )
 }
