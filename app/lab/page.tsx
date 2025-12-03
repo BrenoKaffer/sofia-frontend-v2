@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import FuturisticButtonSVG from '@/components/ui/FuturisticButtonSVG';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -370,6 +371,9 @@ export default function LabPage() {
 
           {/* Features Tab */}
           <TabsContent value="features" className="space-y-6">
+            <div className="flex items-center justify-center py-6">
+              <FuturisticButtonSVG />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {features.map((feature) => (
                 <Card key={feature.id} className="bg-slate-800/50 border-slate-700 hover:border-purple-500/50 transition-colors">
