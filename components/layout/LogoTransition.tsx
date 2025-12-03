@@ -13,7 +13,7 @@ export default function LogoTransition() {
       className="relative"
     >
       <div>
-        <BrandSVGProvided width={380} height={90} />
+        <BrandSVGProvided width={280} height={70} />
       </div>
     </motion.div>
   )

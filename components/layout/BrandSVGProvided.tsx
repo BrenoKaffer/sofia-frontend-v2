@@ -38,8 +38,8 @@ export default function BrandSVGProvided({ width = 603, height = 90 }: BrandSVGP
       <motion.path
         d={dAccent}
         fill="none"
-        stroke="#FFFFFF"
-        strokeWidth={1.6}
+        stroke="#6FFF00"
+        strokeWidth={1.4}
         strokeLinecap="round"
         initial={{ pathLength: 0, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: 0 }}
         animate={{ pathLength: 1, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: -360 }}
@@ -48,4 +48,3 @@ export default function BrandSVGProvided({ width = 603, height = 90 }: BrandSVGP
     </svg>
   )
 }
-
