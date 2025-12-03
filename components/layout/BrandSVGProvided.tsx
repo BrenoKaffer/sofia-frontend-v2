@@ -38,12 +38,23 @@ export default function BrandSVGProvided({ width = 603, height = 90 }: BrandSVGP
       <motion.path
         d={dTextBlock}
         fill="none"
-        stroke="#6FFF00"
+        stroke="#FFFFFF"
         strokeWidth={2.0}
         strokeLinecap="round"
         initial={{ pathLength: 0, opacity: 0.95, strokeDasharray: 200, strokeDashoffset: 0 }}
         animate={{ pathLength: 1, opacity: 0.95, strokeDasharray: 200, strokeDashoffset: -400 }}
         transition={{ duration: 2.4, ease: 'linear', repeat: Infinity }}
+      />
+
+      <motion.path
+        d={dPrimary}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.0}
+        strokeLinecap="round"
+        initial={{ pathLength: 0, opacity: 0.9, strokeDasharray: 220, strokeDashoffset: 0 }}
+        animate={{ pathLength: 1, opacity: 0.9, strokeDasharray: 220, strokeDashoffset: -440 }}
+        transition={{ duration: 2.2, ease: 'linear', repeat: Infinity }}
       />
 
       <motion.path
