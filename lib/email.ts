@@ -1,18 +1,12 @@
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import nodemailer from 'nodemailer';
 
-function getSesClient() {
-  const region = process.env.SES_REGION || process.env.AWS_REGION || 'sa-east-1';
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-  if (!accessKeyId || !secretAccessKey) {
-    throw new Error('AWS credenciais ausentes: defina AWS_ACCESS_KEY_ID e AWS_SECRET_ACCESS_KEY');
-  }
-
-  return new SESClient({
-    region,
-    credentials: { accessKeyId, secretAccessKey },
-  });
+function createTransport() {
+  const host = process.env.SMTP_HOST || 'smtp.zeptomail.com';
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure = false;
+  const user = process.env.SMTP_USER || '';
+  const pass = process.env.SMTP_PASS || '';
+  return nodemailer.createTransport({ host, port, secure, auth: { user, pass }, tls: { rejectUnauthorized: true }, connectionTimeout: 10000 });
 }
 
 export async function sendPasswordSetupEmail(options: {
@@ -20,7 +14,7 @@ export async function sendPasswordSetupEmail(options: {
   name?: string | null;
   setupLink: string;
 }) {
-  const ses = getSesClient();
+  const transport = createTransport();
 
   const subject = 'Crie sua senha para acessar a SOFIA';
   const greetingName = options.name ? `, ${options.name}` : '';
@@ -44,20 +38,8 @@ export async function sendPasswordSetupEmail(options: {
     `Para criar sua senha, acesse: ${options.setupLink}\n\n` +
     `Este link expira por segurança. Caso expire, use a opção "Esqueci minha senha" na tela de login.`;
 
-  const from = process.env.SES_FROM || process.env.SMTP_FROM || 'no-reply@localhost';
-  const command = new SendEmailCommand({
-    Source: from,
-    Destination: { ToAddresses: [options.to] },
-    Message: {
-      Subject: { Data: subject, Charset: 'UTF-8' },
-      Body: {
-        Html: { Data: html, Charset: 'UTF-8' },
-        Text: { Data: text, Charset: 'UTF-8' },
-      },
-    },
-  });
-
-  await ses.send(command);
+  const from = process.env.SMTP_FROM || 'no-reply@localhost';
+  await transport.sendMail({ from, to: options.to, subject, html, text });
 }
 
 export async function sendDunningEmail(options: {
@@ -68,7 +50,7 @@ export async function sendDunningEmail(options: {
   cancelAt?: string | null;
   paymentUrl?: string | null;
 }) {
-  const ses = getSesClient();
+  const transport = createTransport();
   const subject = options.retryCount >= 3 ? 'Assinatura cancelada por falta de pagamento' : `Tentativa de cobrança ${options.retryCount}/3`;
   const greetingName = options.name ? `, ${options.name}` : '';
   const nextText = options.retryCount >= 3 ? '' : (options.nextRetryAt ? `Próxima tentativa: ${new Date(options.nextRetryAt).toLocaleString('pt-BR')}.` : '');
@@ -85,17 +67,6 @@ export async function sendDunningEmail(options: {
     </div>
   `;
   const text = `Sua assinatura SOFIA${greetingName}\nFalha na cobrança. Tentativa ${options.retryCount} de 3.\n${options.paymentUrl ? `Pagar: ${options.paymentUrl}\n` : ''}${nextText} ${cancelText}`.trim();
-  const from = process.env.SES_FROM || process.env.SMTP_FROM || 'no-reply@localhost';
-  const command = new SendEmailCommand({
-    Source: from,
-    Destination: { ToAddresses: [options.to] },
-    Message: {
-      Subject: { Data: subject, Charset: 'UTF-8' },
-      Body: {
-        Html: { Data: html, Charset: 'UTF-8' },
-        Text: { Data: text, Charset: 'UTF-8' },
-      },
-    },
-  });
-  await ses.send(command);
+  const from = process.env.SMTP_FROM || 'no-reply@localhost';
+  await transport.sendMail({ from, to: options.to, subject, html, text });
 }
