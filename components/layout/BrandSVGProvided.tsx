@@ -36,43 +36,10 @@ export default function BrandSVGProvided({ width = 603, height = 90 }: BrandSVGP
       <path d={dAccent} fill="url(#paint1_linear_1_5)" />
 
       <motion.path
-        d={dTextBlock}
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth={2.0}
-        strokeLinecap="round"
-        initial={{ pathLength: 0, opacity: 0.95, strokeDasharray: 200, strokeDashoffset: 0 }}
-        animate={{ pathLength: 1, opacity: 0.95, strokeDasharray: 200, strokeDashoffset: -400 }}
-        transition={{ duration: 2.4, ease: 'linear', repeat: Infinity }}
-      />
-
-      <motion.path
-        d={dPrimary}
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth={2.0}
-        strokeLinecap="round"
-        initial={{ pathLength: 0, opacity: 0.9, strokeDasharray: 220, strokeDashoffset: 0 }}
-        animate={{ pathLength: 1, opacity: 0.9, strokeDasharray: 220, strokeDashoffset: -440 }}
-        transition={{ duration: 2.2, ease: 'linear', repeat: Infinity }}
-      />
-
-      <motion.path
         d={dAccent}
         fill="none"
         stroke="#6FFF00"
-        strokeWidth={2.0}
-        strokeLinecap="round"
-        initial={{ pathLength: 0, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: 0 }}
-        animate={{ pathLength: 1, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: -360 }}
-        transition={{ duration: 2.2, ease: 'linear', repeat: Infinity }}
-      />
-
-      <motion.path
-        d={dAccent}
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth={2.0}
+        strokeWidth={3.2}
         strokeLinecap="round"
         initial={{ pathLength: 0, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: 0 }}
         animate={{ pathLength: 1, opacity: 0.9, strokeDasharray: 180, strokeDashoffset: -360 }}
