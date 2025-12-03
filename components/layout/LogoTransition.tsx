@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import BrandSVG from './BrandSVGNew'
+import BrandTextLogo from './BrandTextLogo'
 import styles from './LogoShimmer.module.css'
 
 export default function LogoTransition() {
@@ -13,7 +13,7 @@ export default function LogoTransition() {
       className="relative"
     >
       <div className={`${styles.logoGlow} ${styles.animate}`}>
-        <BrandSVG width={226} height={34} enableFlash />
+        <BrandTextLogo width={380} height={110} />
       </div>
     </motion.div>
   )
