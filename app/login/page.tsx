@@ -101,7 +101,7 @@ export default function LoginPage() {
               SOFIA
             </h1>
             <p className="text-muted-foreground mt-2 font-sans">
-              Sistema de Operação de Fichas Inteligentes
+              Sistema de Operação de Fichas Inteligentes e Autônomas
             </p>
           </div>
 
