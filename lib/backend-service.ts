@@ -31,6 +31,7 @@ class BackendService {
   private isBackendAvailable: boolean = false;
   private lastHealthCheck: number = 0;
   private healthCheckInterval: number = 30000; // 30 segundos
+  private internalBaseUrl: string = '';
 
   constructor() {
     this.config = {
@@ -44,6 +45,7 @@ class BackendService {
     if (!this.config.baseUrl) {
       this.config.baseUrl = '';
     }
+    this.internalBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || '';
   }
 
   /**
@@ -117,53 +119,52 @@ class BackendService {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const isAvailable = await this.checkBackendHealth();
-    
-    if (!isAvailable) {
-      throw new Error('Backend não disponível');
+    const candidates: string[] = [];
+    if (isAvailable && this.config.baseUrl) {
+      candidates.push(this.config.baseUrl);
+    }
+    if (this.internalBaseUrl) {
+      candidates.push(this.internalBaseUrl);
+    }
+    if (typeof window !== 'undefined') {
+      candidates.push('');
     }
 
-    const url = `${this.config.baseUrl}${endpoint}`;
-    let lastError: Error;
+    let lastError: Error | null = null;
 
-    for (let attempt = 1; attempt <= this.config.retries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-
-        // Obter token de autenticação
-        const authToken = await this.getAuthToken();
-
-        const response = await fetch(url, {
-          ...options,
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'SOFIA-Frontend/1.0',
-            ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
-            ...options.headers
-          },
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data;
-
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`⚠️ Tentativa ${attempt}/${this.config.retries} falhou:`, error);
-
-        if (attempt < this.config.retries) {
-          await new Promise(resolve => setTimeout(resolve, this.config.retryDelay * attempt));
+    for (const base of candidates) {
+      const url = `${base}${endpoint}`;
+      for (let attempt = 1; attempt <= this.config.retries; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+          const authToken = await this.getAuthToken();
+          const response = await fetch(url, {
+            ...options,
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'SOFIA-Frontend/1.0',
+              ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+              ...options.headers
+            },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          const data = await response.json();
+          return data;
+        } catch (error) {
+          lastError = error as Error;
+          if (attempt < this.config.retries) {
+            await new Promise(resolve => setTimeout(resolve, this.config.retryDelay * attempt));
+          }
         }
       }
     }
 
-    throw lastError!;
+    throw lastError || new Error('Backend não disponível e fallback indisponível');
   }
 
   // === SINAIS ===
