@@ -6,21 +6,41 @@ import { usePathname } from 'next/navigation'
 import PageTransitionWithBackground from './PageTransitionWithBackground'
 
 export default function ClientTransitionOverlayWithBackground() {
-  const [visible, setVisible] = useState(false)
   const pathname = usePathname()
 
-  // Exibir overlay no primeiro mount
+  const slowRoutes = [
+    '/login',
+    '/register',
+    '/email-confirmation',
+    '/forgot-password',
+    '/reset-password',
+    '/account',
+    '/settings',
+    '/help',
+    '/community',
+    '/profile',
+    '/payment',
+  ]
+
+  const isSlowRoute = (path: string) => slowRoutes.some(p => path.startsWith(p))
+  const [visible, setVisible] = useState(isSlowRoute(pathname))
+
   useEffect(() => {
-    setVisible(true)
-    const timeout = setTimeout(() => setVisible(false), 1800)
-    return () => clearTimeout(timeout)
+    if (isSlowRoute(pathname)) {
+      const timeout = setTimeout(() => setVisible(false), 1800)
+      return () => clearTimeout(timeout)
+    }
+    setVisible(false)
   }, [])
 
-  // Exibir overlay em mudanças de rota
+  // Exibir overlay apenas quando navegar para rotas lentas
   useEffect(() => {
-    setVisible(true)
-    const timeout = setTimeout(() => setVisible(false), 1800)
-    return () => clearTimeout(timeout)
+    if (isSlowRoute(pathname)) {
+      setVisible(true)
+      const timeout = setTimeout(() => setVisible(false), 1800)
+      return () => clearTimeout(timeout)
+    }
+    setVisible(false)
   }, [pathname])
 
   if (typeof document === 'undefined') return null
