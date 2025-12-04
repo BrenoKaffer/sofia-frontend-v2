@@ -13,7 +13,6 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { motion } from 'framer-motion'
-import { SignInBackground } from '@/components/ui/sign-in-flow-1'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -52,7 +51,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       <div className="relative flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-background via-background to-accent/5 overflow-hidden">
-        <SignInBackground />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
