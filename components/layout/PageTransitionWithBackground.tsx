@@ -22,7 +22,7 @@ export default function PageTransitionWithBackground({ isVisible }: PageTransiti
     >
       <div className="absolute inset-0">
         <EtherealShadows
-          color="rgba(24, 24, 24, 1)"
+          color="#000000"
           animation={{ scale: 100, speed: 90 }}
           noise={{ opacity: 0.6, scale: 1.2 }}
           sizing="fill"
