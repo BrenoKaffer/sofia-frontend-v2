@@ -58,7 +58,7 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.5, delay: 1.8 }}
           className="w-full max-w-md"
         >
           <div className="absolute top-6 right-6 z-50">
@@ -69,7 +69,7 @@ export default function LoginPage() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
+              transition={{ delay: 1.8, type: "spring" }}
               className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary to-accent rounded-2xl mb-4"
             >
               <Brain className="w-8 h-8 text-white" />
