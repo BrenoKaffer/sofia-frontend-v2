@@ -5,7 +5,7 @@ import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/sonner';
 import ErrorBoundary from '@/components/error-boundary';
 import { MonitoringProvider } from '@/components/providers/MonitoringProvider';
-import ClientTransitionOverlay from '@/components/layout/ClientTransitionOverlay';
+import ClientTransitionOverlayWithBackground from '@/components/layout/ClientTransitionOverlayWithBackground';
 
 export const metadata: Metadata = {
   title: 'SOFIA | Sistema de Operação de Fichas Inteligentes e Autônomas',
@@ -43,7 +43,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <MonitoringProvider>
             <Providers>
-              <ClientTransitionOverlay />
+              <ClientTransitionOverlayWithBackground />
               {children}
               <Toaster position="top-right" />
             </Providers>
