@@ -8,27 +8,13 @@ export default function ClientTransitionOverlayWithBackground() {
   const [visible, setVisible] = useState(false)
   const pathname = usePathname()
 
-  useEffect(() => {
-    const isLogin = pathname === '/login'
-    if (isLogin) {
-      setVisible(false)
-      return
-    }
-    const timeout = setTimeout(() => setVisible(false), 1800)
-    return () => clearTimeout(timeout)
-  }, [])
+  // Não exibir overlay no mount inicial; apenas em mudanças de rota
 
   useEffect(() => {
-    const isLogin = pathname === '/login'
-    if (isLogin) {
-      setVisible(false)
-      return
-    }
     setVisible(true)
     const timeout = setTimeout(() => setVisible(false), 1800)
     return () => clearTimeout(timeout)
   }, [pathname])
 
-  if (pathname === '/login') return null
   return <PageTransitionWithBackground isVisible={visible} />
 }
