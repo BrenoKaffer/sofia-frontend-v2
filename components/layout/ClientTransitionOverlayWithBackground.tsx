@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import PageTransitionWithBackground from './PageTransitionWithBackground'
 
@@ -16,5 +17,9 @@ export default function ClientTransitionOverlayWithBackground() {
     return () => clearTimeout(timeout)
   }, [pathname])
 
-  return <PageTransitionWithBackground isVisible={visible} />
+  if (typeof document === 'undefined') return null
+  return createPortal(
+    <PageTransitionWithBackground isVisible={visible} />,
+    document.body
+  )
 }
