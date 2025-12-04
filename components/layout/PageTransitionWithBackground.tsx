@@ -12,13 +12,15 @@ export default function PageTransitionWithBackground({ isVisible }: PageTransiti
   if (!isVisible) return null
   return (
     <motion.div
-      className="fixed inset-0 flex items-center justify-center z-[9999] relative"
+      className="fixed inset-0 z-[2147483647] flex items-center justify-center pointer-events-none"
       initial={{ opacity: 1 }}
       animate={{ opacity: 0 }}
       exit={{ opacity: 0 }}
       transition={{ delay: 1.2, duration: 0.6, ease: 'easeInOut' }}
+      aria-hidden="true"
+      style={{ willChange: 'opacity' }}
     >
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0">
         <EtherealShadows
           color="rgba(24, 24, 24, 1)"
           animation={{ scale: 100, speed: 90 }}
@@ -26,8 +28,9 @@ export default function PageTransitionWithBackground({ isVisible }: PageTransiti
           sizing="fill"
         />
       </div>
-      <LogoTransition />
+      <div className="relative">
+        <LogoTransition />
+      </div>
     </motion.div>
   )
 }
-
