@@ -14,12 +14,13 @@ const proPaths = [
 ]
 
 export function middleware(req: NextRequest) {
-  const { pathname, search } = req.nextUrl
+  const { pathname, search, hostname } = req.nextUrl
   if (pathname.startsWith('/checkout')) {
     return NextResponse.redirect(`https://pay.v1sofia.com${pathname}${search}`)
   }
   const requiresPro = proPaths.some(p => pathname.startsWith(p))
-  if (requiresPro) {
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+  if (requiresPro && !isLocal) {
     const status = req.cookies.get('sofia_account_status')?.value || ''
     const isPro = status === 'premium' || status === 'pro'
     if (!isPro) {
