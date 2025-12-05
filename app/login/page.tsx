@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,10 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { motion } from 'framer-motion';
+import PageTransitionWithBackground from '@/components/layout/PageTransitionWithBackground';
 
 export default function LoginPage() {
+  const [splashVisible, setSplashVisible] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,6 +24,11 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSplashVisible(false), 1800);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +60,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
+      <PageTransitionWithBackground isVisible={splashVisible} />
       {/* Left side - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-background via-background to-accent/5">
         <motion.div
