@@ -31,6 +31,49 @@ export default function LoginPage() {
     return () => clearTimeout(timeout);
   }, []);
 
+  useEffect(() => {
+    const bg = document.getElementById('particles-background');
+    const fg = document.getElementById('particles-foreground');
+    if (!bg || !fg) return;
+
+    if (!(window as any).particleground) {
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.text = `!function(a,b){"use strict";function c(a){a=a||{};for(var b=1;b<arguments.length;b++){var c=arguments[b];if(c)for(var d in c)c.hasOwnProperty(d)&&("object"==typeof c[d]?deepExtend(a[d],c[d]):a[d]=c[d])}return a}function d(d,g){function h(){if(y){r=b.createElement("canvas"),r.className="pg-canvas",r.style.display="block",r.style.position="absolute",r.style.top="0",r.style.left="0",r.style.width="100%",r.style.height="100%",r.width=s.offsetWidth,r.height=s.offsetHeight,s.insertBefore(r,s.firstChild),t=r.getContext("2d"),i()}else{j(),k()}n(),o()}function i(){for(var a=0;a<Math.round(r.width*r.height/g.density);a++){var b=new q;b.setStackPos(a),m.push(b)}b.addEventListener("resize",x),b.addEventListener("mousemove",w)}function j(){r=b.createElement("div"),r.className="pg-canvas",r.style.position="absolute",r.style.top="0",r.style.left="0",r.style.width="100%",r.style.height="100%",r.style.overflow="hidden",s.insertBefore(r,s.firstChild);for(var a=0;a<Math.round(r.clientWidth*r.clientHeight/g.density);a++){var c=b.createElement("div");c.className="pg-dot",c.style.position="absolute",c.style.width=g.particleRadius*2+"px",c.style.height=g.particleRadius*2+"px",c.style.background=g.dotColor,c.style.borderRadius="50%",r.appendChild(c);var d=new q;d.setStackPos(a),d.el=c,m.push(d)}b.addEventListener("resize",x),b.addEventListener("mousemove",w)}function k(){for(var a=0;a<m.length;a++)m[a].el.parentNode===r&&r.removeChild(m[a].el);m=[]}function l(){for(var a=0;a<m.length;a++)m[a].updatePosition()}function n(){t&&(t.clearRect(0,0,r.width,r.height),t.beginPath());for(var a=0;a<m.length;a++)m[a].draw();t&&t.stroke()}function o(){l(),n(),p=requestAnimationFrame(o)}function pCancel(){p&&cancelAnimationFrame(p)}function q(){this.stackPos,this.active=!0,this.layer=Math.ceil(3*Math.random()),this.parallaxOffsetX=0,this.parallaxOffsetY=0,this.position={x:Math.ceil(Math.random()*r.width),y:Math.ceil(Math.random()*r.height)},this.speed={x:Math.random()*(g.maxSpeedX-g.minSpeedX)+g.minSpeedX,y:Math.random()*(g.maxSpeedY-g.minSpeedY)+g.minSpeedY},this.velocity={x:this.speed.x*(Math.random()<.5?-1:1),y:this.speed.y*(Math.random()<.5?-1:1)}}q.prototype.setStackPos=function(a){this.stackPos=a},q.prototype.updatePosition=function(){if(y){this.position.x+=this.velocity.x,this.position.y+=this.velocity.y,this.position.x+this.parallaxOffsetX>r.width?this.position.x=0:this.position.x+this.parallaxOffsetX<0&&(this.position.x=r.width),this.position.y+this.parallaxOffsetY>r.height?this.position.y=0:this.position.y+this.parallaxOffsetY<0&&(this.position.y=r.height)}else{var a=this.el.style;this.position.x+=this.velocity.x,this.position.y+=this.velocity.y,this.position.x+this.parallaxOffsetX>r.clientWidth?this.position.x=0:this.position.x+this.parallaxOffsetX<0&&(this.position.x=r.clientWidth),this.position.y+this.parallaxOffsetY>r.clientHeight?this.position.y=0:this.position.y+this.parallaxOffsetY<0&&(this.position.y=r.clientHeight),a.transform="translate("+Math.floor(this.position.x)+"px,"+Math.floor(this.position.y)+"px)"}},q.prototype.draw=function(){if(y){t.closePath(),t.beginPath(),t.arc(this.position.x+this.parallaxOffsetX,this.position.y+this.parallaxOffsetY,g.particleRadius,0,2*Math.PI),t.fillStyle=g.dotColor,t.fill(),t.strokeStyle=g.lineColor;for(var a=this.position.x+this.parallaxOffsetX,b=this.position.y+this.parallaxOffsetY,c=0;c<m.length;c++){var d=m[c],e=d.position.x+d.parallaxOffsetX,f=d.position.y+d.parallaxOffsetY,h=Math.sqrt((a-e)*(a-e)+(b-f)*(b-f));h<g.proximity&&(t.moveTo(a,b),t.lineTo(e,f))}}},q.prototype.setVelocity=function(a,b){this.velocity.x=a,this.velocity.y=b},q.prototype.setParallax=function(a,b){this.parallaxOffsetX=a,this.parallaxOffsetY=b};var r,s,d,e,f,t,u,v,w=function(a){var c=s.getBoundingClientRect(),d=a.pageX-c.left,e=a.pageY-c.top;u=d,s.width,f=e,s.height,v=u/s.width-0.5,w=f/s.height-0.5;for(var h=0;h<m.length;h++){var i=m[h];i.setParallax(w*g.parallaxMultiplier,i.layer!==1?0.5*w*g.parallaxMultiplier:w*g.parallaxMultiplier)}};const x=function(){y&&(r.width=s.offsetWidth,r.height=s.offsetHeight)},y=!!b.createElement("canvas").getContext,m=[];return s=d,void 0===g&&(g={}),g=c(g,{minSpeedX:0.1,maxSpeedX:0.7,minSpeedY:0.1,maxSpeedY:0.7,directionX:"center",directionY:"center",density:10000,dotColor:"#666666",lineColor:"#666666",particleRadius:6,lineWidth:1,curvedLines:!1,proximity:100,parallax:!0,parallaxMultiplier:5,onInit:function(){},onDestroy:function(){}}),h(),{destroy:function(){pCancel(),k(),b.removeEventListener("mousemove",w)}}}a.particleground=function(a,b){return d(a,b)}}(window,document);`;
+      document.body.appendChild(script);
+    }
+
+    const pg = (window as any).particleground;
+    if (typeof pg === 'function') {
+      pg(fg, {
+        dotColor: 'rgba(255, 255, 255, 1)',
+        lineColor: 'rgba(255, 255, 255, 0.05)',
+        minSpeedX: 0.3,
+        maxSpeedX: 0.6,
+        minSpeedY: 0.3,
+        maxSpeedY: 0.6,
+        density: 50000,
+        curvedLines: false,
+        proximity: 250,
+        parallaxMultiplier: 10,
+        particleRadius: 4,
+      });
+      pg(bg, {
+        dotColor: 'rgba(255, 255, 255, 0.5)',
+        lineColor: 'rgba(255, 255, 255, 0.05)',
+        minSpeedX: 0.075,
+        maxSpeedX: 0.15,
+        minSpeedY: 0.075,
+        maxSpeedY: 0.15,
+        density: 30000,
+        curvedLines: false,
+        proximity: 20,
+        parallaxMultiplier: 20,
+        particleRadius: 2,
+      });
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -63,12 +106,22 @@ export default function LoginPage() {
     <div className="min-h-screen flex">
       <PageTransitionWithBackground isVisible={splashVisible} />
       {/* Left side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-background via-background to-accent/5">
+      <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden bg-black">
+        <div
+          id="particles-background"
+          className="absolute"
+          style={{ left: '-51%', top: '-51%', width: '202%', height: '202%', transform: 'scale3d(0.5, 0.5, 1)' }}
+        />
+        <div
+          id="particles-foreground"
+          className="absolute"
+          style={{ left: '-51%', top: '-51%', width: '202%', height: '202%', transform: 'scale3d(0.5, 0.5, 1)' }}
+        />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 1.8 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md relative z-10"
         >
           <div className="absolute top-6 right-6 z-50">
             <ThemeToggle />
@@ -162,7 +215,7 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+                  className="w-full h-11 bg-gradient-to-r from-[#34E13C] to-[#0C1C25] hover:opacity-90 transition-opacity"
                   disabled={isLoading}
                 >
                   {isLoading ? (
