@@ -76,7 +76,7 @@ class ErrorBoundary extends Component<Props, State> {
 
       // Renderizar UI de erro padrão
       return (
-        <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4 relative z-[2147483646] pointer-events-auto">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
@@ -100,9 +100,9 @@ class ErrorBoundary extends Component<Props, State> {
                   </pre>
                 </div>
               )}
-              
+
               <div className="flex flex-col gap-2">
-                <Button 
+                <Button
                   onClick={this.handleRetry}
                   className="w-full"
                   variant="default"
@@ -110,9 +110,9 @@ class ErrorBoundary extends Component<Props, State> {
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Tentar novamente
                 </Button>
-                
+
                 {this.state.errorId && (
-                  <Button 
+                  <Button
                     onClick={this.handleReportFeedback}
                     variant="outline"
                     className="w-full"
@@ -120,8 +120,8 @@ class ErrorBoundary extends Component<Props, State> {
                     Reportar problema
                   </Button>
                 )}
-                
-                <Button 
+
+                <Button
                   onClick={() => window.location.href = '/'}
                   variant="ghost"
                   className="w-full"
@@ -129,7 +129,7 @@ class ErrorBoundary extends Component<Props, State> {
                   Voltar ao início
                 </Button>
               </div>
-              
+
               {this.state.errorId && (
                 <p className="text-xs text-gray-500 text-center">
                   ID do erro: {this.state.errorId}
