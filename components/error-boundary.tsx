@@ -67,6 +67,25 @@ class ErrorBoundary extends Component<Props, State> {
     }
   };
 
+  openSupportEmail = () => {
+    const to = 'suporte@v1sofia.com';
+    const subject = encodeURIComponent(`SOFIA - Reporte de erro${this.state.errorId ? ` (${this.state.errorId})` : ''}`);
+    const bodyParts = [
+      'Descreva o que estava fazendo quando o erro ocorreu:',
+      '',
+      `URL: ${typeof window !== 'undefined' ? window.location.href : ''}`,
+      `Erro ID: ${this.state.errorId || 'N/A'}`,
+      `Agente: ${typeof navigator !== 'undefined' ? navigator.userAgent : ''}`,
+    ];
+    const body = encodeURIComponent(bodyParts.join('\n'));
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
+    const mailtoUrl = `mailto:${to}?subject=${subject}&body=${body}`;
+    const win = window.open(gmailUrl, '_blank');
+    if (!win) {
+      window.location.href = mailtoUrl;
+    }
+  };
+
   render() {
     if (this.state.hasError) {
       // Renderizar fallback personalizado se fornecido
@@ -120,6 +139,13 @@ class ErrorBoundary extends Component<Props, State> {
                     Reportar problema
                   </Button>
                 )}
+                <Button
+                  onClick={this.openSupportEmail}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Enviar email ao suporte
+                </Button>
 
                 <Button
                   onClick={() => window.location.href = '/'}
