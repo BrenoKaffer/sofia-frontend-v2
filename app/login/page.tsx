@@ -106,6 +106,8 @@ export default function LoginPage() {
       const step = () => {
         if (!running || !ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = opts.lineColor;
+        ctx.lineWidth = opts.lineWidth ?? 1;
         for (const p of particles) {
           p.position.x += p.speed.x;
           p.position.y += p.speed.y;
@@ -154,32 +156,32 @@ export default function LoginPage() {
     const fg = document.getElementById('particles-foreground');
     if (!bg || !fg) return;
     const instFg = particleground(fg, {
-      dotColor: 'rgba(255, 255, 255, 1)',
-      lineColor: 'rgba(255, 255, 255, 0.05)',
+      dotColor: 'rgba(255, 255, 255, 0.85)',
+      lineColor: 'rgba(255, 255, 255, 0.22)',
       minSpeedX: 0.3,
       maxSpeedX: 0.6,
       minSpeedY: 0.3,
       maxSpeedY: 0.6,
       density: 50000,
       curvedLines: false,
-      proximity: 250,
+      proximity: 160,
       parallaxMultiplier: 10,
-      particleRadius: 4,
-      lineWidth: 1,
+      particleRadius: 3,
+      lineWidth: 1.6,
     });
     const instBg = particleground(bg, {
-      dotColor: 'rgba(255, 255, 255, 0.5)',
-      lineColor: 'rgba(255, 255, 255, 0.05)',
+      dotColor: 'rgba(255, 255, 255, 0.45)',
+      lineColor: 'rgba(255, 255, 255, 0.12)',
       minSpeedX: 0.075,
       maxSpeedX: 0.15,
       minSpeedY: 0.075,
       maxSpeedY: 0.15,
       density: 30000,
       curvedLines: false,
-      proximity: 20,
+      proximity: 90,
       parallaxMultiplier: 20,
       particleRadius: 2,
-      lineWidth: 1,
+      lineWidth: 1.2,
     });
     return () => {
       instFg.destroy();
