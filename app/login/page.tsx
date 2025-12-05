@@ -44,6 +44,7 @@ export default function LoginPage() {
       proximity: number;
       parallaxMultiplier: number;
       particleRadius: number;
+      lineWidth?: number;
     }) => {
       const canvas = document.createElement('canvas');
       canvas.style.position = 'absolute';
@@ -55,15 +56,21 @@ export default function LoginPage() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return () => { };
       const resize = () => {
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
+        const rect = container.getBoundingClientRect();
+        const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+        canvas.width = Math.floor(rect.width * dpr);
+        canvas.height = Math.floor(rect.height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       };
       resize();
       let raf = 0;
-      const count = Math.round((canvas.width * canvas.height) / options.density);
+      const rectInit = container.getBoundingClientRect();
+      const count = Math.round((rectInit.width * rectInit.height) / options.density);
       const particles = Array.from({ length: count }, () => ({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
+        x: Math.random() * rectInit.width,
+        y: Math.random() * rectInit.height,
         vx: (Math.random() < 0.5 ? -1 : 1) * (Math.random() * (options.maxSpeedX - options.minSpeedX) + options.minSpeedX),
         vy: (Math.random() < 0.5 ? -1 : 1) * (Math.random() * (options.maxSpeedY - options.minSpeedY) + options.minSpeedY),
         px: 0,
@@ -81,21 +88,23 @@ export default function LoginPage() {
         }
       };
       const step = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.beginPath();
+        const rect = container.getBoundingClientRect();
+        ctx.clearRect(0, 0, rect.width, rect.height);
         for (const p of particles) {
           p.x += p.vx;
           p.y += p.vy;
-          if (p.x + p.px > canvas.width) p.x = 0;
-          if (p.x + p.px < 0) p.x = canvas.width;
-          if (p.y + p.py > canvas.height) p.y = 0;
-          if (p.y + p.py < 0) p.y = canvas.height;
+          if (p.x + p.px > rect.width) p.x = 0;
+          if (p.x + p.px < 0) p.x = rect.width;
+          if (p.y + p.py > rect.height) p.y = 0;
+          if (p.y + p.py < 0) p.y = rect.height;
           ctx.fillStyle = options.dotColor;
           ctx.beginPath();
           ctx.arc(p.x + p.px, p.y + p.py, options.particleRadius, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.strokeStyle = options.lineColor;
+        ctx.lineWidth = options.lineWidth ?? 1;
+        ctx.beginPath();
         for (let i = 0; i < particles.length; i++) {
           const a = particles[i];
           for (let j = i + 1; j < particles.length; j++) {
@@ -104,13 +113,12 @@ export default function LoginPage() {
             const dy = a.y + a.py - (b.y + b.py);
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < options.proximity) {
-              ctx.beginPath();
               ctx.moveTo(a.x + a.px, a.y + a.py);
               ctx.lineTo(b.x + b.px, b.y + b.py);
-              ctx.stroke();
             }
           }
         }
+        ctx.stroke();
         raf = requestAnimationFrame(step);
       };
       window.addEventListener('resize', resize);
@@ -138,6 +146,7 @@ export default function LoginPage() {
       proximity: 250,
       parallaxMultiplier: 10,
       particleRadius: 4,
+      lineWidth: 1,
     });
     const cleanupBg = makeParticles(bg, {
       dotColor: 'rgba(255, 255, 255, 0.5)',
@@ -151,6 +160,7 @@ export default function LoginPage() {
       proximity: 20,
       parallaxMultiplier: 20,
       particleRadius: 2,
+      lineWidth: 1,
     });
     return () => {
       cleanupFg();
