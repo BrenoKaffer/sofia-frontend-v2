@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { motion } from 'framer-motion';
 import PageTransitionWithBackground from '@/components/layout/PageTransitionWithBackground';
-import BrandSVGProvided from '@/components/layout/BrandSVGProvided';
+import BrandSVG from '@/components/layout/BrandSVG';
 
 export default function LoginPage() {
   const [splashVisible, setSplashVisible] = useState(true);
@@ -79,9 +79,9 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: 10, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ delay: 1.8, duration: 0.8, ease: 'easeOut' }}
-              className="inline-flex items-center justify-center mb-2 opacity-70"
+              className="inline-flex items-center justify-center mb-2"
             >
-              <BrandSVGProvided width={220} height={55} />
+              <BrandSVG width={220} height={55} enableFlash={true} />
             </motion.div>
             <p className="text-muted-foreground mt-2 font-sans">
               Sistema de Operação de Fichas Inteligentes e Autônomas
