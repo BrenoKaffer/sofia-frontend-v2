@@ -130,7 +130,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCPF, setIsLoadingCPF] = useState(false);
   const [nameFromAPI, setNameFromAPI] = useState(false);
-  
+
   // Estados para validação em tempo real
   const [errors, setErrors] = useState({
     fullName: '',
@@ -140,7 +140,7 @@ export default function RegisterPage() {
     confirmPassword: '',
     terms: ''
   });
-  
+
   const [touched, setTouched] = useState({
     fullName: false,
     cpf: false,
@@ -150,11 +150,11 @@ export default function RegisterPage() {
     terms: false
   });
   const router = useRouter();
-  
+
   // Funções de validação
   const validateField = (field: string, value: string) => {
     let error = '';
-    
+
     switch (field) {
       case 'fullName':
         if (!value.trim()) {
@@ -165,7 +165,7 @@ export default function RegisterPage() {
           error = 'Nome deve conter apenas letras e espaços';
         }
         break;
-        
+
       case 'cpf':
         const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/;
         if (!value) {
@@ -174,7 +174,7 @@ export default function RegisterPage() {
           error = 'CPF deve estar no formato 000.000.000-00';
         }
         break;
-        
+
       case 'email':
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!value) {
@@ -183,7 +183,7 @@ export default function RegisterPage() {
           error = 'Email deve ter um formato válido';
         }
         break;
-        
+
       case 'password':
         if (!value) {
           error = 'Senha é obrigatória';
@@ -193,7 +193,7 @@ export default function RegisterPage() {
           error = 'Senha deve conter ao menos: 1 letra minúscula, 1 maiúscula e 1 número';
         }
         break;
-        
+
       case 'confirmPassword':
         if (!value) {
           error = 'Confirmação de senha é obrigatória';
@@ -202,11 +202,11 @@ export default function RegisterPage() {
         }
         break;
     }
-    
+
     setErrors(prev => ({ ...prev, [field]: error }));
     return error === '';
   };
-  
+
   const handleFieldChange = (field: string, value: string) => {
     switch (field) {
       case 'fullName':
@@ -222,12 +222,12 @@ export default function RegisterPage() {
         setConfirmPassword(value);
         break;
     }
-    
+
     if (touched[field as keyof typeof touched]) {
       validateField(field, value);
     }
   };
-  
+
   const handleFieldBlur = (field: string, value: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
     validateField(field, value);
@@ -252,7 +252,7 @@ export default function RegisterPage() {
         // Em produção, você pode pedir a data de nascimento ou usar outra abordagem
         const birthDate = '01/01/1990'; // Data fictícia para teste
         const response = await CPFService.validateCPF(formattedValue, birthDate);
-        
+
         if (response.success && response.data.name) {
           setFullName(response.data.name);
           setNameFromAPI(true);
@@ -264,11 +264,11 @@ export default function RegisterPage() {
       } catch (error) {
         console.error('Erro ao buscar CPF:', error);
         setNameFromAPI(false);
-        
+
         // Feedback de erro mais amigável
-        const isDevelopment = process.env.NODE_ENV === 'development' || 
-                             window.location.hostname === 'localhost';
-        
+        const isDevelopment = process.env.NODE_ENV === 'development' ||
+          window.location.hostname === 'localhost';
+
         if (isDevelopment) {
           toast.success('Modo de desenvolvimento: Consulta de CPF simulada. Em produção, dados reais serão consultados.');
         } else {
@@ -350,18 +350,18 @@ export default function RegisterPage() {
           email: data.user.email,
           emailConfirmed: data.user.email_confirmed_at
         });
-        
+
         // Inserir dados adicionais nas tabelas user_profiles
         try {
           console.log('🔄 [REGISTER] Iniciando inserção de dados do perfil do usuário...');
-          
+
           await insertUserData({
             fullName,
             cpf,
             email,
             userId: data.user.id
           });
-          
+
           console.log('✅ [REGISTER] Perfil do usuário criado com sucesso!');
           toast.success('Conta criada com sucesso! Verifique seu email para confirmar a conta.');
           router.push('/login');
@@ -377,7 +377,7 @@ export default function RegisterPage() {
               cpfMasked: cpf ? `${cpf.substring(0, 3)}.***.***.${cpf.substring(-2)}` : 'N/A'
             }
           });
-          
+
           // Usuário foi criado no auth, mas falhou ao criar perfil
           toast.warning('Conta criada, mas houve um problema ao configurar seu perfil. Entre em contato com o suporte.');
           router.push('/login');
@@ -555,7 +555,7 @@ export default function RegisterPage() {
       <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden bg-black">
         <div id="particles-background" className="absolute" style={{ left: '-51%', top: '-51%', width: '202%', height: '202%', transform: 'scale3d(0.5, 0.5, 1)' }} />
         <div id="particles-foreground" className="absolute" style={{ left: '-51%', top: '-51%', width: '202%', height: '202%', transform: 'scale3d(0.5, 0.5, 1)' }} />
-        <motion.div 
+        <motion.div
           className="w-full max-w-md space-y-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -563,7 +563,7 @@ export default function RegisterPage() {
         >
           {/* Header */}
           <div className="text-center mb-2 relative">
-            <BrandSVG width={220} height={55} />
+            <BrandSVG width={220} height={55} className="mx-auto block" />
             <p className="text-muted-foreground mt-2 font-sans">
               Sistema de Operação de Fichas Inteligentes e Autônomas
             </p>
@@ -593,13 +593,12 @@ export default function RegisterPage() {
                         if (touched.cpf) validateField('cpf', e.target.value);
                       }}
                       onBlur={(e) => handleFieldBlur('cpf', e.target.value)}
-                      className={`h-11 font-sans ${
-                        touched.cpf && errors.cpf 
-                          ? 'border-red-500 focus:border-red-500' 
-                          : touched.cpf && !errors.cpf 
-                          ? 'border-green-500 focus:border-green-500' 
-                          : ''
-                      }`}
+                      className={`h-11 font-sans ${touched.cpf && errors.cpf
+                          ? 'border-red-500 focus:border-red-500'
+                          : touched.cpf && !errors.cpf
+                            ? 'border-green-500 focus:border-green-500'
+                            : ''
+                        }`}
                       maxLength={14}
                       required
                     />
@@ -635,15 +634,14 @@ export default function RegisterPage() {
                         }
                       }}
                       onBlur={(e) => !nameFromAPI && handleFieldBlur('fullName', e.target.value)}
-                      className={`h-11 font-sans ${
-                        nameFromAPI 
-                          ? 'bg-muted cursor-not-allowed border-green-500' 
-                          : touched.fullName && errors.fullName 
-                          ? 'border-red-500 focus:border-red-500' 
-                          : touched.fullName && !errors.fullName 
-                          ? 'border-green-500 focus:border-green-500' 
-                          : ''
-                      }`}
+                      className={`h-11 font-sans ${nameFromAPI
+                          ? 'bg-muted cursor-not-allowed border-green-500'
+                          : touched.fullName && errors.fullName
+                            ? 'border-red-500 focus:border-red-500'
+                            : touched.fullName && !errors.fullName
+                              ? 'border-green-500 focus:border-green-500'
+                              : ''
+                        }`}
                       readOnly={nameFromAPI}
                       required
                     />
@@ -666,13 +664,12 @@ export default function RegisterPage() {
                       value={email}
                       onChange={(e) => handleFieldChange('email', e.target.value)}
                       onBlur={(e) => handleFieldBlur('email', e.target.value)}
-                      className={`h-11 font-sans ${
-                        touched.email && errors.email 
-                          ? 'border-red-500 focus:border-red-500' 
-                          : touched.email && !errors.email 
-                          ? 'border-green-500 focus:border-green-500' 
-                          : ''
-                      }`}
+                      className={`h-11 font-sans ${touched.email && errors.email
+                          ? 'border-red-500 focus:border-red-500'
+                          : touched.email && !errors.email
+                            ? 'border-green-500 focus:border-green-500'
+                            : ''
+                        }`}
                       required
                     />
                     {touched.email && !errors.email && (
@@ -683,7 +680,7 @@ export default function RegisterPage() {
                     <p className="text-sm text-red-500 font-sans">{errors.email}</p>
                   )}
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="password" className="font-sans">Senha</Label>
                   <div className="relative">
@@ -694,13 +691,12 @@ export default function RegisterPage() {
                       value={password}
                       onChange={(e) => handleFieldChange('password', e.target.value)}
                       onBlur={(e) => handleFieldBlur('password', e.target.value)}
-                      className={`h-11 pr-10 font-sans ${
-                        touched.password && errors.password 
-                          ? 'border-red-500 focus:border-red-500' 
-                          : touched.password && !errors.password 
-                          ? 'border-green-500 focus:border-green-500' 
-                          : ''
-                      }`}
+                      className={`h-11 pr-10 font-sans ${touched.password && errors.password
+                          ? 'border-red-500 focus:border-red-500'
+                          : touched.password && !errors.password
+                            ? 'border-green-500 focus:border-green-500'
+                            : ''
+                        }`}
                       required
                     />
                     <div className="absolute right-0 top-0 h-11 flex items-center">
@@ -737,13 +733,12 @@ export default function RegisterPage() {
                       value={confirmPassword}
                       onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
                       onBlur={(e) => handleFieldBlur('confirmPassword', e.target.value)}
-                      className={`h-11 pr-10 font-sans ${
-                        touched.confirmPassword && errors.confirmPassword 
-                          ? 'border-red-500 focus:border-red-500' 
-                          : touched.confirmPassword && !errors.confirmPassword 
-                          ? 'border-green-500 focus:border-green-500' 
-                          : ''
-                      }`}
+                      className={`h-11 pr-10 font-sans ${touched.confirmPassword && errors.confirmPassword
+                          ? 'border-red-500 focus:border-red-500'
+                          : touched.confirmPassword && !errors.confirmPassword
+                            ? 'border-green-500 focus:border-green-500'
+                            : ''
+                        }`}
                       required
                     />
                     <div className="absolute right-0 top-0 h-11 flex items-center">
@@ -796,7 +791,7 @@ export default function RegisterPage() {
                   )}
                   <span className="font-sans">{isLoading ? 'Criando conta...' : 'Criar Conta'}</span>
                 </ShinyButton>
-                
+
                 <div className="text-center text-sm font-sans">
                   <span className="text-muted-foreground">Já tem uma conta? </span>
                   <Link
@@ -821,7 +816,7 @@ export default function RegisterPage() {
       {/* Right side - Marketing/Visual */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-white/10 bg-grid-16 [mask-image:radial-gradient(white,transparent_70%)]" />
-        
+
         <div className="relative z-10 flex flex-col justify-center p-12 text-white">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -833,11 +828,11 @@ export default function RegisterPage() {
               Comece sua jornada
               <span className="block text-accent">rumo ao sucesso</span>
             </h2>
-            
+
             <p className="text-lg text-white/90 leading-relaxed font-sans">
               Junte-se a milhares de usuários que já descobriram o poder da inteligência artificial aplicada à análise de roleta.
             </p>
-            
+
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <CheckCircle className="w-5 h-5 text-accent" />
