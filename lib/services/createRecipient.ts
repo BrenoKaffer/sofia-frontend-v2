@@ -8,6 +8,7 @@ export type BankAccount = {
 }
 
 export type CreateRecipientPayload = {
+  affiliate_slug: string
   name: string
   email: string
   document: string

@@ -19,7 +19,7 @@ const BANKS = [
   { code: '260', name: 'Nubank' },
 ]
 
-export default function AffiliateRecipientForm() {
+export default function AffiliateRecipientForm({ affiliateSlug }: { affiliateSlug?: string }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [document, setDocument] = useState('')
@@ -29,7 +29,7 @@ export default function AffiliateRecipientForm() {
   const [digit, setDigit] = useState('')
   const [accountType, setAccountType] = useState<'checking' | 'savings' | ''>('')
 
-  const { createRecipient, loading, error, success, recipientId } = useCreateRecipient()
+  const { createRecipient, loading, error, success, recipientId } = useCreateRecipient(affiliateSlug)
 
   const validate = () => {
     if (!name || !email || !document || !bank || !branch || !account || !digit || !accountType) return false

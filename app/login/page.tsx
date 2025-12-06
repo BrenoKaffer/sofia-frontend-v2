@@ -204,6 +204,17 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
+    try {
+      const storedRemember = typeof window !== 'undefined' ? window.localStorage.getItem('sofia_remember_me') : null;
+      const storedEmail = typeof window !== 'undefined' ? window.localStorage.getItem('sofia_remember_email') : null;
+      if (storedRemember === 'true' && storedEmail) {
+        setRememberMe(true);
+        setEmail(storedEmail);
+      }
+    } catch { }
+  }, []);
+
+  useEffect(() => {
     const particleground = (container: HTMLElement, opts: {
       dotColor: string;
       lineColor: string;
@@ -376,6 +387,19 @@ export default function LoginPage() {
       const success = await login(email, password);
       console.log('Resultado do login:', success);
       if (success) {
+        try {
+          if (rememberMe) {
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem('sofia_remember_me', 'true');
+              window.localStorage.setItem('sofia_remember_email', email);
+            }
+          } else {
+            if (typeof window !== 'undefined') {
+              window.localStorage.removeItem('sofia_remember_me');
+              window.localStorage.removeItem('sofia_remember_email');
+            }
+          }
+        } catch { }
         toast.success('Login realizado com sucesso!');
         router.push('/dashboard');
       } else {
