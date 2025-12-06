@@ -15,6 +15,107 @@ import { motion } from 'framer-motion';
 import PageTransitionWithBackground from '@/components/layout/PageTransitionWithBackground';
 import BrandSVG from '@/components/layout/BrandSVG';
 
+function ShinyButton({ children, className = '', type = 'button', disabled = false }: { children: React.ReactNode; className?: string; type?: 'button' | 'submit' | 'reset'; disabled?: boolean }) {
+  return (
+    <>
+      <style jsx>{`
+        @property --gradient-angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+        @property --gradient-angle-offset { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+        @property --gradient-percent { syntax: "<percentage>"; initial-value: 5%; inherits: false; }
+        @property --gradient-shine { syntax: "<color>"; initial-value: white; inherits: false; }
+        .shiny-cta {
+          --shiny-cta-bg: linear-gradient(90deg, #34E13C, #0C1C25);
+          --shiny-cta-bg-subtle: #0C1C25;
+          --shiny-cta-fg: #ffffff;
+          --shiny-cta-highlight: #34E13C;
+          --shiny-cta-highlight-subtle: #34E13C;
+          --animation: gradient-angle linear infinite;
+          --duration: 3s;
+          --shadow-size: 2px;
+          --transition: 800ms cubic-bezier(0.25, 1, 0.5, 1);
+          isolation: isolate;
+          position: relative;
+          overflow: hidden;
+          cursor: pointer;
+          outline-offset: 4px;
+          padding: 0.5rem 1rem;
+          font-family: inherit;
+          font-size: 0.875rem;
+          line-height: 1.2;
+          font-weight: 500;
+          border: 1px solid transparent;
+          border-radius: 0.5rem;
+          color: var(--shiny-cta-fg);
+          background: var(--shiny-cta-bg) padding-box,
+            conic-gradient(
+              from calc(var(--gradient-angle) - var(--gradient-angle-offset)),
+              transparent,
+              var(--shiny-cta-highlight) var(--gradient-percent),
+              var(--gradient-shine) calc(var(--gradient-percent) * 2),
+              var(--shiny-cta-highlight) calc(var(--gradient-percent) * 3),
+              transparent calc(var(--gradient-percent) * 4)
+            ) border-box;
+          box-shadow: inset 0 0 0 1px var(--shiny-cta-bg-subtle);
+          transition: var(--transition);
+          transition-property: --gradient-angle-offset, --gradient-percent, --gradient-shine, opacity;
+        }
+        .shiny-cta::before, .shiny-cta::after, .shiny-cta span::before {
+          content: "";
+          pointer-events: none;
+          position: absolute;
+          inset-inline-start: 50%;
+          inset-block-start: 50%;
+          translate: -50% -50%;
+          z-index: -1;
+        }
+        .shiny-cta:active { translate: 0 1px; }
+        .shiny-cta::before {
+          --size: calc(100% - var(--shadow-size) * 3);
+          --position: 2px;
+          --space: calc(var(--position) * 2);
+          width: var(--size);
+          height: var(--size);
+          background: radial-gradient(circle at var(--position) var(--position), white calc(var(--position) / 4), transparent 0) padding-box;
+          background-size: var(--space) var(--space);
+          background-repeat: space;
+          mask-image: conic-gradient(from calc(var(--gradient-angle) + 45deg), black, transparent 10% 90%, black);
+          border-radius: inherit;
+          opacity: 0.2;
+          z-index: -1;
+        }
+        .shiny-cta::after {
+          --animation: shimmer linear infinite;
+          width: 100%;
+          aspect-ratio: 1;
+          background: linear-gradient(-50deg, transparent, var(--shiny-cta-highlight), transparent);
+          mask-image: radial-gradient(circle at bottom, transparent 40%, black);
+          opacity: 0.4;
+        }
+        .shiny-cta span { z-index: 1; display: inline-flex; align-items: center; justify-content: center; }
+        .shiny-cta span::before {
+          --size: calc(100% + 1rem);
+          width: var(--size);
+          height: var(--size);
+          box-shadow: inset 0 -1ex 2rem 4px var(--shiny-cta-highlight);
+          opacity: 0;
+          transition: opacity var(--transition);
+          animation: calc(var(--duration) * 1.5) breathe linear infinite;
+        }
+        .shiny-cta, .shiny-cta::before, .shiny-cta::after { animation: var(--animation) var(--duration), var(--animation) calc(var(--duration) / 0.4) reverse paused; animation-composition: add; }
+        .shiny-cta:is(:hover, :focus-visible) { --gradient-percent: 20%; --gradient-angle-offset: 95deg; --gradient-shine: var(--shiny-cta-highlight-subtle); }
+        .shiny-cta:is(:hover, :focus-visible), .shiny-cta:is(:hover, :focus-visible)::before, .shiny-cta:is(:hover, :focus-visible)::after { animation-play-state: running; }
+        .shiny-cta:is(:hover, :focus-visible) span::before { opacity: 1; }
+        @keyframes gradient-angle { to { --gradient-angle: 360deg; } }
+        @keyframes shimmer { to { rotate: 360deg; } }
+        @keyframes breathe { from, to { scale: 1; } 50% { scale: 1.2; } }
+      `}</style>
+      <button type={type} disabled={disabled} className={`shiny-cta ${className}`}>
+        <span>{children}</span>
+      </button>
+    </>
+  )
+}
+
 export default function LoginPage() {
   const [splashVisible, setSplashVisible] = useState(true);
   const [email, setEmail] = useState('');
@@ -253,7 +354,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <Card className="border-0 shadow-2xl bg-card/50 backdrop-blur-sm">
+          <Card className="glass-dark shadow-2xl">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-heading">Bem-vindo de volta</CardTitle>
               <CardDescription className="font-sans">
@@ -325,18 +426,14 @@ export default function LoginPage() {
                   </Link>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full h-11 bg-gradient-to-r from-[#34E13C] to-[#0C1C25] hover:opacity-90 transition-opacity"
-                  disabled={isLoading}
-                >
+                <ShinyButton type="submit" className="w-full h-11" disabled={isLoading}>
                   {isLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : (
                     <ArrowRight className="w-4 h-4 mr-2" />
                   )}
                   <span className="font-sans">{isLoading ? 'Entrando...' : 'Entrar'}</span>
-                </Button>
+                </ShinyButton>
 
                 <div className="text-center text-sm font-sans">
                   <span className="text-muted-foreground">Não tem uma conta? </span>
