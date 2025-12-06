@@ -26,27 +26,27 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange={false}
-        >
-          <SofiaProvider>
-            <AnalyticsProvider
-              config={{
-                enablePerformanceTracking: true,
-                enableEngagementTracking: true,
-                enableErrorTracking: true,
-                enableAutoPageTracking: true,
-                sampleRate: 1.0,
-              }}
-            >
-              {children}
-            </AnalyticsProvider>
-          </SofiaProvider>
-        </ThemeProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem
+      disableTransitionOnChange={false}
+    >
+      <AuthProvider>
+        <SofiaProvider>
+          <AnalyticsProvider
+            config={{
+              enablePerformanceTracking: true,
+              enableEngagementTracking: true,
+              enableErrorTracking: true,
+              enableAutoPageTracking: true,
+              sampleRate: 1.0,
+            }}
+          >
+            {children}
+          </AnalyticsProvider>
+        </SofiaProvider>
       </AuthProvider>
+    </ThemeProvider>
   );
 }

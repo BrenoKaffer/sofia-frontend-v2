@@ -41,13 +41,13 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body className="font-sans" suppressHydrationWarning>
         <ErrorBoundary>
-          <MonitoringProvider>
-            <Providers>
+          <Providers>
+            <MonitoringProvider>
               <ClientTransitionOverlayWithBackground />
               {children}
               <Toaster position="top-right" />
-            </Providers>
-          </MonitoringProvider>
+            </MonitoringProvider>
+          </Providers>
         </ErrorBoundary>
       </body>
     </html>
