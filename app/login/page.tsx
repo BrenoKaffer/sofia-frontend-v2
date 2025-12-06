@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import PageTransitionWithBackground from '@/components/layout/PageTransitionWithBackground';
 import BrandSVG from '@/components/layout/BrandSVG';
+import { supabase } from '@/lib/supabase';
 
 function ShinyButton({ children, className = '', type = 'button', disabled = false }: { children: React.ReactNode; className?: string; type?: 'button' | 'submit' | 'reset'; disabled?: boolean }) {
   return (
@@ -387,6 +388,14 @@ export default function LoginPage() {
       const success = await login(email, password);
       console.log('Resultado do login:', success);
       if (success) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token && session?.refresh_token) {
+            const maxAge = 60 * 60 * 24 * 7;
+            document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${maxAge}; samesite=lax`;
+            document.cookie = `sb-refresh-token=${session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
+          }
+        } catch { }
         try {
           if (rememberMe) {
             if (typeof window !== 'undefined') {
