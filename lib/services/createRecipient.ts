@@ -25,7 +25,9 @@ export async function createRecipient(payload: CreateRecipientPayload): Promise<
   try {
     const data = await res.json()
     if (!res.ok) {
-      return { success: false, error: data?.error || 'Erro ao criar recebedor' }
+      const err = data?.error
+      const errStr = typeof err === 'string' ? err : (err?.message || JSON.stringify(err))
+      return { success: false, error: errStr || 'Erro ao criar recebedor' }
     }
     return { success: !!data?.success, recipient_id: data?.recipient_id }
   } catch {

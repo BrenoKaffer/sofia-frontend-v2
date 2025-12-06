@@ -19,6 +19,24 @@ const BANKS = [
   { code: '260', name: 'Nubank' },
 ]
 
+function isValidCPF(raw: string): boolean {
+  const cpf = raw.replace(/\D/g, '')
+  if (!cpf || cpf.length !== 11) return false
+  if (/^(\d)\1{10}$/.test(cpf)) return false
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf.charAt(i)) * (10 - i)
+  let d1 = (sum * 10) % 11
+  if (d1 === 10 || d1 === 11) d1 = 0
+  if (d1 !== parseInt(cpf.charAt(9))) return false
+  sum = 0
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf.charAt(i)) * (11 - i)
+  let d2 = (sum * 10) % 11
+  if (d2 === 10 || d2 === 11) d2 = 0
+  return d2 === parseInt(cpf.charAt(10))
+}
+
+const sanitize = (v: string) => v.replace(/\D/g, '')
+
 export default function AffiliateRecipientForm({ affiliateSlug }: { affiliateSlug?: string }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -34,7 +52,8 @@ export default function AffiliateRecipientForm({ affiliateSlug }: { affiliateSlu
   const validate = () => {
     if (!name || !email || !document || !bank || !branch || !account || !digit || !accountType) return false
     const emailOk = /.+@.+\..+/.test(email)
-    const cpfOk = document.replace(/\D/g, '').length >= 11
+    const cpfOkLen = document.replace(/\D/g, '').length === 11
+    const cpfOk = cpfOkLen && isValidCPF(document)
     return emailOk && cpfOk
   }
 
@@ -44,13 +63,13 @@ export default function AffiliateRecipientForm({ affiliateSlug }: { affiliateSlu
     await createRecipient({
       name,
       email,
-      document,
+      document: sanitize(document),
       bank_account: {
         holder_name: name,
-        bank,
-        branch_number: branch,
-        account_number: account,
-        account_check_digit: digit,
+        bank: sanitize(bank),
+        branch_number: sanitize(branch),
+        account_number: sanitize(account),
+        account_check_digit: sanitize(digit),
         type: accountType as 'checking' | 'savings',
       },
     })
@@ -61,7 +80,7 @@ export default function AffiliateRecipientForm({ affiliateSlug }: { affiliateSlu
       {error && (
         <Alert variant="destructive">
           <AlertDescription>
-            Ocorreu um erro ao criar o recebedor. Tente novamente.
+            {typeof error === 'string' ? error : 'Ocorreu um erro ao criar o recebedor.'}
           </AlertDescription>
         </Alert>
       )}

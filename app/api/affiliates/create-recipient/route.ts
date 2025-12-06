@@ -79,10 +79,10 @@ export async function POST(request: NextRequest) {
     } catch {}
 
     return NextResponse.json({ success: true, recipient_id: recipientId, affiliate_slug: payload.affiliate_slug, message: 'Recebedor criado e vinculado ao afiliado com sucesso.' })
-  } catch (error: any) {
-    const message = error?.message || 'Erro ao criar recebedor'
-    const status = /invalid|parse/i.test(message) ? 400 : 500
-    return NextResponse.json({ success: false, error: message }, { status })
+  } catch (err: any) {
+    const pagarmeErr = err?.response?.data ?? err?.data ?? err?.message
+    const status = /invalid|parse|zod/i.test(String(err?.message || pagarmeErr)) ? 400 : 500
+    return NextResponse.json({ success: false, error: pagarmeErr }, { status })
   }
 }
 
