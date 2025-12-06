@@ -11,7 +11,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, EyeOff, Loader2, Brain, ArrowRight, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { motion } from 'framer-motion';
 import PageTransitionWithBackground from '@/components/layout/PageTransitionWithBackground';
 import BrandSVG from '@/components/layout/BrandSVG';
@@ -218,7 +217,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="dark min-h-screen flex">
       <PageTransitionWithBackground isVisible={splashVisible} />
       {/* Left side - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden bg-black">
@@ -238,9 +237,7 @@ export default function LoginPage() {
           transition={{ duration: 0.5, delay: 1.8 }}
           className="w-full max-w-md relative z-10"
         >
-          <div className="absolute top-6 right-6 z-50">
-            <ThemeToggle />
-          </div>
+
 
           <div className="text-center mb-8">
             <motion.div
