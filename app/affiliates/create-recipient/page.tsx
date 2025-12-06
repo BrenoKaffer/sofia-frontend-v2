@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import AffiliateRecipientForm from '@/components/affiliates/AffiliateRecipientForm'
 
-export default function CreateRecipientPage() {
+function RecipientContent() {
   const params = useSearchParams()
   const [manualSlug, setManualSlug] = useState('')
 
@@ -60,6 +60,16 @@ export default function CreateRecipientPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export const dynamic = 'force-dynamic'
+
+export default function CreateRecipientPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-green-500 border-t-transparent" /></div>}>
+      <RecipientContent />
+    </Suspense>
   )
 }
 
