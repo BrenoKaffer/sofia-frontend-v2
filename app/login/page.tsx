@@ -419,7 +419,7 @@ export default function LoginPage() {
               transition={{ delay: 1.8, duration: 0.8, ease: 'easeOut' }}
               className="inline-flex items-center justify-center mb-2"
             >
-              <BrandSVG width={220} height={55} enableFlash={true} />
+              <BrandSVG width={220} height={55} />
             </motion.div>
             <p className="text-muted-foreground mt-2 font-sans">
               Sistema de Operação de Fichas Inteligentes e Autônomas
