@@ -41,22 +41,22 @@ export default function BrandSVG({ width = 603, height = 90, enableFlash = false
           <motion.path
             d={dPrimary}
             fill="none"
-            stroke="#34E03C"
-            strokeWidth={1.4}
+            stroke="#34E13C"
+            strokeWidth={1.6}
             strokeLinejoin="round"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: [0, 0.35, 0] }}
-            transition={{ duration: 1.4, ease: 'easeInOut' }}
+            strokeDasharray="180 600"
+            animate={{ strokeDashoffset: [0, -780] }}
+            transition={{ duration: 6, ease: 'linear', repeat: Infinity }}
           />
           <motion.path
             d={dAccent}
             fill="none"
-            stroke="#34E03C"
-            strokeWidth={1.4}
+            stroke="#34E13C"
+            strokeWidth={1.6}
             strokeLinejoin="round"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: [0, 0.35, 0] }}
-            transition={{ duration: 1.4, ease: 'easeInOut', delay: 0.15 }}
+            strokeDasharray="180 600"
+            animate={{ strokeDashoffset: [0, -780] }}
+            transition={{ duration: 6, ease: 'linear', repeat: Infinity, delay: 0.3 }}
           />
         </>
       )}
