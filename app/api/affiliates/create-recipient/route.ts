@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
-import { createRecipientOnPagarme } from '@/lib/pagarme-recipient-service'
+import { createRecipientOnPagarme, getRecipientOnPagarme, updateRecipientOnPagarme } from '@/lib/pagarme-recipient-service'
 
 export const runtime = 'nodejs'
 
@@ -36,6 +36,50 @@ export async function POST(request: NextRequest) {
     const input = await request.json()
     const payload = schema.parse(input)
 
+    const sanitize = (v: string) => String(v || '').replace(/\D/g, '')
+    const isValidCPF = (raw: string) => {
+      const cpf = sanitize(raw)
+      if (!cpf || cpf.length !== 11) return false
+      if (/^(\d)\1{10}$/.test(cpf)) return false
+      let sum = 0
+      for (let i = 0; i < 9; i++) sum += parseInt(cpf.charAt(i)) * (10 - i)
+      let d1 = (sum * 10) % 11; if (d1 >= 10) d1 = 0; if (d1 !== parseInt(cpf.charAt(9))) return false
+      sum = 0
+      for (let i = 0; i < 10; i++) sum += parseInt(cpf.charAt(i)) * (11 - i)
+      let d2 = (sum * 10) % 11; if (d2 >= 10) d2 = 0; return d2 === parseInt(cpf.charAt(10))
+    }
+    const isValidBank = (b: string) => /^\d{3}$/.test(sanitize(b))
+    const isValidBranch = (b: string) => /^\d{1,4}$/.test(sanitize(b))
+    const isValidDigit = (d: string) => /^[0-9Xx]$/.test(String(d || ''))
+
+    const normalized = {
+      affiliate_slug: payload.affiliate_slug,
+      name: String(payload.name || '').trim(),
+      email: payload.email,
+      document: sanitize(payload.document),
+      bank_account: {
+        holder_name: String(payload.bank_account.holder_name || '').trim(),
+        bank: sanitize(payload.bank_account.bank),
+        branch_number: sanitize(payload.bank_account.branch_number),
+        account_number: sanitize(payload.bank_account.account_number),
+        account_check_digit: String(payload.bank_account.account_check_digit || '').toUpperCase().replace(/[^0-9X]/g, ''),
+        type: payload.bank_account.type,
+      },
+    }
+
+    if (!isValidCPF(normalized.document)) {
+      return NextResponse.json({ success: false, error: 'CPF inválido' }, { status: 400 })
+    }
+    if (!isValidBank(normalized.bank_account.bank)) {
+      return NextResponse.json({ success: false, error: 'Banco inválido' }, { status: 400 })
+    }
+    if (!isValidBranch(normalized.bank_account.branch_number)) {
+      return NextResponse.json({ success: false, error: 'Agência inválida' }, { status: 400 })
+    }
+    if (!isValidDigit(normalized.bank_account.account_check_digit)) {
+      return NextResponse.json({ success: false, error: 'Dígito inválido' }, { status: 400 })
+    }
+
     const { client: supabase, configured } = getAdminClient()
     if (!configured) {
       return NextResponse.json({ success: false, error: 'Supabase não configurado' }, { status: 500 })
@@ -50,14 +94,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Afiliado não encontrado' }, { status: 404 })
     }
     if (affiliate.recipient_id) {
+      try {
+        const existing = await getRecipientOnPagarme(String(affiliate.recipient_id))
+        const status = String(existing?.status || existing?.recipient?.status || '').toLowerCase()
+        const needsActivation = /afil/i.test(status)
+        if (needsActivation) {
+          await updateRecipientOnPagarme(String(affiliate.recipient_id), {
+            name: normalized.name,
+            email: normalized.email,
+            document: normalized.document,
+            bank_account: normalized.bank_account,
+          })
+          return NextResponse.json({ success: true, recipient_id: affiliate.recipient_id, affiliate_slug: payload.affiliate_slug, message: 'Recebedor reativado com sucesso.' })
+        }
+      } catch {}
       return NextResponse.json({ success: false, error: 'Este afiliado já possui um recebedor cadastrado.' }, { status: 409 })
     }
 
     const result = await createRecipientOnPagarme({
-      name: payload.name,
-      email: payload.email,
-      document: payload.document,
-      bank_account: payload.bank_account,
+      name: normalized.name,
+      email: normalized.email,
+      document: normalized.document,
+      bank_account: normalized.bank_account,
     })
     const recipientId = result?.id || result?.recipient?.id || null
 

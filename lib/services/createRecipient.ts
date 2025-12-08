@@ -17,10 +17,16 @@ export type CreateRecipientPayload = {
 
 export async function createRecipient(payload: CreateRecipientPayload): Promise<{ success: boolean; recipient_id?: string; error?: string }>
 {
-  const res = await fetch('/api/affiliates/create-recipient', {
+  const base = process.env.NEXT_PUBLIC_CHECKOUT_URL || 'https://pay.v1sofia.com'
+  const res = await fetch(`${base}/api/affiliates/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      name: payload.name,
+      email: payload.email,
+      document: payload.document,
+      bank_account: payload.bank_account,
+    }),
   })
   try {
     const data = await res.json()
@@ -29,7 +35,7 @@ export async function createRecipient(payload: CreateRecipientPayload): Promise<
       const errStr = typeof err === 'string' ? err : (err?.message || JSON.stringify(err))
       return { success: false, error: errStr || 'Erro ao criar recebedor' }
     }
-    return { success: !!data?.success, recipient_id: data?.recipient_id }
+    return { success: !!data?.success, recipient_id: undefined }
   } catch {
     return { success: false, error: 'Erro inesperado' }
   }
