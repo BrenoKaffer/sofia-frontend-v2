@@ -68,9 +68,9 @@ async function isAuthenticated(req: NextRequest): Promise<boolean> {
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl
 
-  if (pathname.startsWith('/checkout')) {
-    return NextResponse.redirect(`https://pay.v1sofia.com${pathname}${search}`)
-  }
+  // if (pathname.startsWith('/checkout')) {
+  //   return NextResponse.redirect(`https://pay.v1sofia.com${pathname}${search}`)
+  // }
 
   if (isAssetOrApi(pathname) || isPublicRoute(pathname)) {
     return NextResponse.next()
