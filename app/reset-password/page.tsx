@@ -46,9 +46,28 @@ function ResetPasswordContent() {
       }
 
       // Verificar tokens válidos
+      const code = searchParams.get('code');
       const accessToken = searchParams.get('access_token');
       const refreshToken = searchParams.get('refresh_token');
       const type = searchParams.get('type');
+
+      if (code) {
+        try {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('Erro ao trocar código por sessão:', error);
+            setIsValidToken(false);
+            toast.error('Código de recuperação inválido ou expirado');
+          } else {
+            setIsValidToken(true);
+          }
+        } catch (error) {
+          console.error('Erro ao processar código:', error);
+          setIsValidToken(false);
+          toast.error('Erro ao processar link de recuperação');
+        }
+        return;
+      }
 
       if (type === 'recovery' && accessToken && refreshToken) {
         try {
