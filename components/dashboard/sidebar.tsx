@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import BrandSVG from '@/components/layout/BrandSVG';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -126,14 +127,11 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-primary to-accent">
-            <Brain className="h-5 w-5 text-white" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold font-urbanist bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent transition-opacity duration-200">
-                SOFIA
-              </h1>
+          {!collapsed ? (
+            <BrandSVG width={140} height={35} className="block" />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-primary to-accent">
+              <Brain className="h-5 w-5 text-white" />
             </div>
           )}
         </div>
