@@ -21,6 +21,7 @@ import { withLazyLoading } from '@/components/lazy/lazy-component';
 import { apiClient } from '@/lib/api-client';
 import { useRealtimeSignals } from '@/hooks/use-websocket';
 import { usePerformanceMonitoring, useSmartMemo, useDebounce } from '@/hooks/use-performance';
+import BrandSVG from '@/components/layout/BrandSVG';
 
 // Componentes lazy
 const LiveSignals = withLazyLoading(() => import('@/components/dashboard/live-signals'));
@@ -871,7 +872,7 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold tracking-tight font-heading">Dashboard</h1>
+            <BrandSVG width={160} height={40} className="block" />
             {/* Indicador de Status da Conexão */}
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
