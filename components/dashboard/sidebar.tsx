@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import BrandSVG from '@/components/layout/BrandSVG';
+import FaviconSVG from '@/components/layout/FaviconSVG';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -126,13 +127,13 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex h-16 items-center border-b px-4">
-        <div className="flex items-center gap-3">
+      <div className="flex h-16 items-center border-b px-4 justify-between">
+        <div className={`flex items-center gap-3 w-full ${!collapsed ? 'justify-center' : ''}`}>
           {!collapsed ? (
-            <BrandSVG width={140} height={35} className="block" />
+            <BrandSVG width={120} height={30} className="block" />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-primary to-accent">
-              <Brain className="h-5 w-5 text-white" />
+            <div className="flex h-8 w-8 items-center justify-center">
+              <FaviconSVG width={32} height={32} />
             </div>
           )}
         </div>
