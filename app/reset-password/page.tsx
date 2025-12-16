@@ -27,11 +27,37 @@ function ResetPasswordContent() {
   useEffect(() => {
     // Verificar se há parâmetros de recuperação de senha na URL
     const checkTokenValidity = async () => {
-      // Primeiro, verificar se há erros na URL
-      const error = searchParams.get('error');
-      const errorCode = searchParams.get('error_code');
-      const errorDescription = searchParams.get('error_description');
+      // Tentar pegar parâmetros da URL (query string)
+      let error = searchParams.get('error');
+      let errorCode = searchParams.get('error_code');
+      let errorDescription = searchParams.get('error_description');
+      let code = searchParams.get('code');
+      let accessToken = searchParams.get('access_token');
+      let refreshToken = searchParams.get('refresh_token');
+      let type = searchParams.get('type');
 
+      // Se não encontrou na query string, tentar pegar do hash (fragmento)
+      if (!code && !accessToken && !error && typeof window !== 'undefined' && window.location.hash) {
+        const hash = window.location.hash.substring(1); // remove o #
+        const params = new URLSearchParams(hash);
+        
+        error = params.get('error') || error;
+        errorCode = params.get('error_code') || errorCode;
+        errorDescription = params.get('error_description') || errorDescription;
+        code = params.get('code') || code;
+        accessToken = params.get('access_token') || accessToken;
+        refreshToken = params.get('refresh_token') || refreshToken;
+        type = params.get('type') || type;
+      }
+
+      console.log('Debug Reset Password:', { 
+        code: code ? 'present' : 'missing', 
+        accessToken: accessToken ? 'present' : 'missing', 
+        error, 
+        hash: typeof window !== 'undefined' ? window.location.hash : 'N/A' 
+      });
+
+      // Primeiro, verificar se há erros na URL
       if (error) {
         console.error('Erro na URL:', { error, errorCode, errorDescription });
         setIsValidToken(false);
@@ -46,10 +72,7 @@ function ResetPasswordContent() {
       }
 
       // Verificar tokens válidos
-      const code = searchParams.get('code');
-      const accessToken = searchParams.get('access_token');
-      const refreshToken = searchParams.get('refresh_token');
-      const type = searchParams.get('type');
+      // Variáveis já capturadas acima (query ou hash)
 
       if (code) {
         try {
@@ -91,7 +114,7 @@ function ResetPasswordContent() {
       } else {
         setIsValidToken(false);
         // Não mostrar toast se já foi mostrado um erro específico
-        if (!searchParams.get('error')) {
+        if (!error) {
           toast.error('Link de recuperação inválido');
         }
       }
