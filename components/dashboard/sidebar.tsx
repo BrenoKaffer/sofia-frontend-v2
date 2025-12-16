@@ -47,6 +47,7 @@ const navigationSections = [
     title: 'Operação',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Aprendizados', href: '/insights', icon: Brain },
       { name: 'Registros de Padrões', href: '/registros-de-padroes', icon: Dices },
       { name: 'Histórico das Roletas', href: '/roulette-status', icon: History },
       { name: 'Estratégias Ativas', href: '/strategies', icon: Target },
