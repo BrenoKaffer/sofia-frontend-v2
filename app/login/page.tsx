@@ -195,9 +195,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!isAuthLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, isAuthLoading, router]);
 
   useEffect(() => {
     const timeout = setTimeout(() => setSplashVisible(false), 1800);
@@ -375,11 +382,11 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     if (!email || !password) {
       toast.error('Por favor, preencha todos os campos');
-      setIsLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
@@ -418,7 +425,7 @@ export default function LoginPage() {
       console.error('Erro no login:', error);
       toast.error('Erro interno do servidor');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -531,13 +538,13 @@ export default function LoginPage() {
                   </Link>
                 </div>
 
-                <ShinyButton type="submit" className="w-full h-11" disabled={isLoading}>
-                  {isLoading ? (
+                <ShinyButton type="submit" className="w-full h-11" disabled={isSubmitting}>
+                  {isSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : (
                     <ArrowRight className="w-4 h-4 mr-2" />
                   )}
-                  <span className="font-sans">{isLoading ? 'Entrando...' : 'Entrar'}</span>
+                  <span className="font-sans">{isSubmitting ? 'Entrando...' : 'Entrar'}</span>
                 </ShinyButton>
 
                 <div className="text-center text-sm font-sans">

@@ -126,7 +126,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCPF, setIsLoadingCPF] = useState(false);
   const [nameFromAPI, setNameFromAPI] = useState(false);
 
@@ -149,7 +149,14 @@ export default function RegisterPage() {
     terms: false
   });
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, user, isLoading: isAuthLoading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!isAuthLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, isAuthLoading, router]);
 
   // Funções de validação
   const validateField = (field: string, value: string) => {
@@ -285,11 +292,11 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     if (!fullName || !cpf || !email || !password || !confirmPassword) {
       toast.error('Por favor, preencha todos os campos');
-      setIsLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
@@ -297,25 +304,25 @@ export default function RegisterPage() {
     const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/;
     if (!cpfRegex.test(cpf)) {
       toast.error('CPF deve estar no formato 000.000.000-00 ou conter 11 dígitos');
-      setIsLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
     if (password !== confirmPassword) {
       toast.error('As senhas não coincidem');
-      setIsLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
     if (password.length < 6) {
       toast.error('A senha deve ter pelo menos 6 caracteres');
-      setIsLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
     if (!acceptTerms) {
       toast.error('Você deve aceitar os termos de uso');
-      setIsLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
@@ -333,7 +340,7 @@ export default function RegisterPage() {
       console.error('Erro no registro:', error);
       toast.error('Erro inesperado ao tentar registrar');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -729,13 +736,13 @@ export default function RegisterPage() {
                   </Label>
                 </div>
 
-                <ShinyButton type="submit" className="w-full h-11" disabled={isLoading}>
-                  {isLoading ? (
+                <ShinyButton type="submit" className="w-full h-11" disabled={isSubmitting}>
+                  {isSubmitting ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : (
                     <ArrowRight className="w-4 h-4 mr-2" />
                   )}
-                  <span className="font-sans">{isLoading ? 'Criando conta...' : 'Criar Conta'}</span>
+                  <span className="font-sans">{isSubmitting ? 'Criando conta...' : 'Criar Conta'}</span>
                 </ShinyButton>
 
                 <div className="text-center text-sm font-sans">
