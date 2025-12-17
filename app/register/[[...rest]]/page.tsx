@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CPFService } from '@/lib/cpf-service';
-import { insertUserData } from '@/lib/user-registration';
 import BrandSVG from '@/components/layout/BrandSVG';
 
 function ShinyButton({ children, className = '', type = 'button', disabled = false }: { children: React.ReactNode; className?: string; type?: 'button' | 'submit' | 'reset'; disabled?: boolean }) {
@@ -150,6 +149,7 @@ export default function RegisterPage() {
     terms: false
   });
   const router = useRouter();
+  const { register } = useAuth();
 
   // Funções de validação
   const validateField = (field: string, value: string) => {
@@ -320,72 +320,18 @@ export default function RegisterPage() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            cpf: cpf,
-            name: fullName
-          }
-        }
-      });
-
-      if (error) {
-        console.error('Erro no registro:', error);
-        if (error.message.includes('User already registered')) {
-          toast.error('Este email já está cadastrado. Tente fazer login.');
-        } else if (error.message.includes('Password should be at least 6 characters')) {
-          toast.error('A senha deve ter pelo menos 6 caracteres.');
-        } else {
-          toast.error(error.message || 'Erro ao criar conta');
-        }
-        return;
+      // Use auth-context register function which uses backend API
+      // Backend now handles user creation, profile insertion, and sending premium verification email
+      const success = await register(fullName, email, password, cpf, fullName);
+      
+      if (success) {
+        // Success message is handled by auth-context, but we can redirect here
+        router.push('/login');
       }
-
-      if (data.user) {
-        console.log('✅ [REGISTER] Usuário criado no Supabase Auth com sucesso:', {
-          userId: data.user.id,
-          email: data.user.email,
-          emailConfirmed: data.user.email_confirmed_at
-        });
-
-        // Inserir dados adicionais nas tabelas user_profiles
-        try {
-          console.log('🔄 [REGISTER] Iniciando inserção de dados do perfil do usuário...');
-
-          await insertUserData({
-            fullName,
-            cpf,
-            email,
-            userId: data.user.id
-          });
-
-          console.log('✅ [REGISTER] Perfil do usuário criado com sucesso!');
-          toast.success('Conta criada com sucesso! Verifique seu email para confirmar a conta.');
-          router.push('/login');
-        } catch (profileError) {
-          console.error('❌ [REGISTER] Erro detalhado ao criar perfil do usuário:', {
-            error: profileError,
-            message: profileError instanceof Error ? profileError.message : 'Erro desconhecido',
-            stack: profileError instanceof Error ? profileError.stack : 'Stack não disponível',
-            userData: {
-              userId: data.user.id,
-              fullName,
-              email,
-              cpfMasked: cpf ? `${cpf.substring(0, 3)}.***.***.${cpf.substring(-2)}` : 'N/A'
-            }
-          });
-
-          // Usuário foi criado no auth, mas falhou ao criar perfil
-          toast.warning('Conta criada, mas houve um problema ao configurar seu perfil. Entre em contato com o suporte.');
-          router.push('/login');
-        }
-      }
+      // If failed, toast is already handled by auth-context
     } catch (error) {
       console.error('Erro no registro:', error);
-      toast.error('Erro interno do servidor');
+      toast.error('Erro inesperado ao tentar registrar');
     } finally {
       setIsLoading(false);
     }

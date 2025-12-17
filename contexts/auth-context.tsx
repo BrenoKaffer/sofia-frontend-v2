@@ -104,26 +104,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Use backend API to centralize auth logic and audit
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        console.error('Erro no login:', error);
-        if (error.message.includes('Invalid login credentials')) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Erro no login:', data.message);
+        if (data.message && (data.message.includes('incorretos') || data.message.includes('credentials'))) {
           toast.error('Credenciais inválidas. Verifique seu email e senha.');
-        } else if (error.message.includes('Email not confirmed')) {
+        } else if (data.message && data.message.includes('not confirmed')) {
           toast.error('Por favor, confirme seu email antes de fazer login.');
         } else {
-          toast.error(error.message || 'Erro ao fazer login');
+          toast.error(data.message || 'Erro ao fazer login');
         }
         setIsLoading(false);
         return false;
       }
 
-      if (data.user) {
-        setUser(convertSupabaseUser(data.user));
+      if (data.session) {
+        // Set the session in the Supabase client
+        const { error: sessionError } = await supabase.auth.setSession(data.session);
+        
+        if (sessionError) {
+          console.error('Erro ao definir sessão no cliente:', sessionError);
+          toast.error('Erro ao autenticar sessão localmente.');
+          setIsLoading(false);
+          return false;
+        }
+
+        if (data.user) {
+          setUser(convertSupabaseUser(data.user));
+        }
+        
         toast.success('Login realizado com sucesso! Bem-vindo de volta ao SOFIA!');
         setIsLoading(false);
         return true;
@@ -143,45 +163,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName || name,
-            name: name,
-            cpf: cpf
-          }
-        }
+      // Use backend API instead of Supabase direct call to enforce backend logic and premium email templates
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          name, 
+          cpf, 
+          fullName 
+        }),
       });
 
-      if (error) {
-        console.error('Erro no registro:', error);
-        if (error.message.includes('User already registered')) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Erro no registro:', data.message);
+        if (data.message && data.message.includes('already registered')) {
           toast.error('Este email já está cadastrado. Tente fazer login.');
-        } else if (error.message.includes('Password should be at least 6 characters')) {
-          toast.error('A senha deve ter pelo menos 6 caracteres.');
         } else {
-          toast.error(error.message || 'Erro ao criar conta');
+          toast.error(data.message || 'Erro ao criar conta');
         }
         setIsLoading(false);
         return false;
       }
 
-      if (data.user) {
-        // Não definir o usuário imediatamente se precisar de confirmação de email
-        if (data.user.email_confirmed_at) {
-          setUser(convertSupabaseUser(data.user));
-          toast.success('Cadastro realizado com sucesso! Bem-vindo ao SOFIA!');
-        } else {
-          toast.success('Conta criada com sucesso! Verifique seu email para confirmar a conta.');
-        }
-        setIsLoading(false);
-        return true;
-      }
-
+      toast.success(data.message || 'Conta criada com sucesso! Verifique seu email para confirmar a conta.');
       setIsLoading(false);
-      return false;
+      return true;
     } catch (error: any) {
       console.error('Erro no registro:', error);
       toast.error('Erro interno do servidor');

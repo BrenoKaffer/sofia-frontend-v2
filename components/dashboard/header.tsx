@@ -14,7 +14,6 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -125,8 +124,6 @@ export function Header({ onMenuClick }: HeaderProps) {
             <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
             <span className="text-sm text-muted-foreground font-sans">Sistema ativo</span>
           </motion.div>
-
-          <ThemeToggle />
 
           {/* Notifications */}
           <AlertNotification />

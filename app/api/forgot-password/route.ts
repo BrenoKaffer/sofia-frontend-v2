@@ -22,30 +22,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createRouteHandlerClient({ cookies });
-
-    // Enviar email de recuperação de senha
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`,
+    // Proxy para o Backend (sofia-backend)
+    // O Backend é responsável por gerar o link e enviar o email via ZeptoMail
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    
+    const response = await fetch(`${backendUrl}/api/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email })
     });
 
-    if (error) {
-      console.error('Erro ao enviar email de recuperação:', error);
-      
-      // Não revelar se o email existe ou não por questões de segurança
-      // Sempre retornar sucesso para evitar enumeração de usuários
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Erro no backend ao processar forgot-password:', data);
       return NextResponse.json(
-        { 
-          message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.',
-          success: true 
-        },
-        { status: 200 }
+        { error: data.message || 'Erro ao processar solicitação' },
+        { status: response.status }
       );
     }
 
     return NextResponse.json(
       { 
-        message: 'Email de recuperação enviado com sucesso!',
+        message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.',
         success: true 
       },
       { status: 200 }

@@ -297,9 +297,7 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      // Use backend API instead of Supabase direct call
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/auth/forgot-password`, {
+      const response = await fetch('/api/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -310,14 +308,20 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao enviar email de recuperação');
+        console.error('Erro ao enviar email de recuperação:', data.error);
+        if (data.error && data.error.includes('User not found')) {
+          toast.error('Email não encontrado em nossa base de dados');
+        } else {
+          toast.error(data.error || 'Erro ao enviar email de recuperação');
+        }
+        return;
       }
 
       setIsEmailSent(true);
-      toast.success(data.message || 'Email de recuperação enviado com sucesso!');
-    } catch (error: any) {
+      toast.success('Email de recuperação enviado com sucesso!');
+    } catch (error) {
       console.error('Erro ao enviar email de recuperação:', error);
-      toast.error(error.message || 'Erro interno do servidor');
+      toast.error('Erro interno do servidor');
     } finally {
       setIsLoading(false);
     }
@@ -326,8 +330,7 @@ export default function ForgotPasswordPage() {
   const handleResendEmail = async () => {
     setIsLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/auth/forgot-password`, {
+      const response = await fetch('/api/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -335,10 +338,9 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao reenviar email');
+        toast.error('Erro ao reenviar email');
+        return;
       }
 
       toast.success('Email reenviado com sucesso!');

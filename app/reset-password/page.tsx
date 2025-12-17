@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Eye, EyeOff, Loader2, Brain, CheckCircle, AlertCircle, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { motion } from 'framer-motion';
 
 function ResetPasswordContent() {
@@ -257,7 +256,6 @@ function ResetPasswordContent() {
           className="w-full max-w-md"
         >
           <div className="absolute top-6 right-6 z-50">
-            <ThemeToggle />
           </div>
           
           <div className="text-center mb-8">
