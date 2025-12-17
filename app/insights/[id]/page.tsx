@@ -6,42 +6,36 @@ import { VideoPlayer } from '@/components/ui/video-player';
 import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { insightsData, Lesson } from '@/lib/insights-data';
 
-// Mock data (should ideally come from a shared source or API)
-const lessons = {
-  'hero-insight': {
-    title: "O Segredo da Virada de Mesa",
-    description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", // Placeholder
-    thumbnailUrl: "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=2070&auto=format&fit=crop"
-  },
-  'cw-01': {
-    title: "Recuperação de Red: O Protocolo",
-    description: "Não entre em pânico. Siga este passo a passo matemático para recuperar perdas sem quebrar a banca.",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    thumbnailUrl: "https://images.unsplash.com/photo-1605870445919-838d190e8e1b?q=80&w=2072&auto=format&fit=crop"
-  },
-  'cw-02': {
-    title: "Leitura de Terminais v2.0",
-    description: "A nova forma de ler terminais que antecipa vizinhos do zero com 80% de precisão.",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    thumbnailUrl: "https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?q=80&w=2535&auto=format&fit=crop"
-  },
-  'rec-01': {
-      title: "Gatilhos de Sniper",
-      description: "Pare de jogar em toda rodada. Aprenda a esperar o tiro certo que garante sua meta do dia.",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      thumbnailUrl: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=2574&auto=format&fit=crop"
+// Helper to find lesson by ID from the structured data
+const getLessonById = (id: string) => {
+  for (const module of insightsData) {
+    const lesson = module.lessons.find(l => l.id === id);
+    if (lesson) return lesson;
   }
+  // Fallback for the hardcoded hero insight if it's not in the list
+  if (id === 'hero-insight') {
+    return {
+      id: "hero-insight",
+      title: "O Segredo da Virada de Mesa",
+      subtitle: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão.",
+      description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.",
+      duration: "45 min",
+      locked: false,
+      category: "Masterclass"
+    } as Lesson;
+  }
+  return null;
 };
 
 export default function LessonPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const lesson = lessons[id as keyof typeof lessons];
+  const lessonData = getLessonById(id);
 
-  if (!lesson) {
+  if (!lessonData) {
     return (
       <div className="min-h-screen bg-[#141414] text-white flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Aula não encontrada</h1>
@@ -49,6 +43,14 @@ export default function LessonPage() {
       </div>
     );
   }
+
+  // Enrich with placeholder media if not present (since our data file is text-only for now)
+  const lesson = {
+    ...lessonData,
+    description: lessonData.subtitle || lessonData.title, // Ensure description exists
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", // Placeholder video
+    thumbnailUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop" // Tech placeholder
+  };
 
   return (
     <div className="min-h-screen bg-[#141414] text-white">
@@ -77,7 +79,7 @@ export default function LessonPage() {
             <div className="space-y-4">
                 <h1 className="text-3xl md:text-4xl font-bold text-white">{lesson.title}</h1>
                 <p className="text-lg text-zinc-300 leading-relaxed max-w-3xl">
-                    {lesson.description}
+                    {lesson.subtitle}
                 </p>
             </div>
 
@@ -87,8 +89,8 @@ export default function LessonPage() {
                     <h3 className="text-xl font-semibold">Resumo da Aula</h3>
                     <div className="bg-zinc-900/50 p-6 rounded-xl border border-zinc-800">
                         <p className="text-zinc-400">
-                            Nesta aula avançada, você aprenderá os fundamentos matemáticos e psicológicos por trás da estratégia.
-                            Prepare-se para anotar os pontos chave e aplicar o conhecimento na prática.
+                            Nesta aula do módulo <strong>{lesson.category}</strong>, você aprenderá os fundamentos essenciais.
+                            {lesson.locked && " Esta é uma aula exclusiva para membros PRO."}
                         </p>
                     </div>
                 </div>

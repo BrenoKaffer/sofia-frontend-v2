@@ -7,8 +7,9 @@ import { InsightsCarousel } from '@/components/insights/insights-carousel';
 import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { insightsData } from '@/lib/insights-data';
 
-// Mock Data Refined for "Netflix Style"
+// Featured Hero Insight (can be dynamic later, hardcoded for now as "Masterclass")
 const featuredInsight = {
   id: "hero-insight",
   title: "O Segredo da Virada de Mesa",
@@ -16,98 +17,6 @@ const featuredInsight = {
   badge: "Masterclass Exclusiva",
   duration: "45 min"
 };
-
-const continueWatching = [
-  {
-    id: "cw-01",
-    title: "Recuperação de Red: O Protocolo",
-    subtitle: "Não entre em pânico. Siga este passo a passo matemático para recuperar perdas sem quebrar a banca.",
-    duration: "18 min",
-    locked: false,
-    badge: "Essencial",
-    category: "Gestão",
-    progress: 62
-  },
-  {
-    id: "cw-02",
-    title: "Leitura de Terminais v2.0",
-    subtitle: "A nova forma de ler terminais que antecipa vizinhos do zero com 80% de precisão.",
-    duration: "24 min",
-    locked: false,
-    badge: "Técnica",
-    category: "Análise",
-    progress: 30
-  }
-];
-
-const recommended = [
-  {
-    id: "rec-01",
-    title: "Gatilhos de Sniper",
-    subtitle: "Pare de jogar em toda rodada. Aprenda a esperar o tiro certo que garante sua meta do dia.",
-    duration: "15 min",
-    locked: true,
-    badge: "Estratégia",
-    category: "Execução"
-  },
-  {
-    id: "rec-02",
-    title: "A Mente da Baleia",
-    subtitle: "Como os jogadores que apostam alto pensam e por que eles ganham mais (não é só dinheiro).",
-    duration: "32 min",
-    locked: true,
-    badge: "Mentalidade",
-    category: "Psicologia"
-  },
-  {
-    id: "rec-03",
-    title: "Padrão Espelho Reverso",
-    subtitle: "Uma falha comum em roletas automáticas que paga 36x se você souber identificar.",
-    duration: "12 min",
-    locked: true,
-    badge: "Glitch",
-    category: "Padrões"
-  },
-  {
-    id: "rec-04",
-    title: "Proteção de Lucro",
-    subtitle: "Você ganhou. E agora? Como sair da mesa com o dinheiro no bolso antes da devolução.",
-    duration: "10 min",
-    locked: true,
-    badge: "Gestão",
-    category: "Segurança"
-  }
-];
-
-const trending = [
-  {
-    id: "tr-01",
-    title: "Roletas Imersivas: O Guia",
-    subtitle: "Por que as imersivas pagam mais e como explorar o delay da câmera lenta.",
-    duration: "28 min",
-    locked: true,
-    badge: "Especialista",
-    category: "Mesas"
-  },
-  {
-    id: "tr-02",
-    title: "O Mito dos Números Quentes",
-    subtitle: "Por que seguir números quentes vai quebrar você e o que olhar em vez disso.",
-    duration: "20 min",
-    locked: true,
-    badge: "Mito",
-    category: "Conceito"
-  },
-  {
-    id: "tr-03",
-    title: "Ciclos de Pagamento",
-    subtitle: "Identifique se a mesa está em ciclo de pagamento ou de coleta em 3 rodadas.",
-    duration: "40 min",
-    locked: true,
-    badge: "Pro",
-    category: "Análise"
-  }
-];
 
 export default function InsightsPage() {
   return (
@@ -124,38 +33,17 @@ export default function InsightsPage() {
       {/* Content Rows */}
       <div className="relative z-20 -mt-24 space-y-8 pl-4 md:pl-12 lg:pl-16">
         
-        {/* Continue Watching Swimlane */}
-        <InsightsCarousel title="Continue de onde parou">
-          {continueWatching.map((item) => (
-            <div key={item.id} className="min-w-[280px] md:min-w-[320px]">
-              <InsightCard 
-                {...item}
-              />
-            </div>
-          ))}
-        </InsightsCarousel>
-
-        {/* Recommended Swimlane */}
-        <InsightsCarousel title="Recomendado para você">
-          {recommended.map((item) => (
-            <div key={item.id} className="min-w-[280px] md:min-w-[320px]">
-              <InsightCard 
-                {...item}
-              />
-            </div>
-          ))}
-        </InsightsCarousel>
-
-        {/* Trending Swimlane */}
-        <InsightsCarousel title="Em Alta na Comunidade">
-          {trending.map((item) => (
-            <div key={item.id} className="min-w-[280px] md:min-w-[320px]">
-              <InsightCard 
-                {...item}
-              />
-            </div>
-          ))}
-        </InsightsCarousel>
+        {insightsData.map((module, index) => (
+          <InsightsCarousel key={index} title={module.title}>
+            {module.lessons.map((lesson) => (
+              <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">
+                <InsightCard 
+                  {...lesson}
+                />
+              </div>
+            ))}
+          </InsightsCarousel>
+        ))}
 
       </div>
       
