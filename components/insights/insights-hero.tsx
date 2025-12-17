@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Info, TrendingUp } from 'lucide-react';
+import { Play, Info } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 
@@ -9,12 +9,12 @@ interface InsightsHeroProps {
   title: string;
   description: string;
   badge: string;
-  duration: string;
+  duration?: string;
 }
 
-export function InsightsHero({ id, title, description, badge, duration }: InsightsHeroProps) {
+export function InsightsHero({ id, title, description, badge }: InsightsHeroProps) {
   return (
-    <div className="relative w-full h-[45vh] md:h-[55vh] rounded-xl overflow-hidden mb-8 group bg-black">
+    <div className="relative w-full h-[35vh] md:h-[45vh] rounded-xl overflow-hidden mb-16 md:mb-24 group bg-black shadow-2xl shadow-black/50">
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0">
         <video 
@@ -23,21 +23,21 @@ export function InsightsHero({ id, title, description, badge, duration }: Insigh
           loop 
           muted 
           playsInline 
-          className="absolute inset-0 w-full h-full object-cover opacity-50"
+          className="absolute inset-0 w-full h-full object-cover opacity-60"
           poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
         >
           <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-dots-and-lines-2988-large.mp4" type="video/mp4" />
         </video>
         
         {/* Gradient Overlays for Readability (Netflix style) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/60 to-transparent" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 h-full flex flex-col justify-end p-6 md:p-10 max-w-3xl">
-        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-10 duration-1000">
-          <Badge className="bg-emerald-500 text-white hover:bg-emerald-600 border-none px-2.5 py-0.5 text-[10px] uppercase tracking-widest font-bold shadow-lg shadow-emerald-500/20 w-fit">
+      <div className="relative z-10 h-full flex flex-col justify-end p-6 md:p-12 lg:p-16 max-w-4xl">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-10 duration-1000 pb-4">
+          <Badge className="bg-emerald-500/90 hover:bg-emerald-600 border-none px-3 py-1 text-[10px] uppercase tracking-widest font-bold shadow-lg shadow-emerald-500/20 w-fit backdrop-blur-sm">
             {badge}
           </Badge>
           
@@ -45,22 +45,22 @@ export function InsightsHero({ id, title, description, badge, duration }: Insigh
             {title}
           </h1>
           
-          <p className="text-sm md:text-base text-zinc-300 max-w-xl leading-relaxed drop-shadow-md line-clamp-3 md:line-clamp-none">
+          <p className="text-sm md:text-base text-zinc-300 max-w-xl leading-relaxed drop-shadow-md line-clamp-2">
             {description}
           </p>
           
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Button asChild className="h-9 px-5 text-sm bg-white text-black hover:bg-zinc-200 font-bold rounded-md gap-2 transition-transform hover:scale-105">
+          <div className="flex flex-wrap items-center gap-4 pt-2">
+            <Button asChild className="h-10 px-6 text-sm bg-white text-black hover:bg-zinc-200 font-bold rounded-md gap-2 transition-transform hover:scale-105 shadow-lg shadow-white/10">
               <Link href={`/insights/${id}`}>
-                <Play className="w-3.5 h-3.5 fill-black" />
-                Assistir Agora
+                <Play className="w-4 h-4 fill-black" />
+                Assistir
               </Link>
             </Button>
             
-            <Button asChild variant="outline" className="h-9 px-5 text-sm bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 font-semibold rounded-md gap-2">
+            <Button asChild variant="outline" className="h-10 px-6 text-sm bg-zinc-800/60 backdrop-blur-md border-zinc-700/50 text-white hover:bg-zinc-700/60 font-semibold rounded-md gap-2">
               <Link href={`/insights/${id}`}>
-                <Info className="w-3.5 h-3.5" />
-                Mais Detalhes
+                <Info className="w-4 h-4" />
+                Mais Informações
               </Link>
             </Button>
           </div>

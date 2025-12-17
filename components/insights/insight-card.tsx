@@ -123,21 +123,22 @@ function CardContentInner({ title, subtitle, duration, locked, category, progres
            <TrendingUp className={`${featured ? 'w-32 h-32' : 'w-16 h-16'} text-emerald-500`} />
         </div>
 
-        {/* Locked State: Blur + Icon */}
+        {/* Locked State: Discreet Lock Icon */}
         {locked && (
-          <div className="absolute inset-0 flex items-center justify-center backdrop-blur-[2px] bg-black/20 group-hover:backdrop-blur-none transition-all duration-500">
-            <div className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full border border-white/10 group-hover:border-emerald-500/50 transition-colors">
-              <Lock className="w-4 h-4 text-white/70 group-hover:text-emerald-400" />
+          <>
+            {/* Discreet Lock Icon in Corner */}
+            <div className="absolute top-2 right-2 bg-black/40 backdrop-blur-sm p-1.5 rounded-full border border-white/5 z-10">
+              <Lock className="w-3 h-3 text-white/50" />
             </div>
             
-            {/* Hover Reveal Message */}
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute inset-0 flex items-center justify-center bg-black/60">
-               <div className="flex items-center gap-2 text-emerald-400 font-medium px-4 py-2 rounded-full border border-emerald-500/30 bg-black/80 backdrop-blur-md transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                  <Lock className="w-4 h-4" />
-                  <span className="text-sm">Disponível no PRO</span>
+            {/* Hover Reveal Message - Only appears on interaction */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/60 backdrop-blur-[1px] z-20">
+               <div className="flex items-center gap-2 text-emerald-400 font-medium px-3 py-1.5 rounded-full border border-emerald-500/30 bg-black/80 backdrop-blur-md transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span className="text-xs">Exclusivo PRO</span>
                </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Progress Bar (if unlocked and in progress) */}

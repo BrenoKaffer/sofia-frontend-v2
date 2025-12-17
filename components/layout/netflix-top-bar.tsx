@@ -58,7 +58,7 @@ export function NetflixTopBar() {
   return (
     <header 
       className={cn(
-        "fixed top-0 w-full z-50 transition-all duration-500 ease-in-out px-4 md:px-12 h-16 flex items-center justify-between",
+        "fixed top-0 w-full z-50 transition-all duration-500 ease-in-out px-6 md:px-16 h-16 flex items-center justify-between",
         isScrolled 
           ? "bg-[#0f1113]/60 backdrop-blur-md border-b border-white/5 shadow-lg" 
           : "bg-gradient-to-b from-black/80 to-transparent"

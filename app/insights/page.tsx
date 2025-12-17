@@ -19,21 +19,47 @@ const featuredInsight = {
 };
 
 export default function InsightsPage() {
+  // Separate the first module (Onboarding) to feature it
+  const [firstModule, ...otherModules] = insightsData;
+
   return (
     <div className="min-h-screen bg-[#141414] text-white pb-20 overflow-x-hidden">
       <NetflixTopBar />
-      <InsightsHero 
-        id={featuredInsight.id}
-        title={featuredInsight.title}
-        description={featuredInsight.description}
-        badge={featuredInsight.badge}
-        duration={featuredInsight.duration}
-      />
+      
+      {/* Hero Section with bottom margin for breathing room */}
+      <div className="mb-12 md:mb-20">
+        <InsightsHero 
+          id={featuredInsight.id}
+          title={featuredInsight.title}
+          description={featuredInsight.description}
+          badge={featuredInsight.badge}
+          duration={featuredInsight.duration}
+        />
+      </div>
 
       {/* Content Rows */}
-      <div className="relative z-20 -mt-24 space-y-8 pl-4 md:pl-12 lg:pl-16">
+      <div className="relative z-20 space-y-12 pl-4 md:pl-12 lg:pl-16">
         
-        {insightsData.map((module, index) => (
+        {/* Featured First Row - "Comece por aqui" */}
+        {firstModule && (
+          <div className="relative">
+             <div className="absolute -left-4 md:-left-12 lg:-left-16 top-0 bottom-0 w-1 bg-emerald-500/50 rounded-r-full" />
+             <InsightsCarousel title="Comece por Aqui">
+              {firstModule.lessons.map((lesson) => (
+                <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">
+                  <InsightCard 
+                    {...lesson}
+                    // Make the first row cards slightly more distinct if needed, 
+                    // or just rely on the section header
+                  />
+                </div>
+              ))}
+            </InsightsCarousel>
+          </div>
+        )}
+
+        {/* Remaining Rows */}
+        {otherModules.map((module, index) => (
           <InsightsCarousel key={index} title={module.title}>
             {module.lessons.map((lesson) => (
               <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">
