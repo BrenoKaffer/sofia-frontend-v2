@@ -98,3 +98,71 @@ export async function sendPasswordSetupEmail(options: {
   const from = process.env.SMTP_FROM || 'no-reply@localhost';
   await transport.sendMail({ from, to: options.to, subject, html, text });
 }
+
+export async function sendDunningEmail(options: {
+  to: string;
+  name?: string | null;
+  retryCount: number;
+  nextRetryAt?: string | null;
+  cancelAt?: string | null;
+  paymentUrl?: string;
+}) {
+  const transport = createTransport();
+  const greetingName = options.name ? `, ${options.name}` : '';
+  let subject = 'Aviso sobre sua assinatura SOFIA';
+  let message = '';
+  let buttonText = 'Atualizar Pagamento';
+  let buttonUrl = options.paymentUrl || 'https://app.v1sofia.com/settings/billing';
+
+  if (options.cancelAt) {
+    subject = 'Sua assinatura SOFIA foi cancelada';
+    message = `
+      <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+        Não conseguimos processar o pagamento da sua assinatura após algumas tentativas.
+      </p>
+      <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+        Para evitar cobranças indevidas, sua assinatura foi cancelada automaticamente e seu acesso premium foi suspenso.
+      </p>
+      <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+        Para reativar seu acesso, atualize seus dados de pagamento e assine novamente.
+      </p>
+    `;
+    buttonText = 'Reativar Assinatura';
+  } else if (options.retryCount === 1) {
+    subject = 'Falha no pagamento da sua assinatura SOFIA';
+    message = `
+      <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+        Identificamos uma falha ao tentar renovar sua assinatura. Isso pode acontecer por limite insuficiente, cartão expirado ou bloqueio do banco.
+      </p>
+      <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+        Faremos uma nova tentativa automática em breve. Se você trocou de cartão, por favor atualize seus dados.
+      </p>
+    `;
+  } else {
+    subject = 'Ação necessária: Pagamento pendente';
+    message = `
+      <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+        Ainda não conseguimos processar o pagamento da sua assinatura.
+      </p>
+      <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+        Se o pagamento não for confirmado na próxima tentativa, sua assinatura poderá ser suspensa.
+      </p>
+    `;
+  }
+
+  const content = `
+    <h2 style="margin:0;font-size:24px;font-weight:700;color:#081217;">
+      Olá${greetingName}
+    </h2>
+    ${message}
+    ${GreenButton(buttonText, buttonUrl)}
+  `;
+
+  const html = BaseTemplate(content);
+  const text = `Olá${greetingName}\n\n` +
+    `Houve um problema com sua assinatura SOFIA.\n` +
+    `Acesse ${buttonUrl} para resolver.`;
+
+  const from = process.env.SMTP_FROM || 'no-reply@localhost';
+  await transport.sendMail({ from, to: options.to, subject, html, text });
+}
