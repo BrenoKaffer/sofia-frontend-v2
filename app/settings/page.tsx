@@ -440,16 +440,6 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Tema</Label>
-                  <div className="flex items-center gap-4">
-                    <ThemeToggle />
-                    <span className="text-sm text-muted-foreground">
-                      Escolha entre tema claro, escuro ou siga as configurações do sistema
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
                   <Label>Idioma</Label>
                   <Select 
                     value={settings.appearance.language} 
