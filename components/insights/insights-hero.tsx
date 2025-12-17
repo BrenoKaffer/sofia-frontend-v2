@@ -14,7 +14,7 @@ interface InsightsHeroProps {
 
 export function InsightsHero({ id, title, description, badge }: InsightsHeroProps) {
   return (
-    <div className="relative w-full h-[35vh] md:h-[45vh] rounded-xl overflow-hidden mb-16 md:mb-24 group bg-black shadow-2xl shadow-black/50">
+    <div className="relative w-full h-[45vh] md:h-[60vh] rounded-xl overflow-hidden mb-16 md:mb-24 group bg-black shadow-2xl shadow-black/50">
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0">
         <video 
