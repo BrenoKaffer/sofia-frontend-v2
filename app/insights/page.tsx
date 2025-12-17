@@ -9,19 +9,61 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { insightsData } from '@/lib/insights-data';
 
-// Featured Hero Insight (can be dynamic later, hardcoded for now as "Masterclass")
+// Featured Hero Insight (updated per PROMPT FRONT.html)
 const featuredInsight = {
   id: "hero-insight",
-  title: "O Segredo da Virada de Mesa",
-  description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.",
-  badge: "Masterclass Exclusiva",
-  duration: "45 min"
+  title: "DOMINE A ROLETA COM PRECISÃO CIRÚRGICA.",
+  description: "Não é sorte, é método. Aprenda a ler a mesa, controlar sua banca e operar como um profissional.",
+  badge: "Destaque",
+  duration: "Módulo Inicial"
 };
 
-export default function InsightsPage() {
-  // Separate the first module (Onboarding) to feature it
-  const [firstModule, ...otherModules] = insightsData;
+// Mock data for "Continue de Onde Parou"
+const continueWatching = [
+  {
+    id: "control-07",
+    title: "Gestão de Banca",
+    subtitle: "O pilar mais importante: como gerenciar seu capital para longevidade.",
+    duration: "Restam 12 min",
+    locked: false,
+    category: "Gestão",
+    badge: "Em Progresso",
+    progress: 45 // Add progress bar support to InsightCard if possible, or just mock it visually
+  }
+];
 
+// Mock data for "Recomendado para Você"
+const recommendedForYou = [
+  {
+    id: "base-01",
+    title: "Estratégia de Dúzias",
+    subtitle: "Consistência e controle para entradas mais seguras.",
+    duration: "12 min",
+    locked: true,
+    category: "Dúzias",
+    badge: "Técnica"
+  },
+  {
+    id: "adv-01",
+    title: "Terminais",
+    subtitle: "Onde o dinheiro realmente está quando poucos enxergam.",
+    duration: "18 min",
+    locked: true,
+    category: "Terminais",
+    badge: "Avançado"
+  },
+  {
+    id: "flow-01",
+    title: "Casa dos 20",
+    subtitle: "Controle estatístico aplicado a sessões longas.",
+    duration: "18 min",
+    locked: true,
+    category: "Casa dos 20",
+    badge: "Zona"
+  }
+];
+
+export default function InsightsPage() {
   return (
     <div className="min-h-screen bg-[#141414] text-white pb-20 overflow-x-hidden">
       <NetflixTopBar />
@@ -40,26 +82,30 @@ export default function InsightsPage() {
       {/* Content Rows */}
       <div className="relative z-20 space-y-12 pl-4 md:pl-12 lg:pl-16">
         
-        {/* Featured First Row - "Comece por aqui" */}
-        {firstModule && (
-          <div className="relative">
-             <div className="absolute -left-4 md:-left-12 lg:-left-16 top-0 bottom-0 w-1 bg-emerald-500/50 rounded-r-full" />
-             <InsightsCarousel title="Comece por Aqui">
-              {firstModule.lessons.map((lesson) => (
-                <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">
-                  <InsightCard 
-                    {...lesson}
-                    // Make the first row cards slightly more distinct if needed, 
-                    // or just rely on the section header
-                  />
-                </div>
-              ))}
-            </InsightsCarousel>
-          </div>
-        )}
+        {/* Continue de Onde Parou */}
+        <InsightsCarousel title="Continue de Onde Parou">
+          {continueWatching.map((lesson) => (
+            <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">
+              <InsightCard 
+                {...lesson}
+              />
+            </div>
+          ))}
+        </InsightsCarousel>
 
-        {/* Remaining Rows */}
-        {otherModules.map((module, index) => (
+        {/* Recomendado para Você */}
+        <InsightsCarousel title="Recomendado para Você">
+          {recommendedForYou.map((lesson) => (
+            <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">
+              <InsightCard 
+                {...lesson}
+              />
+            </div>
+          ))}
+        </InsightsCarousel>
+
+        {/* All Modules from Data */}
+        {insightsData.map((module, index) => (
           <InsightsCarousel key={index} title={module.title}>
             {module.lessons.map((lesson) => (
               <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">
@@ -90,6 +136,13 @@ export default function InsightsPage() {
             </div>
          </div>
       </div>
+
+      {/* Copyright Footer */}
+      <footer className="py-8 text-center text-zinc-600 text-sm">
+        <div className="container mx-auto px-4">
+          <p>&copy; {new Date().getFullYear()} No Alvo da Roleta. Todos os direitos reservados.</p>
+        </div>
+      </footer>
     </div>
   );
 }
