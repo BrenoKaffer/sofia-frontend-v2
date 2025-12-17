@@ -11,7 +11,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, EyeOff, Loader2, Brain, ArrowRight, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { motion } from 'framer-motion';
 
 export default function LoginPage() {
@@ -61,10 +60,6 @@ export default function LoginPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <div className="absolute top-6 right-6 z-50">
-            <ThemeToggle />
-          </div>
-          
           <div className="text-center mb-8">
             <motion.div
               initial={{ scale: 0 }}

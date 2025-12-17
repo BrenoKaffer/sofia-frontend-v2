@@ -12,7 +12,6 @@ import { Eye, EyeOff, Brain, ArrowRight, CheckCircle, Loader2 } from 'lucide-rea
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { motion } from 'framer-motion';
 import { CPFService } from '@/lib/cpf-service';
 
@@ -255,9 +254,6 @@ export default function RegisterPage() {
             <p className="text-muted-foreground font-sans">
               Sistema de Operação de Fichas Inteligentes
             </p>
-            <div className="absolute -top-8 right-0">
-              <ThemeToggle />
-            </div>
           </div>
 
           {/* Register Card */}
