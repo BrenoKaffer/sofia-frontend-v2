@@ -4,6 +4,7 @@ import React from 'react';
 import { InsightCard } from '@/components/insights/insight-card';
 import { InsightsHero } from '@/components/insights/insights-hero';
 import { InsightsCarousel } from '@/components/insights/insights-carousel';
+import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -111,8 +112,7 @@ const trending = [
 export default function InsightsPage() {
   return (
     <div className="min-h-screen bg-[#141414] text-white pb-20 overflow-x-hidden">
-      
-      {/* Hero Section */}
+      <NetflixTopBar />
       <InsightsHero 
         title={featuredInsight.title}
         description={featuredInsight.description}
