@@ -16,7 +16,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { User, Settings, Bell, Moon, Sun, Globe, Key, Shield, Upload, Trash2, Save, AlertTriangle, LayoutDashboard, TrendingUp, DollarSign, Target, AlertCircle, Phone } from 'lucide-react';
 import { useUser } from '@/hooks/use-user';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { useDashboardPreferences } from '@/hooks/use-dashboard-preferences';
 import { NotificationSettings } from '@/components/notifications/notification-settings';
 import ApiKeyManager from '@/components/auth/ApiKeyManager';
