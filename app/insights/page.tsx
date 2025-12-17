@@ -137,10 +137,10 @@ export default function InsightsPage() {
          </div>
       </div>
 
-      {/* Copyright Footer */}
-      <footer className="py-8 text-center text-zinc-600 text-sm">
-        <div className="container mx-auto px-4">
-          <p>&copy; {new Date().getFullYear()} No Alvo da Roleta. Todos os direitos reservados.</p>
+      {/* Footer */}
+      <footer className="border-t border-zinc-800 bg-[#141414] py-6 mt-12">
+        <div className="text-center text-[10px] text-zinc-500">
+          © 2025 Umbrella Tecnologia. - Todos os direitos reservados.
         </div>
       </footer>
     </div>
