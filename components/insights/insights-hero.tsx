@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 
 interface InsightsHeroProps {
+  id: string;
   title: string;
   description: string;
   badge: string;
   duration: string;
 }
 
-export function InsightsHero({ title, description, badge, duration }: InsightsHeroProps) {
+export function InsightsHero({ id, title, description, badge, duration }: InsightsHeroProps) {
   return (
     <div className="relative w-full h-[60vh] md:h-[70vh] rounded-2xl overflow-hidden mb-12 group">
       {/* Background Image/Gradient */}
@@ -42,14 +43,18 @@ export function InsightsHero({ title, description, badge, duration }: InsightsHe
           </p>
           
           <div className="flex flex-wrap items-center gap-4 pt-4">
-            <Button size="lg" className="h-14 px-8 text-lg bg-white text-black hover:bg-zinc-200 font-bold rounded-lg gap-2 transition-transform hover:scale-105">
-              <Play className="w-6 h-6 fill-black" />
-              Assistir Agora
+            <Button asChild size="lg" className="h-14 px-8 text-lg bg-white text-black hover:bg-zinc-200 font-bold rounded-lg gap-2 transition-transform hover:scale-105">
+              <Link href={`/insights/${id}`}>
+                <Play className="w-6 h-6 fill-black" />
+                Assistir Agora
+              </Link>
             </Button>
             
-            <Button size="lg" variant="outline" className="h-14 px-8 text-lg bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 font-semibold rounded-lg gap-2">
-              <Info className="w-6 h-6" />
-              Mais Detalhes
+            <Button asChild size="lg" variant="outline" className="h-14 px-8 text-lg bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 font-semibold rounded-lg gap-2">
+              <Link href={`/insights/${id}`}>
+                <Info className="w-6 h-6" />
+                Mais Detalhes
+              </Link>
             </Button>
           </div>
         </div>

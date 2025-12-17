@@ -114,6 +114,7 @@ export default function InsightsPage() {
     <div className="min-h-screen bg-[#141414] text-white pb-20 overflow-x-hidden">
       <NetflixTopBar />
       <InsightsHero 
+        id={featuredInsight.id}
         title={featuredInsight.title}
         description={featuredInsight.description}
         badge={featuredInsight.badge}
