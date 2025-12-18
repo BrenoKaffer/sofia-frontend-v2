@@ -9,6 +9,7 @@ export interface Lesson {
   badge?: string;
   progress?: number;
   videoUrl?: string;
+  muxPlaybackId?: string;
 }
 
 export interface Module {
@@ -28,7 +29,8 @@ export const insightsData: Module[] = [
         locked: false,
         category: "Bem-vindo",
         badge: "Início",
-        videoUrl: "https://www.youtube.com/embed/u31qwQUeGuM?si=6OXq0jdXKTzFCVrE"
+        videoUrl: "https://www.youtube.com/embed/u31qwQUeGuM?si=6OXq0jdXKTzFCVrE",
+        muxPlaybackId: "DS00Spx1CV902PhO7d75R9632fW01300Q9J"
       },
       {
         id: "onboarding-02",

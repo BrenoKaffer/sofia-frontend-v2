@@ -3,6 +3,7 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { VideoPlayer } from '@/components/ui/video-player';
+import { MuxVideoPlayer } from '@/components/ui/mux-video-player';
 import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -67,14 +68,22 @@ export default function LessonPage() {
         </Button>
 
         <div className="max-w-5xl mx-auto space-y-8">
-            {/* Using the VideoPlayer component as requested */}
-            <VideoPlayer 
+            {/* Using Mux Player if available, otherwise fallback to standard VideoPlayer */}
+            {lesson.muxPlaybackId ? (
+              <MuxVideoPlayer
+                playbackId={lesson.muxPlaybackId}
+                title={lesson.title}
+                className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
+              />
+            ) : (
+              <VideoPlayer 
                 title={lesson.title}
                 description={lesson.description}
                 videoUrl={lesson.videoUrl}
                 thumbnailUrl={lesson.thumbnailUrl}
                 className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
-            />
+              />
+            )}
 
             <div className="space-y-4">
                 <h1 className="text-3xl md:text-4xl font-bold text-white">{lesson.title}</h1>
