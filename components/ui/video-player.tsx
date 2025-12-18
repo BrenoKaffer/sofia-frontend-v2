@@ -63,6 +63,15 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
     // State to manage the visibility of the video modal
     const [isModalOpen, setIsModalOpen] = React.useState(false);
 
+    // Helper to add autoplay to Mux URL
+    const getMuxUrlWithAutoplay = (url?: string) => {
+      if (!url) return undefined;
+      const hasParams = url.includes('?');
+      return `${url}${hasParams ? '&' : '?'}autoplay=true`;
+    };
+
+    const finalVideoUrl = muxEmbedUrl ? getMuxUrlWithAutoplay(muxEmbedUrl) : getEmbedUrl(videoUrl);
+
     // Effect to handle the 'Escape' key press for closing the modal
     React.useEffect(() => {
       const handleEsc = (event: KeyboardEvent) => {
@@ -128,36 +137,36 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
         </div>
 
         {/* Video Modal */}
-        {isModalOpen && (
-          <div
-            className="fixed inset-0 z-50 flex animate-in fade-in-0 items-center justify-center bg-black/80 backdrop-blur-sm"
-            aria-modal="true"
-            role="dialog"
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex animate-in fade-in-0 items-center justify-center bg-black/80 backdrop-blur-sm"
+          aria-modal="true"
+          role="dialog"
+        >
+          {/* Close Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsModalOpen(false);
+            }}
+            className="absolute right-4 top-4 z-50 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+            aria-label="Close video player"
           >
-            {/* Close Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsModalOpen(false);
-              }}
-              className="absolute right-4 top-4 z-50 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
-              aria-label="Close video player"
-            >
-              <X className="h-6 w-6" />
-            </button>
+            <X className="h-6 w-6" />
+          </button>
 
-            {/* Video Iframe */}
-            <div className="w-full max-w-4xl aspect-video p-4 relative">
-               <iframe
-                    src={muxEmbedUrl || getEmbedUrl(videoUrl)}
-                    title={title}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    referrerPolicy="origin"
-                    className="h-full w-full rounded-lg"
-                ></iframe>
-            </div>
+          {/* Video Iframe */}
+          <div className="w-full max-w-4xl aspect-video p-4 relative">
+             <iframe
+                  src={finalVideoUrl}
+                  title={title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  referrerPolicy="origin"
+                  className="h-full w-full rounded-lg"
+              ></iframe>
+          </div>
             
             {/* Click outside to close */}
             <div 
