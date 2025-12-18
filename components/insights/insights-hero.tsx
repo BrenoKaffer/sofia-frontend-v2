@@ -28,7 +28,7 @@ export function InsightsHero({ id, title, description, badge, muxEmbedUrl }: Ins
           <iframe
             key={id}
             src={muxEmbedUrl}
-            className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none"
+            className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-[40%] -translate-y-1/2 object-cover opacity-60 pointer-events-none"
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             allowFullScreen
             tabIndex={-1}
@@ -48,8 +48,8 @@ export function InsightsHero({ id, title, description, badge, muxEmbedUrl }: Ins
         )}
         
         {/* Gradient Overlays for Readability (Netflix style) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/30 to-transparent" />
       </div>
 
       {/* Content */}
