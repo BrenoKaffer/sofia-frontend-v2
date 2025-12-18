@@ -6,7 +6,9 @@ import { InsightsHero } from '@/components/insights/insights-hero';
 import { InsightsCarousel } from '@/components/insights/insights-carousel';
 import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import { Button } from '@/components/ui/button';
+import { ShinyButton } from '@/components/ui/shiny-button';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { insightsData } from '@/lib/insights-data';
 
 // Featured Hero Insight (can be dynamic later, hardcoded for now as "Masterclass")
@@ -33,6 +35,7 @@ const continueWatching = [
 ];
 
 export default function InsightsPage() {
+  const router = useRouter();
   // Separate the first module (Onboarding) to feature it
   const [firstModule, ...otherModules] = insightsData;
 
@@ -107,11 +110,12 @@ export default function InsightsPage() {
               <p className="text-gray-400 text-lg">
                 Torne-se membro PRO e desbloqueie acesso ilimitado a todas as aulas, estratégias e ferramentas da SOFIA.
               </p>
-              <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-10 py-6 text-lg shadow-xl shadow-emerald-900/20 hover:scale-105 transition-transform">
-                <Link href="/account/upgrade">
-                  Assinar SOFIA PRO
-                </Link>
-              </Button>
+              <ShinyButton 
+                className="font-bold px-10 py-6 text-lg h-auto shadow-xl shadow-emerald-900/20 hover:scale-105 transition-transform w-full sm:w-auto"
+                onClick={() => router.push('/account/upgrade')}
+              >
+                Assinar SOFIA PRO
+              </ShinyButton>
             </div>
          </div>
       </div>

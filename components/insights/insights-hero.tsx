@@ -1,7 +1,11 @@
+'use client';
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { ShinyButton } from '@/components/ui/shiny-button';
 import { Play, Info } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 
 interface InsightsHeroProps {
@@ -13,6 +17,8 @@ interface InsightsHeroProps {
 }
 
 export function InsightsHero({ id, title, description, badge }: InsightsHeroProps) {
+  const router = useRouter();
+
   return (
     <div className="relative w-full h-[45vh] md:h-[60vh] rounded-xl overflow-hidden mb-16 md:mb-24 group bg-black shadow-2xl shadow-black/50">
       {/* Background Video with Gradient Overlay */}
@@ -50,12 +56,15 @@ export function InsightsHero({ id, title, description, badge }: InsightsHeroProp
           </p>
           
           <div className="flex flex-wrap items-center gap-4 pt-2">
-            <Button asChild className="h-10 px-6 text-sm bg-white text-black hover:bg-zinc-200 font-bold rounded-md gap-2 transition-transform hover:scale-105 shadow-lg shadow-white/10">
-              <Link href={`/insights/${id}`}>
-                <Play className="w-4 h-4 fill-black" />
+            <ShinyButton 
+              className="h-10 px-6 min-w-[140px]" 
+              onClick={() => router.push(`/insights/${id}`)}
+            >
+              <div className="flex items-center gap-2">
+                <Play className="w-4 h-4 fill-current" />
                 Assistir
-              </Link>
-            </Button>
+              </div>
+            </ShinyButton>
             
             <Button asChild variant="outline" className="h-10 px-6 text-sm bg-zinc-800/60 backdrop-blur-md border-zinc-700/50 text-white hover:bg-zinc-700/60 font-semibold rounded-md gap-2">
               <Link href={`/insights/${id}`}>

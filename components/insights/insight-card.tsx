@@ -1,10 +1,14 @@
+'use client';
+
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ShinyButton } from '@/components/ui/shiny-button';
 import { Progress } from '@/components/ui/progress';
 import { Lock, Clock, Play, TrendingUp, Zap, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +40,8 @@ export function InsightCard({
   progress = 0,
   featured = false,
 }: InsightCardProps) {
+  const router = useRouter();
+
   if (locked) {
     return (
       <Dialog>
@@ -82,11 +88,12 @@ export function InsightCard({
           </div>
 
           <DialogFooter className="sm:justify-center">
-            <Button asChild className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-11 shadow-lg shadow-emerald-900/20">
-              <Link href="/account/upgrade">
-                Ativar SOFIA PRO Agora
-              </Link>
-            </Button>
+            <ShinyButton 
+              className="w-full font-bold h-11 shadow-lg shadow-emerald-900/20"
+              onClick={() => router.push('/account/upgrade')}
+            >
+              Ativar SOFIA PRO Agora
+            </ShinyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
