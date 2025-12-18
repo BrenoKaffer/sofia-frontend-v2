@@ -147,7 +147,7 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
         {/* Video Modal */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex animate-in fade-in-0 items-center justify-center bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex animate-in fade-in-0 items-center justify-center bg-black/90 backdrop-blur-md"
           aria-modal="true"
           role="dialog"
         >
@@ -157,14 +157,14 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
               e.stopPropagation();
               setIsModalOpen(false);
             }}
-            className="absolute right-4 top-4 z-50 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+            className="absolute right-6 top-6 z-50 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
             aria-label="Close video player"
           >
-            <X className="h-6 w-6" />
+            <X className="h-8 w-8" />
           </button>
 
           {/* Video Iframe */}
-          <div className="w-full max-w-4xl aspect-video p-4 relative">
+          <div className="w-full max-w-7xl aspect-video p-4 relative">
              <iframe
                   src={finalVideoUrl}
                   title={title}
@@ -172,7 +172,7 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   referrerPolicy="origin"
-                  className="h-full w-full rounded-lg"
+                  className="h-full w-full rounded-xl shadow-2xl"
               ></iframe>
           </div>
             
