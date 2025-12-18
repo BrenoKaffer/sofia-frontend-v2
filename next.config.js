@@ -92,7 +92,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://api.supabase.co https://*.supabase.co wss://*.supabase.co ${BACKEND_ORIGIN} ${BACKEND_WS_ORIGIN}; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;`,
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://checkout.stripe.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; media-src 'self' blob: https://mux.com https://*.mux.com; connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://api.supabase.co https://*.supabase.co wss://*.supabase.co ${BACKEND_ORIGIN} ${BACKEND_WS_ORIGIN} https://mux.com https://*.mux.com https://stats.mux.com; frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://player.mux.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;`,
           },
         ],
       },

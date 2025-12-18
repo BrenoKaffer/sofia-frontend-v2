@@ -74,6 +74,7 @@ export default function LessonPage() {
                 style={{ width: '100%', border: 'none', aspectRatio: '16/9' }}
                 allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
                 allowFullScreen
+                referrerPolicy="origin"
                 className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
               />
             ) : (
