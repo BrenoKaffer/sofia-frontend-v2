@@ -10,6 +10,7 @@ export interface Lesson {
   progress?: number;
   videoUrl?: string;
   muxPlaybackId?: string;
+  muxEmbedUrl?: string;
 }
 
 export interface Module {
@@ -30,7 +31,8 @@ export const insightsData: Module[] = [
         category: "Bem-vindo",
         badge: "Início",
         videoUrl: "https://www.youtube.com/embed/u31qwQUeGuM?si=6OXq0jdXKTzFCVrE",
-        muxPlaybackId: "DS00Spx1CV902PhO7d75R9632fW01300Q9J"
+        muxPlaybackId: "DS00Spx1CV902PhO7d75R9632fW01300Q9J",
+        muxEmbedUrl: "https://player.mux.com/83jNROLYYRGW5iiJjXMAGuxJYyt3cgJ02M602XTXCXFzc?metadata-video-title=Background_Hero_SOFIA&video-title=Background_Hero_SOFIA"
       },
       {
         id: "onboarding-02",
