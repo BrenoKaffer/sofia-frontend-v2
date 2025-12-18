@@ -41,8 +41,8 @@ export function InsightsHero({ id, title, description, badge }: InsightsHeroProp
       </div>
 
       {/* Content */}
-      <div className="relative z-10 h-full flex flex-col justify-end p-6 md:p-12 lg:p-16 max-w-4xl">
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-10 duration-1000 pb-4">
+      <div className="relative z-10 h-full flex flex-col justify-end px-6 pb-48 md:px-12 md:pb-40 lg:px-16 lg:pb-56 max-w-4xl">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000">
           <Badge className="bg-emerald-500/90 hover:bg-emerald-600 border-none px-3 py-1 text-[10px] uppercase tracking-widest font-bold shadow-lg shadow-emerald-500/20 w-fit backdrop-blur-sm">
             {badge}
           </Badge>
@@ -53,11 +53,11 @@ export function InsightsHero({ id, title, description, badge }: InsightsHeroProp
           
           <div className="text-sm md:text-base text-zinc-300 max-w-xl leading-relaxed drop-shadow-md">
             {description.split('\n').map((paragraph, index) => (
-              paragraph ? <p key={index} className="mb-4 last:mb-0">{paragraph}</p> : null
+              paragraph ? <p key={index} className="mb-6 last:mb-0">{paragraph}</p> : null
             ))}
           </div>
           
-          <div className="flex flex-wrap items-center gap-4 pt-2">
+          <div className="flex flex-wrap items-center gap-4 pt-4">
             <ShinyButton 
               className="h-10 px-6 min-w-[140px]" 
               onClick={() => router.push(`/insights/${id}`)}
