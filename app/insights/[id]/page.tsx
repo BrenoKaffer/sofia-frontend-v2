@@ -45,7 +45,7 @@ export default function LessonPage() {
   }
 
   // Enrich with placeholder media if not present (since our data file is text-only for now)
-  const lesson: Lesson & { description: string; thumbnailUrl: string; muxEmbedUrl?: string } = {
+  const lesson: Lesson & { description: string; thumbnailUrl: string } = {
     ...lessonData,
     description: lessonData.subtitle || lessonData.title, // Ensure description exists
     videoUrl: lessonData.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ", // Use provided video or fallback
