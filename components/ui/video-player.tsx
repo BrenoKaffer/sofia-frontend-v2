@@ -147,7 +147,7 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
         {/* Video Modal */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-[100] flex animate-in fade-in-0 items-center justify-center bg-black/90 backdrop-blur-md"
+          className="fixed inset-0 z-[9999] flex animate-in fade-in-0 items-center justify-center bg-black/80 backdrop-blur-sm"
           aria-modal="true"
           role="dialog"
         >
@@ -164,7 +164,7 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
           </button>
 
           {/* Video Iframe */}
-          <div className="w-full max-w-7xl aspect-video p-4 relative">
+          <div className="w-[95vw] max-w-[1800px] aspect-video relative">
              <iframe
                   src={finalVideoUrl}
                   title={title}
