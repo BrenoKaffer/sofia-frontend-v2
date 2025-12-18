@@ -164,7 +164,7 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
           </button>
 
           {/* Video Iframe */}
-          <div className="w-[95vw] max-w-[1800px] aspect-video relative">
+          <div className="w-full max-w-5xl aspect-video relative mx-4">
              <iframe
                   src={finalVideoUrl}
                   title={title}
