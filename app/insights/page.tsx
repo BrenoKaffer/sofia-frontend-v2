@@ -6,6 +6,7 @@ import { InsightsHero } from '@/components/insights/insights-hero';
 import { InsightsCarousel } from '@/components/insights/insights-carousel';
 import { Button } from '@/components/ui/button';
 import { ShinyButton } from '@/components/ui/shiny-button';
+import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { insightsData } from '@/lib/insights-data';
@@ -41,8 +42,10 @@ export default function InsightsPage() {
   return (
     <div className="min-h-screen bg-[#141414] text-white pb-20 overflow-x-hidden">
       
+      <NetflixTopBar />
+
       {/* Hero Section with bottom margin for breathing room */}
-      <div className="mb-12 md:mb-20">
+      <div className="mb-0">
         <InsightsHero 
           id={featuredInsight.id}
           title={featuredInsight.title}
@@ -53,7 +56,7 @@ export default function InsightsPage() {
       </div>
 
       {/* Content Rows */}
-      <div className="relative z-20 space-y-12 pl-4 md:pl-12 lg:pl-16">
+      <div className="relative z-20 space-y-12 pl-4 md:pl-12 lg:pl-16 -mt-32">
         
         {/* Continue de Onde Parou */}
         <InsightsCarousel title="Continue de Onde Parou">

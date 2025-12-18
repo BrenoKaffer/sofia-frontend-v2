@@ -20,7 +20,7 @@ export function InsightsHero({ id, title, description, badge }: InsightsHeroProp
   const router = useRouter();
 
   return (
-    <div className="relative w-full h-[45vh] md:h-[60vh] rounded-xl overflow-hidden mb-16 md:mb-24 group bg-black shadow-2xl shadow-black/50">
+    <div className="relative w-full h-[80vh] md:h-[95vh] rounded-xl overflow-hidden mb-0 group bg-black shadow-2xl shadow-black/50">
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0">
         <video 
