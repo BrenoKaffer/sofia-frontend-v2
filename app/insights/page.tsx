@@ -4,7 +4,6 @@ import React from 'react';
 import { InsightCard } from '@/components/insights/insight-card';
 import { InsightsHero } from '@/components/insights/insights-hero';
 import { InsightsCarousel } from '@/components/insights/insights-carousel';
-import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import { Button } from '@/components/ui/button';
 import { ShinyButton } from '@/components/ui/shiny-button';
 import Link from 'next/link';
@@ -15,7 +14,7 @@ import { insightsData } from '@/lib/insights-data';
 const featuredInsight = {
   id: "hero-insight",
   title: "O Segredo da Virada de Mesa",
-  description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde. Um método prático para leitura de padrões, controle emocional e execução estratégica na roleta online, criado por quem vive isso todos os dias.",
+  description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.\n\nUm método prático para leitura de padrões, controle emocional e execução estratégica na roleta online, criado por quem vive isso todos os dias.",
   badge: "Masterclass Exclusiva",
   duration: "45 min"
 };
@@ -41,7 +40,6 @@ export default function InsightsPage() {
 
   return (
     <div className="min-h-screen bg-[#141414] text-white pb-20 overflow-x-hidden">
-      <NetflixTopBar />
       
       {/* Hero Section with bottom margin for breathing room */}
       <div className="mb-12 md:mb-20">

@@ -51,9 +51,11 @@ export function InsightsHero({ id, title, description, badge }: InsightsHeroProp
             {title}
           </h1>
           
-          <p className="text-sm md:text-base text-zinc-300 max-w-xl leading-relaxed drop-shadow-md line-clamp-4">
-            {description}
-          </p>
+          <div className="text-sm md:text-base text-zinc-300 max-w-xl leading-relaxed drop-shadow-md">
+            {description.split('\n').map((paragraph, index) => (
+              paragraph ? <p key={index} className="mb-4 last:mb-0">{paragraph}</p> : null
+            ))}
+          </div>
           
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <ShinyButton 
