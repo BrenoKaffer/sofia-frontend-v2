@@ -3,7 +3,6 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { VideoPlayer } from '@/components/ui/video-player';
-import { MuxVideoPlayer } from '@/components/ui/mux-video-player';
 import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -68,11 +67,13 @@ export default function LessonPage() {
         </Button>
 
         <div className="max-w-5xl mx-auto space-y-8">
-            {/* Using Mux Player if available, otherwise fallback to standard VideoPlayer */}
-            {lesson.muxPlaybackId ? (
-              <MuxVideoPlayer
-                playbackId={lesson.muxPlaybackId}
-                title={lesson.title}
+            {/* Using Mux iframe if available, otherwise fallback to standard VideoPlayer */}
+            {lesson.muxEmbedUrl ? (
+              <iframe
+                src={lesson.muxEmbedUrl}
+                style={{ width: '100%', border: 'none', aspectRatio: '16/9' }}
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                allowFullScreen
                 className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
               />
             ) : (
