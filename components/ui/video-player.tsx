@@ -63,11 +63,19 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
     // State to manage the visibility of the video modal
     const [isModalOpen, setIsModalOpen] = React.useState(false);
 
-    // Helper to add autoplay to Mux URL
+    // Helper to add autoplay to Mux URL and remove title
     const getMuxUrlWithAutoplay = (url?: string) => {
       if (!url) return undefined;
-      const hasParams = url.includes('?');
-      return `${url}${hasParams ? '&' : '?'}autoplay=true`;
+      try {
+        const urlObj = new URL(url);
+        urlObj.searchParams.set('autoplay', 'true');
+        // Remove title from player UI to avoid duplication
+        urlObj.searchParams.delete('video-title');
+        return urlObj.toString();
+      } catch (e) {
+        const hasParams = url.includes('?');
+        return `${url}${hasParams ? '&' : '?'}autoplay=true`;
+      }
     };
 
     const finalVideoUrl = muxEmbedUrl ? getMuxUrlWithAutoplay(muxEmbedUrl) : getEmbedUrl(videoUrl);
