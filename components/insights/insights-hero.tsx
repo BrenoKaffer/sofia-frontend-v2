@@ -28,7 +28,7 @@ export function InsightsHero({ id, title, description, badge, muxEmbedUrl }: Ins
           <iframe
             key={id}
             src={muxEmbedUrl}
-            className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-[40%] -translate-y-1/2 object-cover opacity-60 pointer-events-none"
+            className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-[40%] -translate-y-1/2 object-cover opacity-100 pointer-events-none"
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             allowFullScreen
             tabIndex={-1}
@@ -40,7 +40,7 @@ export function InsightsHero({ id, title, description, badge, muxEmbedUrl }: Ins
             loop 
             muted 
             playsInline 
-            className="absolute inset-0 w-full h-full object-cover opacity-60"
+            className="absolute inset-0 w-full h-full object-cover opacity-100"
             poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
           >
             <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-dots-and-lines-2988-large.mp4" type="video/mp4" />
@@ -48,8 +48,8 @@ export function InsightsHero({ id, title, description, badge, muxEmbedUrl }: Ins
         )}
         
         {/* Gradient Overlays for Readability (Netflix style) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/10 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-transparent to-transparent" />
       </div>
 
       {/* Content */}
