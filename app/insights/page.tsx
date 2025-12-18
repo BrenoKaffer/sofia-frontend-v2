@@ -13,10 +13,24 @@ import { insightsData } from '@/lib/insights-data';
 const featuredInsight = {
   id: "hero-insight",
   title: "O Segredo da Virada de Mesa",
-  description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.",
+  description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde. Um método prático para leitura de padrões, controle emocional e execução estratégica na roleta online, criado por quem vive isso todos os dias.",
   badge: "Masterclass Exclusiva",
   duration: "45 min"
 };
+
+// Mock data for "Continue de Onde Parou"
+const continueWatching = [
+  {
+    id: "control-07",
+    title: "Gestão de Banca",
+    subtitle: "O pilar mais importante: como gerenciar seu capital para longevidade.",
+    duration: "Restam 12 min",
+    locked: false,
+    category: "Gestão",
+    badge: "Em Progresso",
+    progress: 45
+  }
+];
 
 export default function InsightsPage() {
   // Separate the first module (Onboarding) to feature it
@@ -40,6 +54,17 @@ export default function InsightsPage() {
       {/* Content Rows */}
       <div className="relative z-20 space-y-12 pl-4 md:pl-12 lg:pl-16">
         
+        {/* Continue de Onde Parou */}
+        <InsightsCarousel title="Continue de Onde Parou">
+          {continueWatching.map((lesson) => (
+            <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">
+              <InsightCard 
+                {...lesson}
+              />
+            </div>
+          ))}
+        </InsightsCarousel>
+
         {/* Featured First Row - "Comece por Aqui" */}
         {firstModule && (
           <div className="relative">

@@ -45,7 +45,7 @@ export function InsightsHero({ id, title, description, badge }: InsightsHeroProp
             {title}
           </h1>
           
-          <p className="text-sm md:text-base text-zinc-300 max-w-xl leading-relaxed drop-shadow-md line-clamp-2">
+          <p className="text-sm md:text-base text-zinc-300 max-w-xl leading-relaxed drop-shadow-md line-clamp-4">
             {description}
           </p>
           
