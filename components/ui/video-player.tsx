@@ -14,28 +14,35 @@ interface VideoPlayerProps extends React.HTMLAttributes<HTMLDivElement> {
 function getEmbedUrl(url: string) {
   if (!url) return "";
   
+  const cleanUrl = url.trim();
+
   try {
     // Handle already embedded URLs
-    if (url.includes("youtube.com/embed/")) return url;
+    if (cleanUrl.includes("youtube.com/embed/")) return cleanUrl;
 
-    // Handle standard watch URLs
     let videoId = "";
-    if (url.includes("youtube.com/watch")) {
-      const urlObj = new URL(url);
+    
+    // Handle standard watch URLs
+    if (cleanUrl.includes("youtube.com/watch")) {
+      const urlObj = new URL(cleanUrl);
       videoId = urlObj.searchParams.get("v") || "";
-    } else if (url.includes("youtu.be/")) {
-      // Handle short URLs
-      videoId = url.split("youtu.be/")[1]?.split("?")[0] || "";
+    } 
+    // Handle short URLs
+    else if (cleanUrl.includes("youtu.be/")) {
+      const urlParts = cleanUrl.split("youtu.be/");
+      if (urlParts[1]) {
+        videoId = urlParts[1].split("?")[0];
+      }
     }
 
     if (videoId) {
-      return `https://www.youtube.com/embed/${videoId}`;
+      return `https://www.youtube.com/embed/${videoId}?rel=0&autoplay=1`;
     }
   } catch (e) {
     console.error("Error parsing video URL:", e);
   }
 
-  return url;
+  return cleanUrl;
 }
 
 const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
