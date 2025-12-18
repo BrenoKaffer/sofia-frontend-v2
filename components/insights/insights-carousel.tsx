@@ -32,7 +32,7 @@ export function InsightsCarousel({ title, children }: InsightsCarouselProps) {
       
       <div className="relative group">
         {/* Left Control */}
-        <div className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-background to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-start pointer-events-none">
+        <div className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-start pointer-events-none">
           <Button
             variant="ghost"
             size="icon"
@@ -53,7 +53,7 @@ export function InsightsCarousel({ title, children }: InsightsCarouselProps) {
         </div>
 
         {/* Right Control */}
-        <div className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-background to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end pointer-events-none">
+        <div className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end pointer-events-none">
           <Button
             variant="ghost"
             size="icon"

@@ -48,14 +48,14 @@ export function InsightsHero({ id, title, description, badge, muxEmbedUrl }: Ins
         )}
         
         {/* Gradient Overlays for Readability (Netflix style) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent" />
       </div>
 
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col justify-end px-6 pb-48 md:px-12 md:pb-40 lg:px-16 lg:pb-56 max-w-4xl">
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000">
-          <Badge className="bg-emerald-500/90 hover:bg-emerald-600 border-none px-3 py-1 text-[10px] uppercase tracking-widest font-bold shadow-lg shadow-emerald-500/20 w-fit backdrop-blur-sm">
+          <Badge className="bg-primary/90 hover:bg-primary border-none px-3 py-1 text-[10px] uppercase tracking-widest font-bold shadow-lg shadow-primary/20 w-fit backdrop-blur-sm">
             {badge}
           </Badge>
           

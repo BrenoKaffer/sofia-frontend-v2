@@ -46,7 +46,7 @@ export function InsightCard({
     return (
       <Dialog>
         <DialogTrigger asChild>
-          <Card className={`group relative overflow-hidden cursor-pointer border-border/50 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:scale-[1.02] bg-card/50 backdrop-blur-sm h-full flex flex-col ${featured ? 'md:flex-row md:h-64' : ''}`}>
+          <Card className={`group relative overflow-hidden cursor-pointer border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:scale-[1.02] bg-card/50 backdrop-blur-sm h-full flex flex-col ${featured ? 'md:flex-row md:h-64' : ''}`}>
             {/* Content (duplicated for now to ensure exact structure) */}
             <CardContentInner 
               title={title} 
@@ -61,10 +61,10 @@ export function InsightCard({
         </DialogTrigger>
 
         {/* Paywall Modal */}
-        <DialogContent className="sm:max-w-md border-emerald-500/20 bg-zinc-950/95 backdrop-blur-xl">
+        <DialogContent className="sm:max-w-md border-primary/20 bg-zinc-950/95 backdrop-blur-xl">
           <DialogHeader>
-            <div className="mx-auto bg-emerald-500/10 p-3 rounded-full mb-4 w-fit">
-              <Lock className="w-8 h-8 text-emerald-500" />
+            <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4 w-fit">
+              <Lock className="w-8 h-8 text-primary" />
             </div>
             <DialogTitle className="text-center text-2xl font-bold">Conteúdo Exclusivo PRO</DialogTitle>
             <DialogDescription className="text-center text-base pt-2">
@@ -74,22 +74,22 @@ export function InsightCard({
           
           <div className="space-y-4 py-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
-              <Zap className="w-5 h-5 text-emerald-500 shrink-0" />
+              <Zap className="w-5 h-5 text-primary shrink-0" />
               <span className="text-sm">Acesso a todos os aprendizados avançados</span>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
-              <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+              <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
               <span className="text-sm">Estratégias validadas por especialistas</span>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
-              <TrendingUp className="w-5 h-5 text-emerald-500 shrink-0" />
+              <TrendingUp className="w-5 h-5 text-primary shrink-0" />
               <span className="text-sm">Aumente sua assertividade com leitura profissional</span>
             </div>
           </div>
 
           <DialogFooter className="sm:justify-center">
             <ShinyButton 
-              className="w-full font-bold h-11 shadow-lg shadow-emerald-900/20"
+              className="w-full font-bold h-11 shadow-lg shadow-primary/20"
               onClick={() => router.push('/account/upgrade')}
             >
               Ativar SOFIA PRO Agora

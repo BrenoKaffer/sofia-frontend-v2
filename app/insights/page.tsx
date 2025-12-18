@@ -41,7 +41,7 @@ export default function InsightsPage() {
   const [firstModule, ...otherModules] = insightsData;
 
   return (
-    <div className="min-h-screen bg-[#141414] text-white pb-20 overflow-x-hidden">
+    <div className="min-h-screen bg-black text-foreground pb-20 overflow-x-hidden">
       
       <NetflixTopBar />
 
@@ -74,7 +74,7 @@ export default function InsightsPage() {
         {/* Featured First Row - "Comece por Aqui" */}
         {firstModule && (
           <div className="relative">
-             <div className="absolute -left-4 md:-left-12 lg:-left-16 top-0 bottom-0 w-1 bg-emerald-500/50 rounded-r-full" />
+             <div className="absolute -left-4 md:-left-12 lg:-left-16 top-0 bottom-0 w-1 bg-primary/50 rounded-r-full" />
              <InsightsCarousel title="Comece por Aqui">
               {firstModule.lessons.map((lesson) => (
                 <div key={lesson.id} className="min-w-[280px] md:min-w-[320px]">

@@ -37,7 +37,7 @@ export default function LessonPage() {
 
   if (!lessonData) {
     return (
-      <div className="min-h-screen bg-[#141414] text-white flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-black text-foreground flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Aula não encontrada</h1>
         <Button onClick={() => router.push('/insights')}>Voltar para Insights</Button>
       </div>
@@ -53,13 +53,13 @@ export default function LessonPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#141414] text-white">
+    <div className="min-h-screen bg-black text-foreground">
       <NetflixTopBar />
       
       <div className="container mx-auto px-4 pt-24 pb-12">
         <Button 
             variant="ghost" 
-            className="mb-6 text-zinc-400 hover:text-white pl-0 gap-2"
+            className="mb-6 text-muted-foreground hover:text-foreground pl-0 gap-2"
             onClick={() => router.back()}
         >
             <ArrowLeft className="w-5 h-5" />
@@ -73,22 +73,22 @@ export default function LessonPage() {
               videoUrl={lesson.videoUrl || ""}
               muxEmbedUrl={lesson.muxEmbedUrl}
               thumbnailUrl={lesson.thumbnailUrl}
-              className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
+              className="w-full aspect-video shadow-2xl shadow-primary/20"
             />
 
             <div className="space-y-4">
-                <h1 className="text-3xl md:text-4xl font-bold text-white">{lesson.title}</h1>
-                <p className="text-lg text-zinc-300 leading-relaxed max-w-3xl">
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground">{lesson.title}</h1>
+                <p className="text-lg text-muted-foreground leading-relaxed max-w-3xl">
                     {lesson.subtitle}
                 </p>
             </div>
 
             {/* Additional content area (resources, comments, etc.) could go here */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-zinc-800">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-border">
                 <div className="md:col-span-2 space-y-6">
                     <h3 className="text-xl font-semibold">Resumo da Aula</h3>
-                    <div className="bg-zinc-900/50 p-6 rounded-xl border border-zinc-800">
-                        <p className="text-zinc-400">
+                    <div className="bg-card/50 p-6 rounded-xl border border-border">
+                        <p className="text-muted-foreground">
                             Nesta aula do módulo <strong>{lesson.category}</strong>, você aprenderá os fundamentos essenciais.
                             {lesson.locked && " Esta é uma aula exclusiva para membros PRO."}
                         </p>
