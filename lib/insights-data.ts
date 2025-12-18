@@ -17,7 +17,7 @@ export interface Module {
 
 export const insightsData: Module[] = [
   {
-    title: "🔰 MÓDULOS DE ONBOARDING / BASE",
+    title: "🔰  MÓDULOS DE ONBOARDING / BASE",
     lessons: [
       {
         id: "onboarding-01",
@@ -49,7 +49,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🎯 CONTROLE DO JOGO",
+    title: "🎯  CONTROLE DO JOGO",
     lessons: [
       {
         id: "control-01",
@@ -135,7 +135,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🧩 ESTRATÉGIAS DE BASE",
+    title: "🧩  ESTRATÉGIAS DE BASE",
     lessons: [
       {
         id: "base-01",
@@ -203,7 +203,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🚀 ESTRATÉGIAS AVANÇADAS",
+    title: "🚀  ESTRATÉGIAS AVANÇADAS",
     lessons: [
       {
         id: "adv-01",
@@ -280,7 +280,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🔥 MÓDULO AVANÇADO / FLUXO CONTÍNUO DE ALAVANCAGEM",
+    title: "🔥  MÓDULO AVANÇADO / FLUXO CONTÍNUO DE ALAVANCAGEM",
     lessons: [
       {
         id: "flow-01",
@@ -348,7 +348,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🔍 ANÁLISES DE POUCAS FICHAS",
+    title: "🔍  ANÁLISES DE POUCAS FICHAS",
     lessons: [
       { id: "ana-01", title: "Bacuri", subtitle: "Análise de precisão cirúrgica: Bacuri.", duration: "8 min", locked: true, category: "Poucas Fichas", badge: "Sniper" },
       { id: "ana-02", title: "Jambu", subtitle: "O efeito Jambu: paralisando a mesa com poucas fichas.", duration: "8 min", locked: true, category: "Poucas Fichas", badge: "Sniper" },
@@ -362,7 +362,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🔴 LIVES",
+    title: "🔴  LIVES",
     lessons: [
       { id: "live-01", title: "Live Lucrativa 1", subtitle: "Gravação na íntegra da sessão ao vivo #1.", duration: "60 min", locked: true, category: "Live", badge: "Replay" },
       { id: "live-02", title: "Live Lucrativa 2", subtitle: "Gravação na íntegra da sessão ao vivo #2.", duration: "55 min", locked: true, category: "Live", badge: "Replay" },
@@ -375,7 +375,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🧰 MATERIAIS COMPLEMENTARES",
+    title: "🧰  MATERIAIS COMPLEMENTARES",
     lessons: [
       { id: "mat-01", title: "Controle Emocional (Material)", subtitle: "PDF Guia de Bolso para controle emocional.", duration: "PDF", locked: true, category: "Material", badge: "Download" },
       { id: "mat-02", title: "Racetrack", subtitle: "Mapa visual da Racetrack para impressão.", duration: "IMG", locked: true, category: "Material", badge: "Download" },
@@ -386,7 +386,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🎁 BÔNUS",
+    title: "🎁  BÔNUS",
     lessons: [
       { id: "bonus-01", title: "Calculadora de Probabilidades", subtitle: "Ferramenta exclusiva para calcular suas chances.", duration: "App", locked: true, category: "Ferramenta", badge: "Software" },
       { id: "bonus-02", title: "Simulador de Estratégia", subtitle: "Teste suas teses sem arriscar dinheiro real.", duration: "App", locked: true, category: "Ferramenta", badge: "Software" },
