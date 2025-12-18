@@ -6,6 +6,7 @@ import { Play, X } from "lucide-react";
 interface VideoPlayerProps extends React.HTMLAttributes<HTMLDivElement> {
   thumbnailUrl: string;
   videoUrl: string;
+  muxEmbedUrl?: string;
   title: string;
   description?: string;
   aspectRatio?: "16/9" | "4/3" | "1/1";
@@ -51,6 +52,7 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
       className,
       thumbnailUrl,
       videoUrl,
+      muxEmbedUrl,
       title,
       description,
       aspectRatio = "16/9",
@@ -147,11 +149,12 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
             {/* Video Iframe */}
             <div className="w-full max-w-4xl aspect-video p-4 relative">
                <iframe
-                    src={getEmbedUrl(videoUrl)}
+                    src={muxEmbedUrl || getEmbedUrl(videoUrl)}
                     title={title}
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    referrerPolicy="origin"
                     className="h-full w-full rounded-lg"
                 ></iframe>
             </div>

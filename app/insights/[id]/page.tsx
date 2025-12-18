@@ -67,25 +67,14 @@ export default function LessonPage() {
         </Button>
 
         <div className="max-w-5xl mx-auto space-y-8">
-            {/* Using Mux iframe if available, otherwise fallback to standard VideoPlayer */}
-            {lesson.muxEmbedUrl ? (
-              <iframe
-                src={lesson.muxEmbedUrl}
-                style={{ width: '100%', border: 'none', aspectRatio: '16/9' }}
-                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                allowFullScreen
-                referrerPolicy="origin"
-                className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
-              />
-            ) : (
-              <VideoPlayer 
-                title={lesson.title}
-                description={lesson.description}
-                videoUrl={lesson.videoUrl || ""}
-                thumbnailUrl={lesson.thumbnailUrl}
-                className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
-              />
-            )}
+            <VideoPlayer 
+              title={lesson.title}
+              description={lesson.description}
+              videoUrl={lesson.videoUrl || ""}
+              muxEmbedUrl={lesson.muxEmbedUrl}
+              thumbnailUrl={lesson.thumbnailUrl}
+              className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
+            />
 
             <div className="space-y-4">
                 <h1 className="text-3xl md:text-4xl font-bold text-white">{lesson.title}</h1>
