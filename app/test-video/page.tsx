@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 
 export default function TestVideoPage() {
   const router = useRouter();
-  const rawUrl = "https://youtu.be/xf9IVQtxa5Q?si=zD6CtJFhweJhjRq7";
-  const manualEmbedUrl = "https://www.youtube.com/embed/xf9IVQtxa5Q";
+  const rawUrl = "https://www.youtube.com/watch?v=u31qwQUeGuM&list=RDu31qwQUeGuM&start_radio=1";
+  const manualEmbedUrl = "https://www.youtube.com/embed/u31qwQUeGuM";
 
   return (
     <div className="min-h-screen bg-[#141414] text-white p-8 space-y-12">

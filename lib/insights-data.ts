@@ -28,7 +28,7 @@ export const insightsData: Module[] = [
         locked: false,
         category: "Bem-vindo",
         badge: "Início",
-        videoUrl: "https://youtu.be/xf9IVQtxa5Q?si=zD6CtJFhweJhjRq7"
+        videoUrl: "https://www.youtube.com/watch?v=u31qwQUeGuM"
       },
       {
         id: "onboarding-02",
