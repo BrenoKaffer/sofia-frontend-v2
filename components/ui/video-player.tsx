@@ -11,6 +11,33 @@ interface VideoPlayerProps extends React.HTMLAttributes<HTMLDivElement> {
   aspectRatio?: "16/9" | "4/3" | "1/1";
 }
 
+function getEmbedUrl(url: string) {
+  if (!url) return "";
+  
+  try {
+    // Handle already embedded URLs
+    if (url.includes("youtube.com/embed/")) return url;
+
+    // Handle standard watch URLs
+    let videoId = "";
+    if (url.includes("youtube.com/watch")) {
+      const urlObj = new URL(url);
+      videoId = urlObj.searchParams.get("v") || "";
+    } else if (url.includes("youtu.be/")) {
+      // Handle short URLs
+      videoId = url.split("youtu.be/")[1]?.split("?")[0] || "";
+    }
+
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+  } catch (e) {
+    console.error("Error parsing video URL:", e);
+  }
+
+  return url;
+}
+
 const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
   (
     {
@@ -113,7 +140,7 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
             {/* Video Iframe */}
             <div className="w-full max-w-4xl aspect-video p-4 relative">
                <iframe
-                    src={videoUrl}
+                    src={getEmbedUrl(videoUrl)}
                     title={title}
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

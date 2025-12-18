@@ -48,7 +48,7 @@ export default function LessonPage() {
   const lesson = {
     ...lessonData,
     description: lessonData.subtitle || lessonData.title, // Ensure description exists
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", // Placeholder video
+    videoUrl: lessonData.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ", // Use provided video or fallback
     thumbnailUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop" // Tech placeholder
   };
 

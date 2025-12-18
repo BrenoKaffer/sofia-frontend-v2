@@ -8,6 +8,7 @@ export interface Lesson {
   category: string;
   badge?: string;
   progress?: number;
+  videoUrl?: string;
 }
 
 export interface Module {
@@ -17,7 +18,7 @@ export interface Module {
 
 export const insightsData: Module[] = [
   {
-    title: "🔰  MÓDULOS DE ONBOARDING / BASE",
+    title: "🔰 MÓDULOS DE ONBOARDING / BASE",
     lessons: [
       {
         id: "onboarding-01",
@@ -26,7 +27,8 @@ export const insightsData: Module[] = [
         duration: "5 min",
         locked: false,
         category: "Bem-vindo",
-        badge: "Início"
+        badge: "Início",
+        videoUrl: "https://youtu.be/xf9IVQtxa5Q?si=zD6CtJFhweJhjRq7"
       },
       {
         id: "onboarding-02",
@@ -49,7 +51,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🎯  CONTROLE DO JOGO",
+    title: "🎯 CONTROLE DO JOGO",
     lessons: [
       {
         id: "control-01",
@@ -135,7 +137,7 @@ export const insightsData: Module[] = [
     ]
   },
   {
-    title: "🧩  ESTRATÉGIAS DE BASE",
+    title: "🧩 ESTRATÉGIAS DE BASE",
     lessons: [
       {
         id: "base-01",
