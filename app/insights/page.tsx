@@ -17,7 +17,8 @@ const featuredInsight = {
   title: "O Segredo da Virada de Mesa",
   description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.\n\nUm método prático para leitura de padrões, controle emocional e execução estratégica na roleta online, criado por quem vive isso todos os dias.",
   badge: "Masterclass Exclusiva",
-  duration: "45 min"
+  duration: "45 min",
+  muxEmbedUrl: "https://player.mux.com/83jNROLYYRGW5iiJjXMAGuxJYyt3cgJ02M602XTXCXFzc?autoplay=true&muted=true&loop=true&controls=false&showTitle=false"
 };
 
 // Mock data for "Continue de Onde Parou"
@@ -52,6 +53,7 @@ export default function InsightsPage() {
           description={featuredInsight.description}
           badge={featuredInsight.badge}
           duration={featuredInsight.duration}
+          muxEmbedUrl={featuredInsight.muxEmbedUrl}
         />
       </div>
 

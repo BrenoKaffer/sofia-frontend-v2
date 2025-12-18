@@ -30,9 +30,7 @@ export const insightsData: Module[] = [
         locked: false,
         category: "Bem-vindo",
         badge: "Início",
-        videoUrl: "https://www.youtube.com/embed/u31qwQUeGuM?si=6OXq0jdXKTzFCVrE",
-        muxPlaybackId: "DS00Spx1CV902PhO7d75R9632fW01300Q9J",
-        muxEmbedUrl: "https://player.mux.com/83jNROLYYRGW5iiJjXMAGuxJYyt3cgJ02M602XTXCXFzc?metadata-video-title=Background_Hero_SOFIA"
+        videoUrl: "https://www.youtube.com/embed/u31qwQUeGuM?si=6OXq0jdXKTzFCVrE"
       },
       {
         id: "onboarding-02",

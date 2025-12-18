@@ -14,26 +14,38 @@ interface InsightsHeroProps {
   description: string;
   badge: string;
   duration?: string;
+  muxEmbedUrl?: string;
 }
 
-export function InsightsHero({ id, title, description, badge }: InsightsHeroProps) {
+export function InsightsHero({ id, title, description, badge, muxEmbedUrl }: InsightsHeroProps) {
   const router = useRouter();
 
   return (
     <div className="relative w-full h-[80vh] md:h-[95vh] rounded-xl overflow-hidden mb-0 group bg-black shadow-2xl shadow-black/50">
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0">
-        <video 
-          key={id} // Force re-render on id change
-          autoPlay 
-          loop 
-          muted 
-          playsInline 
-          className="absolute inset-0 w-full h-full object-cover opacity-60"
-          poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
-        >
-          <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-dots-and-lines-2988-large.mp4" type="video/mp4" />
-        </video>
+        {muxEmbedUrl ? (
+          <iframe
+            key={id}
+            src={muxEmbedUrl}
+            className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none"
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allowFullScreen
+            tabIndex={-1}
+          />
+        ) : (
+          <video 
+            key={id} // Force re-render on id change
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="absolute inset-0 w-full h-full object-cover opacity-60"
+            poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
+          >
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-dots-and-lines-2988-large.mp4" type="video/mp4" />
+          </video>
+        )}
         
         {/* Gradient Overlays for Readability (Netflix style) */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-transparent" />
