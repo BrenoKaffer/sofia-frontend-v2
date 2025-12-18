@@ -45,7 +45,7 @@ export default function LessonPage() {
   }
 
   // Enrich with placeholder media if not present (since our data file is text-only for now)
-  const lesson = {
+  const lesson: Lesson & { description: string; thumbnailUrl: string } = {
     ...lessonData,
     description: lessonData.subtitle || lessonData.title, // Ensure description exists
     videoUrl: lessonData.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ", // Use provided video or fallback
@@ -80,7 +80,7 @@ export default function LessonPage() {
               <VideoPlayer 
                 title={lesson.title}
                 description={lesson.description}
-                videoUrl={lesson.videoUrl}
+                videoUrl={lesson.videoUrl || ""}
                 thumbnailUrl={lesson.thumbnailUrl}
                 className="w-full aspect-video shadow-2xl shadow-emerald-900/20"
               />
