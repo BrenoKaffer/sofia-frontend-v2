@@ -55,7 +55,7 @@ export function InsightsHero({
   };
 
   return (
-    <div className="relative w-full h-[65vh] md:h-[75vh] rounded-xl overflow-hidden mb-0 group bg-black shadow-2xl shadow-black/50">
+    <div className="relative w-full h-[80vh] md:h-[95vh] rounded-xl overflow-hidden mb-0 group bg-black shadow-2xl shadow-black/50">
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0">
         {/* Desktop Video (Hidden on Mobile if mobileVideoUrl is provided) */}

@@ -42,7 +42,7 @@ export function InsightCard({
   const router = useRouter();
 
   const CardContentInner = () => (
-    <div className="flex flex-col h-full group">
+    <div className="flex flex-col h-full group/card">
       {/* Thumbnail / Poster Area - Vertical Aspect Ratio 2:3 */}
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-md bg-muted/20">
         {thumbnailUrl ? (
@@ -50,9 +50,9 @@ export function InsightCard({
             <img 
               src={thumbnailUrl} 
               alt={title} 
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
             />
-            <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+            <div className="absolute inset-0 bg-black/10 group-hover/card:bg-black/0 transition-colors" />
           </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-muted/20 to-card">
@@ -91,7 +91,7 @@ export function InsightCard({
         </div>
         
         {/* Hover Overlay with Description (Desktop) */}
-        <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-4 flex flex-col justify-end hidden md:flex">
+        <div className="absolute inset-0 bg-black/80 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 p-4 flex flex-col justify-end hidden md:flex">
              <p className="text-xs text-white/90 line-clamp-4 leading-relaxed mb-2">
                {subtitle}
              </p>
@@ -106,7 +106,7 @@ export function InsightCard({
 
       {/* Content Below Image */}
       <div className="pt-3 flex-1 flex flex-col">
-        <h3 className="font-bold text-sm leading-tight text-foreground group-hover:text-primary transition-colors line-clamp-2 mb-1">
+        <h3 className="font-bold text-sm leading-tight text-foreground group-hover/card:text-primary transition-colors line-clamp-2 mb-1">
           {title}
         </h3>
         

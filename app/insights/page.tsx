@@ -67,12 +67,12 @@ export default function InsightsPage() {
       </div>
 
       {/* Content Rows */}
-      <div className="relative z-20 space-y-12 pl-4 md:pl-12 lg:pl-16 mt-8">
+      <div className="relative z-20 space-y-12 pl-4 md:pl-12 lg:pl-16 -mt-32">
         
         {/* Continue de Onde Parou */}
         <InsightsCarousel title="Continue de Onde Parou">
           {continueWatching.map((lesson) => (
-            <div key={lesson.id} className="min-w-[160px] md:min-w-[220px]">
+            <div key={lesson.id} className="min-w-[200px] md:min-w-[260px]">
               <InsightCard 
                 {...lesson}
               />
@@ -86,7 +86,7 @@ export default function InsightsPage() {
              <div className="absolute -left-4 md:-left-12 lg:-left-16 top-0 bottom-0 w-1 bg-primary/50 rounded-r-full" />
              <InsightsCarousel title="Comece por Aqui">
               {firstModule.lessons.map((lesson) => (
-                <div key={lesson.id} className="min-w-[160px] md:min-w-[220px]">
+                <div key={lesson.id} className="min-w-[200px] md:min-w-[260px]">
                   <InsightCard 
                     {...lesson}
                     // Make the first row cards slightly more distinct if needed, 
@@ -102,7 +102,7 @@ export default function InsightsPage() {
         {otherModules.map((module, index) => (
           <InsightsCarousel key={index} title={module.title}>
             {module.lessons.map((lesson) => (
-              <div key={lesson.id} className="min-w-[160px] md:min-w-[220px]">
+              <div key={lesson.id} className="min-w-[200px] md:min-w-[260px]">
                 <InsightCard 
                   {...lesson}
                 />
