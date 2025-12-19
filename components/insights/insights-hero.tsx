@@ -69,7 +69,7 @@ export function InsightsHero({
               playsInline 
               onTimeUpdate={handleDesktopTimeUpdate}
               className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-[40%] -translate-y-1/2 object-cover opacity-100 pointer-events-none"
-              poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
+              poster="https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070&auto=format&fit=crop"
             >
               <source src={desktopVideoUrl} type="video/mp4" />
             </video>
@@ -108,6 +108,7 @@ export function InsightsHero({
               playsInline 
               onTimeUpdate={handleMobileTimeUpdate}
               className="absolute inset-0 w-full h-full object-cover opacity-100"
+              poster="https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070&auto=format&fit=crop"
             >
               <source src={mobileVideoUrl} type="video/mp4" />
             </video>
