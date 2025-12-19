@@ -35,7 +35,8 @@ const continueWatching = [
     locked: false,
     category: "Gestão",
     badge: "Em Progresso",
-    progress: 45
+    progress: 45,
+    thumbnailUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=600&auto=format&fit=crop"
   }
 ];
 

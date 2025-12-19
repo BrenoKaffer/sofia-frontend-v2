@@ -9,6 +9,7 @@ export interface Lesson {
   badge?: string;
   progress?: number;
   videoUrl?: string;
+  thumbnailUrl?: string;
   muxPlaybackId?: string;
   muxEmbedUrl?: string;
 }
@@ -30,7 +31,8 @@ export const insightsData: Module[] = [
         locked: false,
         category: "Bem-vindo",
         badge: "Início",
-        videoUrl: "https://www.youtube.com/embed/u31qwQUeGuM?si=6OXq0jdXKTzFCVrE"
+        videoUrl: "https://www.youtube.com/embed/u31qwQUeGuM?si=6OXq0jdXKTzFCVrE",
+        thumbnailUrl: "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=600&auto=format&fit=crop"
       },
       {
         id: "onboarding-02",
@@ -39,7 +41,8 @@ export const insightsData: Module[] = [
         duration: "2 min",
         locked: false,
         category: "Grupo",
-        badge: "Comunidade"
+        badge: "Comunidade",
+        thumbnailUrl: "https://images.unsplash.com/photo-1511193311914-0346f16efe90?q=80&w=600&auto=format&fit=crop"
       },
       {
         id: "onboarding-03",
@@ -48,7 +51,8 @@ export const insightsData: Module[] = [
         duration: "3 min",
         locked: false,
         category: "Suporte",
-        badge: "Ajuda"
+        badge: "Ajuda",
+        thumbnailUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=600&auto=format&fit=crop"
       }
     ]
   },
@@ -62,7 +66,8 @@ export const insightsData: Module[] = [
         duration: "10 min",
         locked: true,
         category: "Roleta",
-        badge: "Fundamentos"
+        badge: "Fundamentos",
+        thumbnailUrl: "https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=600&auto=format&fit=crop"
       },
       {
         id: "control-02",
@@ -71,7 +76,8 @@ export const insightsData: Module[] = [
         duration: "12 min",
         locked: true,
         category: "Roleta",
-        badge: "Mecânica"
+        badge: "Mecânica",
+        thumbnailUrl: "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?q=80&w=600&auto=format&fit=crop"
       },
       {
         id: "control-03",
@@ -80,7 +86,8 @@ export const insightsData: Module[] = [
         duration: "8 min",
         locked: true,
         category: "Roleta",
-        badge: "Estratégia"
+        badge: "Estratégia",
+        thumbnailUrl: "https://images.unsplash.com/photo-1511193311914-0346f16efe90?q=80&w=600&auto=format&fit=crop"
       },
       {
         id: "control-04",
@@ -89,7 +96,8 @@ export const insightsData: Module[] = [
         duration: "15 min",
         locked: true,
         category: "Psicologia",
-        badge: "Mindset"
+        badge: "Mindset",
+        thumbnailUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=600&auto=format&fit=crop"
       },
       {
         id: "control-05",

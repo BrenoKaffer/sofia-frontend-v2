@@ -28,6 +28,7 @@ interface InsightCardProps {
   category: string;
   progress?: number;
   featured?: boolean;
+  thumbnailUrl?: string;
 }
 
 export function InsightCard({
@@ -39,6 +40,7 @@ export function InsightCard({
   category,
   progress = 0,
   featured = false,
+  thumbnailUrl,
 }: InsightCardProps) {
   const router = useRouter();
 
@@ -56,6 +58,7 @@ export function InsightCard({
               category={category} 
               progress={progress} 
               featured={featured} 
+              thumbnailUrl={thumbnailUrl}
             />
           </Card>
         </DialogTrigger>
@@ -111,6 +114,7 @@ export function InsightCard({
           category={category} 
           progress={progress} 
           featured={featured} 
+          thumbnailUrl={thumbnailUrl}
         />
       </Card>
     </Link>
@@ -118,17 +122,30 @@ export function InsightCard({
 }
 
 // Helper component to avoid code duplication
-function CardContentInner({ title, subtitle, duration, locked, category, progress, featured }: any) {
+function CardContentInner({ title, subtitle, duration, locked, category, progress, featured, thumbnailUrl }: any) {
   return (
     <>
       {/* Thumbnail Area */}
       <div className={`relative bg-gradient-to-br from-muted/20 to-card overflow-hidden ${featured ? 'w-full md:w-1/2 h-48 md:h-full' : 'h-40 w-full'}`}>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/20 via-background/0 to-background/0" />
-        
-        {/* Abstract shapes/Icon */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-30 transition-opacity">
-           <TrendingUp className={`${featured ? 'w-32 h-32' : 'w-16 h-16'} text-primary`} />
-        </div>
+        {thumbnailUrl ? (
+          <>
+             <img 
+               src={thumbnailUrl} 
+               alt={title} 
+               className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+             />
+             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/20 via-background/0 to-background/0" />
+            
+            {/* Abstract shapes/Icon */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-30 transition-opacity">
+               <TrendingUp className={`${featured ? 'w-32 h-32' : 'w-16 h-16'} text-primary`} />
+            </div>
+          </>
+        )}
 
         {/* Locked State: Discreet Lock Icon */}
         {locked && (
