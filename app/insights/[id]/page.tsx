@@ -8,8 +8,8 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import Link from 'next/link';
 import { Lesson } from '@/types/lessons';
 
-export default async function LessonPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function LessonPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createSupabaseServerClient();
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id;
