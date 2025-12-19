@@ -2,92 +2,20 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Eye, EyeOff, Loader2, Brain, ArrowRight, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Brain, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import PageTransitionWithBackground from '@/components/layout/PageTransitionWithBackground';
-import BrandSVG from '@/components/layout/BrandSVG';
 import { supabase } from '@/lib/supabase';
 import { ShinyButton } from '@/components/ui/shiny-button';
-
-function ShinyFrame({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <>
-      <style jsx>{`
-        .shiny-frame {
-          --shiny-cta-bg: linear-gradient(90deg, #34E13C, #0C1C25);
-          --shiny-cta-bg-subtle: #0C1C25;
-          --shiny-cta-highlight: #34E13C;
-          --shiny-cta-highlight-subtle: #34E13C;
-          --animation: gradient-angle linear infinite;
-          --duration: 3s;
-          --shadow-size: 2px;
-          --transition: 800ms cubic-bezier(0.25, 1, 0.5, 1);
-          isolation: isolate;
-          position: relative;
-          overflow: hidden;
-          outline-offset: 4px;
-          padding: 0.4rem 0.75rem;
-          border: 1px solid transparent;
-          border-radius: 0.75rem;
-          background: var(--shiny-cta-bg) padding-box,
-            conic-gradient(
-              from calc(var(--gradient-angle) - var(--gradient-angle-offset, 0deg)),
-              transparent,
-              var(--shiny-cta-highlight) var(--gradient-percent, 5%),
-              var(--gradient-shine, white) calc(var(--gradient-percent, 5%) * 2),
-              var(--shiny-cta-highlight) calc(var(--gradient-percent, 5%) * 3),
-              transparent calc(var(--gradient-percent, 5%) * 4)
-            ) border-box;
-          box-shadow: inset 0 0 0 1px var(--shiny-cta-bg-subtle);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .shiny-frame::before, .shiny-frame::after {
-          content: "";
-          pointer-events: none;
-          position: absolute;
-          inset-inline-start: 50%;
-          inset-block-start: 50%;
-          translate: -50% -50%;
-          z-index: -1;
-        }
-        .shiny-frame::before {
-          --size: calc(100% - var(--shadow-size) * 3);
-          --position: 2px;
-          --space: calc(var(--position) * 2);
-          width: var(--size);
-          height: var(--size);
-          background: radial-gradient(circle at var(--position) var(--position), white calc(var(--position) / 4), transparent 0) padding-box;
-          background-size: var(--space) var(--space);
-          background-repeat: space;
-          mask-image: conic-gradient(from calc(var(--gradient-angle) + 45deg), black, transparent 10% 90%, black);
-          border-radius: inherit;
-          opacity: 0.18;
-          z-index: -1;
-        }
-        .shiny-frame::after {
-          --animation: shimmer linear infinite;
-          width: 100%;
-          aspect-ratio: 1;
-          background: linear-gradient(-50deg, transparent, var(--shiny-cta-highlight), transparent);
-          mask-image: radial-gradient(circle at bottom, transparent 40%, black);
-          opacity: 0.35;
-          animation: var(--animation) var(--duration);
-        }
-      `}</style>
-      <div className={`shiny-frame ${className}`}>{children}</div>
-    </>
-  )
-}
 
 export default function LoginPage() {
   const [splashVisible, setSplashVisible] = useState(true);
@@ -359,7 +287,15 @@ export default function LoginPage() {
               transition={{ delay: 1.8, duration: 0.8, ease: 'easeOut' }}
               className="inline-flex items-center justify-center mb-2"
             >
-              <BrandSVG width={220} height={55} className="mx-auto block" />
+              <div className="relative w-[220px] h-[55px] mx-auto">
+                <Image
+                  src="/logo_sofia.png"
+                  alt="SOFIA"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
             </motion.div>
             <p className="text-muted-foreground mt-2 font-sans">
               Sistema de Operação de Fichas Inteligentes e Autônomas
