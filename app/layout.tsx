@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   title: 'SOFIA | Sistema de Operação de Fichas Inteligentes e Autônomas',
   description: 'Inteligência artificial para análise de roleta online com padrões em tempo real',
   keywords: 'roleta, IA, padrões, apostas, análise, tempo real',
+  icons: {
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+    shortcut: ['/favicon.svg'],
+  },
   authors: [{ name: 'SOFIA Team' }],
   creator: 'SOFIA Team',
   publisher: 'SOFIA',

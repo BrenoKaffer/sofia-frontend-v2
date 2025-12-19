@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import FaviconSVG from '@/components/layout/FaviconSVG';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -135,7 +134,13 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
             </div>
           ) : (
             <div className="flex h-8 w-8 items-center justify-center">
-              <FaviconSVG width={32} height={32} />
+              <Image
+                src="/favicon.svg"
+                alt="SOFIA"
+                width={32}
+                height={32}
+                priority
+              />
             </div>
           )}
         </div>
