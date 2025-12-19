@@ -6,10 +6,9 @@ import { insightsData } from '@/lib/insights-data';
 const toSlug = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s-]/g, "").replace(/\s+/g, "-");
 
 // Create a Supabase client with the Service Role Key to bypass RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Note: We use a lazy initialization or check to prevent build errors if env var is missing
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +16,12 @@ export async function POST(request: Request) {
     if (process.env.ENABLE_SEED !== 'true') {
       return NextResponse.json({ error: 'Seeding is disabled in this environment' }, { status: 403 });
     }
+
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+        return NextResponse.json({ error: 'Missing Supabase credentials' }, { status: 500 });
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     console.log('Starting database seed...');
 
