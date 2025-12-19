@@ -19,10 +19,10 @@ const featuredInsight = {
   badge: "Masterclass Exclusiva",
   duration: "45 min",
   muxEmbedUrl: "https://player.mux.com/83jNROLYYRGW5iiJjXMAGuxJYyt3cgJ02M602XTXCXFzc?autoplay=true&muted=true&loop=true&controls=false&showTitle=false",
-  desktopVideoUrl: "https://1070b3c91b7bf5b20c984a1e76117a3e.cdn.bubble.io/f1723084944802x317908004711442440/Hero_App_BigGreenAcademy.mp4?_gl=1*ty36dd*_gcl_au*MTk2Njk5MTU4LjE3MjI5MDc4NTk.*_ga*NzQ0OTU0NjcwLjE3MjI5MDc4NTk.*_ga_BFPVR2DEE2*MTcyMzA0MTAwMS4zLjEuMTcyMzA4NDc2NC41My4wLjA.",
-  desktopVideoEndAt: 11,
-  mobileVideoUrl: "https://1070b3c91b7bf5b20c984a1e76117a3e.cdn.bubble.io/f1723643117960x798699798734225000/Sequ%C3%AAncia%2003_1.mp4?_gl=1*1uzr9om*_gcl_au*MTQwODc4MjU3MS4xNzIzNjQxMTQx*_ga*MTc0Mzc5ODA5Ni4xNzIzNDgyNzkz*_ga_BFPVR2DEE2*MTcyMzY0MTE0MC4xLjEuMTcyMzY0MzA5MC42MC4wLjA.",
-  mobileVideoEndAt: 11
+  // desktopVideoUrl: "https://1070b3c91b7bf5b20c984a1e76117a3e.cdn.bubble.io/f1723084944802x317908004711442440/Hero_App_BigGreenAcademy.mp4?_gl=1*ty36dd*_gcl_au*MTk2Njk5MTU4LjE3MjI5MDc4NTk.*_ga*NzQ0OTU0NjcwLjE3MjI5MDc4NTk.*_ga_BFPVR2DEE2*MTcyMzA0MTAwMS4zLjEuMTcyMzA4NDc2NC41My4wLjA.",
+  // desktopVideoEndAt: 11,
+  // mobileVideoUrl: "https://1070b3c91b7bf5b20c984a1e76117a3e.cdn.bubble.io/f1723643117960x798699798734225000/Sequ%C3%AAncia%2003_1.mp4?_gl=1*1uzr9om*_gcl_au*MTQwODc4MjU3MS4xNzIzNjQxMTQx*_ga*MTc0Mzc5ODA5Ni4xNzIzNDgyNzkz*_ga_BFPVR2DEE2*MTcyMzY0MTE0MC4xLjEuMTcyMzY0MzA5MC42MC4wLjA.",
+  // mobileVideoEndAt: 11
 };
 
 // Mock data for "Continue de Onde Parou"
@@ -58,10 +58,10 @@ export default function InsightsPage() {
           badge={featuredInsight.badge}
           duration={featuredInsight.duration}
           muxEmbedUrl={featuredInsight.muxEmbedUrl}
-          desktopVideoUrl={featuredInsight.desktopVideoUrl}
-          desktopVideoEndAt={featuredInsight.desktopVideoEndAt}
-          mobileVideoUrl={featuredInsight.mobileVideoUrl}
-          mobileVideoEndAt={featuredInsight.mobileVideoEndAt}
+          // desktopVideoUrl={featuredInsight.desktopVideoUrl}
+          // desktopVideoEndAt={featuredInsight.desktopVideoEndAt}
+          // mobileVideoUrl={featuredInsight.mobileVideoUrl}
+          // mobileVideoEndAt={featuredInsight.mobileVideoEndAt}
         />
       </div>
 
