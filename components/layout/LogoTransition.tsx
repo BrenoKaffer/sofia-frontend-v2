@@ -1,7 +1,6 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import BrandSVGProvided from './BrandSVGProvided'
 import styles from './LogoShimmer.module.css'
 
 export default function LogoTransition() {
@@ -12,8 +11,10 @@ export default function LogoTransition() {
       transition={{ duration: 0.8, ease: 'easeOut' }}
       className="relative"
     >
-      <div>
-        <BrandSVGProvided width={280} height={70} />
+      <div className={styles.loader}>
+        <div className={`${styles.inner} ${styles.one}`} />
+        <div className={`${styles.inner} ${styles.two}`} />
+        <div className={`${styles.inner} ${styles.three}`} />
       </div>
     </motion.div>
   )
