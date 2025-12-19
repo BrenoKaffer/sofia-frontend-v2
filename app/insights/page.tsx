@@ -53,6 +53,8 @@ export default async function InsightsPage() {
       };
   }
 
+  const badgeArtworkSrc = heroContent.badge === 'Masterclass Exclusiva' ? '/noalvoclass.svg' : undefined;
+
   return (
     <div className="min-h-screen bg-black text-foreground pb-20 overflow-x-hidden">
       
@@ -65,6 +67,8 @@ export default async function InsightsPage() {
           title={heroContent.title}
           description={heroContent.description}
           badge={heroContent.badge}
+          badgeArtworkSrc={badgeArtworkSrc}
+          badgeArtworkAlt="NoAlvoClass"
           duration={heroContent.duration}
           muxEmbedUrl={heroContent.muxEmbedUrl}
         />

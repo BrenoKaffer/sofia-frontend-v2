@@ -7,12 +7,15 @@ import { Play, Info } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 
 interface InsightsHeroProps {
   id: string;
   title: string;
   description: string;
   badge: string;
+  badgeArtworkSrc?: string;
+  badgeArtworkAlt?: string;
   duration?: string;
   muxEmbedUrl?: string;
   desktopVideoUrl?: string;
@@ -26,6 +29,8 @@ export function InsightsHero({
   title, 
   description, 
   badge, 
+  badgeArtworkSrc,
+  badgeArtworkAlt,
   muxEmbedUrl, 
   desktopVideoUrl, 
   desktopVideoEndAt, 
@@ -126,6 +131,20 @@ export function InsightsHero({
           <Badge className="bg-primary/90 hover:bg-primary border-none px-3 py-1 text-[10px] uppercase tracking-widest font-bold shadow-lg shadow-primary/20 w-fit backdrop-blur-sm">
             {badge}
           </Badge>
+
+          {badgeArtworkSrc && (
+            <div className="w-[240px] md:w-[320px] lg:w-[420px] -mt-2">
+              <Image
+                src={badgeArtworkSrc}
+                alt={badgeArtworkAlt ?? ''}
+                width={1024}
+                height={320}
+                sizes="(min-width: 1024px) 420px, (min-width: 768px) 320px, 240px"
+                className="w-full h-auto"
+                priority
+              />
+            </div>
+          )}
           
           <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tighter text-white drop-shadow-2xl leading-[1.1]">
             {title}
