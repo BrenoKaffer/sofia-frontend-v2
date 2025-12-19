@@ -124,7 +124,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       <div className="flex h-16 items-center border-b px-4 justify-between">
         <div className={`flex items-center gap-3 w-full ${!collapsed ? 'justify-center' : ''}`}>
           {!collapsed ? (
-            <div className="relative w-[140px] h-[34px]">
+            <div className="relative w-[170px] h-[42px]">
               <Image
                 src="/logo_sofia.png"
                 alt="SOFIA"

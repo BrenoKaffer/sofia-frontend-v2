@@ -51,21 +51,33 @@ export default function LoginPage() {
       return;
     }
 
+    if (splashVisible) {
+      setWelcomeTyped('');
+      setWelcomeDone(false);
+      return;
+    }
+
     setWelcomeTyped('');
     setWelcomeDone(false);
 
     let i = 0;
-    const intervalId = window.setInterval(() => {
-      i += 1;
-      setWelcomeTyped(welcomeText.slice(0, i));
-      if (i >= welcomeText.length) {
-        window.clearInterval(intervalId);
-        setWelcomeDone(true);
-      }
-    }, 45);
+    let intervalId: number | null = null;
+    const timeoutId = window.setTimeout(() => {
+      intervalId = window.setInterval(() => {
+        i += 1;
+        setWelcomeTyped(welcomeText.slice(0, i));
+        if (i >= welcomeText.length) {
+          if (intervalId) window.clearInterval(intervalId);
+          setWelcomeDone(true);
+        }
+      }, 45);
+    }, 350);
 
-    return () => window.clearInterval(intervalId);
-  }, [welcomeText]);
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [splashVisible, welcomeText]);
 
   useEffect(() => {
     try {

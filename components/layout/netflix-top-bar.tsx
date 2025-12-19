@@ -66,7 +66,7 @@ export function NetflixTopBar() {
       {/* Left Section: Logo + Nav */}
       <div className="flex items-center gap-8">
         <Link href="/dashboard" className="shrink-0 hover:opacity-80 transition-opacity">
-          <div className="relative w-[110px] h-[26px]">
+          <div className="relative w-[135px] h-[32px]">
             <Image
               src="/logo_sofia.png"
               alt="SOFIA"
