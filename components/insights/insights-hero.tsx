@@ -128,23 +128,23 @@ export function InsightsHero({
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col justify-end px-6 pb-48 md:px-12 md:pb-40 lg:px-16 lg:pb-56 max-w-4xl">
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000">
-          <Badge className="bg-primary/90 hover:bg-primary border-none px-3 py-1 text-[10px] uppercase tracking-widest font-bold shadow-lg shadow-primary/20 w-fit backdrop-blur-sm">
-            {badge}
-          </Badge>
-
           {badgeArtworkSrc && (
-            <div className="w-[240px] md:w-[320px] lg:w-[420px] -mt-2">
+            <div className="w-[260px] md:w-[360px] lg:w-[480px] -mb-2">
               <Image
                 src={badgeArtworkSrc}
                 alt={badgeArtworkAlt ?? ''}
-                width={1024}
-                height={320}
-                sizes="(min-width: 1024px) 420px, (min-width: 768px) 320px, 240px"
+                width={1536}
+                height={1024}
+                sizes="(min-width: 1024px) 480px, (min-width: 768px) 360px, 260px"
                 className="w-full h-auto"
                 priority
               />
             </div>
           )}
+
+          <Badge className="bg-primary/90 hover:bg-primary border-none px-3 py-1 text-[10px] uppercase tracking-widest font-bold shadow-lg shadow-primary/20 w-fit backdrop-blur-sm">
+            {badge}
+          </Badge>
           
           <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tighter text-white drop-shadow-2xl leading-[1.1]">
             {title}

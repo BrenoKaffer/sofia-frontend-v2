@@ -53,7 +53,7 @@ export default async function InsightsPage() {
       };
   }
 
-  const badgeArtworkSrc = heroContent.badge === 'Masterclass Exclusiva' ? '/noalvoclass.svg' : undefined;
+  const badgeArtworkSrc = heroContent.badge === 'Masterclass Exclusiva' ? '/logo_noalvoclass.png' : undefined;
 
   return (
     <div className="min-h-screen bg-black text-foreground pb-20 overflow-x-hidden">
