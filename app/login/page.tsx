@@ -28,7 +28,7 @@ export default function LoginPage() {
   const [welcomeDone, setWelcomeDone] = useState(false);
   const { login, user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
-  const welcomeText = 'Bem-vindo de volta';
+  const welcomeText = 'Bem-vindo de volta...';
 
   // Redirect if already logged in
   useEffect(() => {
