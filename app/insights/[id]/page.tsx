@@ -73,7 +73,7 @@ export default function LessonPage() {
               videoUrl={lesson.videoUrl || ""}
               muxEmbedUrl={lesson.muxEmbedUrl}
               thumbnailUrl={lesson.thumbnailUrl}
-              className="w-full aspect-video shadow-2xl shadow-primary/20"
+              className="w-full aspect-video"
             />
 
             <div className="space-y-4">
