@@ -13,11 +13,10 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: Request) {
   try {
-    // Optional: Add a secret key check to prevent unauthorized seeding
-    // const { searchParams } = new URL(request.url);
-    // if (searchParams.get('secret') !== process.env.SEED_SECRET) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    // Security check: Only allow if ENABLE_SEED is explicitly set to "true"
+    if (process.env.ENABLE_SEED !== 'true') {
+      return NextResponse.json({ error: 'Seeding is disabled in this environment' }, { status: 403 });
+    }
 
     console.log('Starting database seed...');
 

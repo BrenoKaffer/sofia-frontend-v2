@@ -77,24 +77,32 @@ export async function getModulesWithLessons(userId?: string): Promise<Module[]> 
     if (error) {
       console.warn('Supabase error fetching modules:', error.message);
       // Fallback with locked logic based on isPro (mocked)
-      return fallbackModules.map(m => ({
-        ...m,
-        lessons: m.lessons.map(l => ({
-          ...l,
-          locked: !l.is_free && !isPro
-        }))
-      }));
+      // NOTE: This fallback should be removed in production once data is seeded
+      if (process.env.NODE_ENV === 'development') {
+         return fallbackModules.map(m => ({
+            ...m,
+            lessons: m.lessons.map(l => ({
+            ...l,
+            locked: !l.is_free && !isPro
+            }))
+        }));
+      }
+      return [];
     }
 
     if (!modules || modules.length === 0) {
-      console.log('No modules found in DB. Using fallback data.');
-      return fallbackModules.map(m => ({
-        ...m,
-        lessons: m.lessons.map(l => ({
-          ...l,
-          locked: !l.is_free && !isPro
-        }))
-      }));
+      console.log('No modules found in DB.');
+      if (process.env.NODE_ENV === 'development') {
+         console.log('Using fallback data (DEV ONLY).');
+         return fallbackModules.map(m => ({
+            ...m,
+            lessons: m.lessons.map(l => ({
+            ...l,
+            locked: !l.is_free && !isPro
+            }))
+        }));
+      }
+      return [];
     }
 
     // 3. Process and Sort Data
