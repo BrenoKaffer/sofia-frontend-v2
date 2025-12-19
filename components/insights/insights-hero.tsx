@@ -69,7 +69,7 @@ export function InsightsHero({
               playsInline 
               onTimeUpdate={handleDesktopTimeUpdate}
               className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-[40%] -translate-y-1/2 object-cover opacity-100 pointer-events-none"
-              poster="https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070&auto=format&fit=crop"
+              poster="/hero-poster.jpg"
             >
               <source src={desktopVideoUrl} type="video/mp4" />
             </video>
@@ -90,7 +90,7 @@ export function InsightsHero({
               muted 
               playsInline 
               className="absolute inset-0 w-full h-full object-cover opacity-100"
-              poster="https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070&auto=format&fit=crop"
+              poster="/hero-poster.jpg"
             >
               <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-dots-and-lines-2988-large.mp4" type="video/mp4" />
             </video>
@@ -108,7 +108,7 @@ export function InsightsHero({
               playsInline 
               onTimeUpdate={handleMobileTimeUpdate}
               className="absolute inset-0 w-full h-full object-cover opacity-100"
-              poster="https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070&auto=format&fit=crop"
+              poster="/hero-poster.jpg"
             >
               <source src={mobileVideoUrl} type="video/mp4" />
             </video>
