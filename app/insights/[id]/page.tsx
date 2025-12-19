@@ -49,7 +49,7 @@ export default function LessonPage() {
     ...lessonData,
     description: lessonData.subtitle || lessonData.title, // Ensure description exists
     videoUrl: lessonData.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ", // Use provided video or fallback
-    thumbnailUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop" // Tech placeholder
+    thumbnailUrl: "https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070&auto=format&fit=crop" // Roulette placeholder
   };
 
   return (

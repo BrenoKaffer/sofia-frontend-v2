@@ -90,7 +90,7 @@ export function InsightsHero({
               muted 
               playsInline 
               className="absolute inset-0 w-full h-full object-cover opacity-100"
-              poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
+              poster="https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=2070&auto=format&fit=crop"
             >
               <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-dots-and-lines-2988-large.mp4" type="video/mp4" />
             </video>
