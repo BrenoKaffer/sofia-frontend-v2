@@ -1,80 +1,98 @@
-'use client';
-
 import React from 'react';
-import { useParams, useRouter } from 'next/navigation';
 import { VideoPlayer } from '@/components/ui/video-player';
 import { NetflixTopBar } from '@/components/layout/netflix-top-bar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { insightsData, Lesson } from '@/lib/insights-data';
+import { ArrowLeft, Lock } from 'lucide-react';
+import { getLessonBySlug } from '@/lib/services/lessons';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
+import Link from 'next/link';
+import { Lesson } from '@/types/lessons';
 
-// Helper to find lesson by ID from the structured data
-const getLessonById = (id: string) => {
-  for (const module of insightsData) {
-    const lesson = module.lessons.find(l => l.id === id);
-    if (lesson) return lesson;
-  }
-  // Fallback for the hardcoded hero insight if it's not in the list
-  if (id === 'hero-insight') {
-    return {
+export default async function LessonPage({ params }: { params: { id: string } }) {
+  const { id } = params;
+  const supabase = await createSupabaseServerClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+
+  let lesson = await getLessonBySlug(id, userId);
+
+  // Fallback for hero-insight if not found in DB/services
+  if (!lesson && id === 'hero-insight') {
+    lesson = {
       id: "hero-insight",
+      module_id: "hero",
       title: "O Segredo da Virada de Mesa",
-      subtitle: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão.",
-      description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.",
+      subtitle: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.",
+      slug: "hero-insight",
       duration: "45 min",
+      duration_seconds: 2700,
       locked: false,
-      category: "Masterclass"
+      category: "Masterclass",
+      is_free: true,
+      order: 0,
+      mux_playback_id: "83jNROLYYRGW5iiJjXMAGuxJYyt3cgJ02M602XTXCXFzc" // Extracted from URL
     } as Lesson;
   }
-  return null;
-};
 
-export default function LessonPage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params.id as string;
-  const lessonData = getLessonById(id);
-
-  if (!lessonData) {
+  if (!lesson) {
     return (
       <div className="min-h-screen bg-black text-foreground flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Aula não encontrada</h1>
-        <Button onClick={() => router.push('/insights')}>Voltar para Insights</Button>
+        <Link href="/insights">
+          <Button>Voltar para Insights</Button>
+        </Link>
       </div>
     );
   }
 
-  // Enrich with placeholder media if not present (since our data file is text-only for now)
-  const lesson: Lesson & { description: string; thumbnailUrl: string; muxEmbedUrl?: string } = {
-    ...lessonData,
-    description: lessonData.subtitle || lessonData.title, // Ensure description exists
-    videoUrl: lessonData.videoUrl || "https://www.youtube.com/embed/dQw4w9WgXcQ", // Use provided video or fallback
-    thumbnailUrl: "/hero-poster.jpg" // Roulette placeholder
-  };
+  const muxEmbedUrl = lesson.mux_playback_id 
+    ? `https://player.mux.com/${lesson.mux_playback_id}`
+    : undefined;
 
   return (
     <div className="min-h-screen bg-black text-foreground">
       <NetflixTopBar />
       
       <div className="container mx-auto px-4 pt-24 pb-12">
-        <Button 
-            variant="ghost" 
-            className="mb-6 text-muted-foreground hover:text-foreground pl-0 gap-2"
-            onClick={() => router.back()}
-        >
-            <ArrowLeft className="w-5 h-5" />
-            Voltar
-        </Button>
+        <Link href="/insights" className="inline-block mb-6">
+            <Button 
+                variant="ghost" 
+                className="text-muted-foreground hover:text-foreground pl-0 gap-2"
+            >
+                <ArrowLeft className="w-5 h-5" />
+                Voltar
+            </Button>
+        </Link>
 
         <div className="max-w-5xl mx-auto space-y-8">
-            <VideoPlayer 
-              title={lesson.title}
-              description={lesson.description}
-              videoUrl={lesson.videoUrl || ""}
-              muxEmbedUrl={lesson.muxEmbedUrl}
-              thumbnailUrl={lesson.thumbnailUrl}
-              className="w-full aspect-video"
-            />
+            {lesson.locked ? (
+                 <div className="w-full aspect-video bg-muted/20 rounded-lg flex flex-col items-center justify-center gap-4 border border-white/10">
+                    <div className="bg-black/50 p-4 rounded-full">
+                        <Lock className="w-12 h-12 text-primary" />
+                    </div>
+                    <div className="text-center px-4">
+                        <h3 className="text-2xl font-bold mb-2">Conteúdo Exclusivo</h3>
+                        <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                            Esta aula é exclusiva para assinantes PRO. Assine agora para desbloquear todo o conteúdo.
+                        </p>
+                        <Link href="/checkout">
+                            <Button size="lg" className="font-semibold">
+                                Desbloquear Acesso
+                            </Button>
+                        </Link>
+                    </div>
+                 </div>
+            ) : (
+                <VideoPlayer 
+                  title={lesson.title}
+                  description={lesson.subtitle || ""}
+                  videoUrl={lesson.video_url || ""}
+                  muxEmbedUrl={muxEmbedUrl}
+                  thumbnailUrl={lesson.thumbnail_url || "/hero-poster.jpg"}
+                  className="w-full aspect-video"
+                  lessonId={lesson.id}
+                />
+            )}
 
             <div className="space-y-4">
                 <h1 className="text-3xl md:text-4xl font-bold text-foreground">{lesson.title}</h1>
@@ -83,7 +101,6 @@ export default function LessonPage() {
                 </p>
             </div>
 
-            {/* Additional content area (resources, comments, etc.) could go here */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-border">
                 <div className="md:col-span-2 space-y-6">
                     <h3 className="text-xl font-semibold">Resumo da Aula</h3>
@@ -98,12 +115,10 @@ export default function LessonPage() {
                 <div className="space-y-6">
                     <h3 className="text-xl font-semibold">Materiais de Apoio</h3>
                     <div className="space-y-3">
-                        <Button variant="outline" className="w-full justify-start border-zinc-700 hover:bg-zinc-800 text-zinc-300">
-                            📄 PDF da Aula
-                        </Button>
-                        <Button variant="outline" className="w-full justify-start border-zinc-700 hover:bg-zinc-800 text-zinc-300">
-                            📊 Planilha de Gestão
-                        </Button>
+                         {/* Placeholder for resources */}
+                         <div className="p-4 bg-muted/10 rounded-lg border border-white/5 text-sm text-muted-foreground">
+                            Nenhum material disponível para esta aula.
+                         </div>
                     </div>
                 </div>
             </div>

@@ -43,8 +43,8 @@ export function InsightCard({
 
   const CardContentInner = () => (
     <div className="flex flex-col h-full group/card">
-      {/* Thumbnail / Poster Area - Vertical Aspect Ratio 2:3 */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-md bg-muted/20">
+      {/* Thumbnail / Poster Area - Vertical Aspect Ratio 9:16 */}
+      <div className="relative aspect-[9/16] w-full overflow-hidden rounded-md bg-muted/20">
         {thumbnailUrl ? (
           <>
             <img 

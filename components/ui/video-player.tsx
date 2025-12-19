@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Play, X } from "lucide-react";
@@ -10,6 +12,7 @@ interface VideoPlayerProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
   description?: string;
   aspectRatio?: "16/9" | "4/3" | "1/1";
+  lessonId?: string;
 }
 
 function getEmbedUrl(url: string) {
@@ -56,12 +59,44 @@ const VideoPlayer = React.forwardRef<HTMLDivElement, VideoPlayerProps>(
       title,
       description,
       aspectRatio = "16/9",
+      lessonId,
       ...props
     },
     ref
   ) => {
     // State to manage the visibility of the video modal
     const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const progressInterval = React.useRef<NodeJS.Timeout | null>(null);
+
+    // Track progress when modal is open
+    React.useEffect(() => {
+      if (isModalOpen && lessonId) {
+        // Start tracking
+        let seconds = 0;
+        progressInterval.current = setInterval(() => {
+          seconds += 10;
+          fetch('/api/lessons/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lessonId,
+              watchedSeconds: seconds,
+              completed: false // Logic for completion can be added later
+            })
+          }).catch(err => console.error('Failed to update progress', err));
+        }, 10000); // Update every 10 seconds
+      } else {
+        if (progressInterval.current) {
+          clearInterval(progressInterval.current);
+        }
+      }
+
+      return () => {
+        if (progressInterval.current) {
+          clearInterval(progressInterval.current);
+        }
+      };
+    }, [isModalOpen, lessonId]);
 
     // Helper to add autoplay to Mux URL and remove title
     const getMuxUrlWithAutoplay = (url?: string) => {
