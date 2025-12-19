@@ -15,36 +15,103 @@ interface InsightsHeroProps {
   badge: string;
   duration?: string;
   muxEmbedUrl?: string;
+  desktopVideoUrl?: string;
+  desktopVideoEndAt?: number;
+  mobileVideoUrl?: string;
+  mobileVideoEndAt?: number;
 }
 
-export function InsightsHero({ id, title, description, badge, muxEmbedUrl }: InsightsHeroProps) {
+export function InsightsHero({ 
+  id, 
+  title, 
+  description, 
+  badge, 
+  muxEmbedUrl, 
+  desktopVideoUrl, 
+  desktopVideoEndAt, 
+  mobileVideoUrl, 
+  mobileVideoEndAt 
+}: InsightsHeroProps) {
   const router = useRouter();
+
+  const handleMobileTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (mobileVideoEndAt) {
+      const video = e.currentTarget;
+      if (video.currentTime >= mobileVideoEndAt) {
+        video.currentTime = 0;
+        video.play();
+      }
+    }
+  };
+
+  const handleDesktopTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (desktopVideoEndAt) {
+      const video = e.currentTarget;
+      if (video.currentTime >= desktopVideoEndAt) {
+        video.currentTime = 0;
+        video.play();
+      }
+    }
+  };
 
   return (
     <div className="relative w-full h-[80vh] md:h-[95vh] rounded-xl overflow-hidden mb-0 group bg-black shadow-2xl shadow-black/50">
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0">
-        {muxEmbedUrl ? (
-          <iframe
-            key={id}
-            src={muxEmbedUrl}
-            className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-[40%] -translate-y-1/2 object-cover opacity-100 pointer-events-none"
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-            tabIndex={-1}
-          />
-        ) : (
-          <video 
-            key={id} // Force re-render on id change
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            className="absolute inset-0 w-full h-full object-cover opacity-100"
-            poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
-          >
-            <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-dots-and-lines-2988-large.mp4" type="video/mp4" />
-          </video>
+        {/* Desktop Video (Hidden on Mobile if mobileVideoUrl is provided) */}
+        <div className={`w-full h-full ${mobileVideoUrl ? 'hidden md:block' : 'block'}`}>
+          {desktopVideoUrl ? (
+            <video 
+              key={`desktop-custom-${id}`}
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              onTimeUpdate={handleDesktopTimeUpdate}
+              className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-[40%] -translate-y-1/2 object-cover opacity-100 pointer-events-none"
+              poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
+            >
+              <source src={desktopVideoUrl} type="video/mp4" />
+            </video>
+          ) : muxEmbedUrl ? (
+            <iframe
+              key={`desktop-mux-${id}`}
+              src={muxEmbedUrl}
+              className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-[40%] -translate-y-1/2 object-cover opacity-100 pointer-events-none"
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allowFullScreen
+              tabIndex={-1}
+            />
+          ) : (
+            <video 
+              key={`desktop-fallback-${id}`} // Force re-render on id change
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="absolute inset-0 w-full h-full object-cover opacity-100"
+              poster="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop"
+            >
+              <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-white-network-connection-dots-and-lines-2988-large.mp4" type="video/mp4" />
+            </video>
+          )}
+        </div>
+
+        {/* Mobile Video (Visible only on Mobile) */}
+        {mobileVideoUrl && (
+          <div className="block md:hidden w-full h-full">
+            <video 
+              key={`mobile-${id}`}
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              onTimeUpdate={handleMobileTimeUpdate}
+              className="absolute inset-0 w-full h-full object-cover opacity-100"
+            >
+              <source src={mobileVideoUrl} type="video/mp4" />
+            </video>
+          </div>
         )}
         
         {/* Gradient Overlays for Readability (Netflix style) */}

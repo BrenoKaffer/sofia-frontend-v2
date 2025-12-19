@@ -18,7 +18,11 @@ const featuredInsight = {
   description: "Descubra como identificar o exato momento em que o algoritmo da roleta muda de padrão e posicione-se para lucrar quando a maioria perde.\n\nUm método prático para leitura de padrões, controle emocional e execução estratégica na roleta online, criado por quem vive isso todos os dias.",
   badge: "Masterclass Exclusiva",
   duration: "45 min",
-  muxEmbedUrl: "https://player.mux.com/83jNROLYYRGW5iiJjXMAGuxJYyt3cgJ02M602XTXCXFzc?autoplay=true&muted=true&loop=true&controls=false&showTitle=false"
+  muxEmbedUrl: "https://player.mux.com/83jNROLYYRGW5iiJjXMAGuxJYyt3cgJ02M602XTXCXFzc?autoplay=true&muted=true&loop=true&controls=false&showTitle=false",
+  desktopVideoUrl: "https://1070b3c91b7bf5b20c984a1e76117a3e.cdn.bubble.io/f1723084944802x317908004711442440/Hero_App_BigGreenAcademy.mp4?_gl=1*ty36dd*_gcl_au*MTk2Njk5MTU4LjE3MjI5MDc4NTk.*_ga*NzQ0OTU0NjcwLjE3MjI5MDc4NTk.*_ga_BFPVR2DEE2*MTcyMzA0MTAwMS4zLjEuMTcyMzA4NDc2NC41My4wLjA.",
+  desktopVideoEndAt: 11,
+  mobileVideoUrl: "https://1070b3c91b7bf5b20c984a1e76117a3e.cdn.bubble.io/f1723643117960x798699798734225000/Sequ%C3%AAncia%2003_1.mp4?_gl=1*1uzr9om*_gcl_au*MTQwODc4MjU3MS4xNzIzNjQxMTQx*_ga*MTc0Mzc5ODA5Ni4xNzIzNDgyNzkz*_ga_BFPVR2DEE2*MTcyMzY0MTE0MC4xLjEuMTcyMzY0MzA5MC42MC4wLjA.",
+  mobileVideoEndAt: 11
 };
 
 // Mock data for "Continue de Onde Parou"
@@ -54,6 +58,10 @@ export default function InsightsPage() {
           badge={featuredInsight.badge}
           duration={featuredInsight.duration}
           muxEmbedUrl={featuredInsight.muxEmbedUrl}
+          desktopVideoUrl={featuredInsight.desktopVideoUrl}
+          desktopVideoEndAt={featuredInsight.desktopVideoEndAt}
+          mobileVideoUrl={featuredInsight.mobileVideoUrl}
+          mobileVideoEndAt={featuredInsight.mobileVideoEndAt}
         />
       </div>
 
@@ -106,15 +114,15 @@ export default function InsightsPage() {
       
       {/* Footer / CTA Area */}
       <div className="container mx-auto mt-24 px-8 mb-12">
-         <div className="p-12 rounded-2xl bg-gradient-to-r from-emerald-900/40 to-black border border-emerald-500/20 text-center relative overflow-hidden group">
+         <div className="p-12 rounded-2xl bg-gradient-to-r from-primary/20 to-black border border-primary/20 text-center relative overflow-hidden group">
             <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-5" />
             <div className="relative z-10 max-w-2xl mx-auto space-y-6">
-              <h2 className="text-3xl font-bold group-hover:text-emerald-400 transition-colors">Não perca nenhum conteúdo</h2>
-              <p className="text-gray-400 text-lg">
+              <h2 className="text-3xl font-bold group-hover:text-primary transition-colors">Não perca nenhum conteúdo</h2>
+              <p className="text-muted-foreground text-lg">
                 Torne-se membro PRO e desbloqueie acesso ilimitado a todas as aulas, estratégias e ferramentas da SOFIA.
               </p>
               <ShinyButton 
-                className="font-bold px-10 py-6 text-lg h-auto shadow-xl shadow-emerald-900/20 hover:scale-105 transition-transform w-full sm:w-auto"
+                className="font-bold px-10 py-6 text-lg h-auto shadow-xl shadow-primary/20 hover:scale-105 transition-transform w-full sm:w-auto"
                 onClick={() => router.push('/account/upgrade')}
               >
                 Assinar SOFIA PRO

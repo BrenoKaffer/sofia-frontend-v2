@@ -113,7 +113,7 @@ export function NetflixTopBar() {
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 relative">
           <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border border-black" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border border-black" />
         </Button>
 
         {/* User Dropdown */}
@@ -122,7 +122,7 @@ export function NetflixTopBar() {
             <div className="flex items-center gap-2 cursor-pointer group">
               <Avatar className="w-8 h-8 border border-white/10 group-hover:border-white/30 transition-colors rounded-md">
                 <AvatarImage src={user?.avatar} />
-                <AvatarFallback className="bg-emerald-900 text-emerald-200 text-xs rounded-md">
+                <AvatarFallback className="bg-primary/20 text-primary text-xs rounded-md">
                   {user?.name?.[0] || 'U'}
                 </AvatarFallback>
               </Avatar>

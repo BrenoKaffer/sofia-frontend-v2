@@ -49,11 +49,11 @@ export function ShinyButton({
         @property --gradient-percent { syntax: "<percentage>"; initial-value: 5%; inherits: false; }
         @property --gradient-shine { syntax: "<color>"; initial-value: white; inherits: false; }
         .shiny-cta {
-          --shiny-cta-bg: linear-gradient(90deg, #34E13C, #0C1C25);
-          --shiny-cta-bg-subtle: #0C1C25;
+          --shiny-cta-bg: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+          --shiny-cta-bg-subtle: hsl(var(--accent));
           --shiny-cta-fg: #ffffff;
-          --shiny-cta-highlight: #34E13C;
-          --shiny-cta-highlight-subtle: #34E13C;
+          --shiny-cta-highlight: hsl(var(--primary));
+          --shiny-cta-highlight-subtle: hsl(var(--primary));
           --animation: gradient-angle linear infinite;
           --duration: 3s;
           --shadow-size: 2px;
