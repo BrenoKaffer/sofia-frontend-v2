@@ -24,8 +24,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [welcomeTyped, setWelcomeTyped] = useState('');
+  const [welcomeDone, setWelcomeDone] = useState(false);
   const { login, user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
+  const welcomeText = 'Bem-vindo de volta';
 
   // Redirect if already logged in
   useEffect(() => {
@@ -38,6 +41,31 @@ export default function LoginPage() {
     const timeout = setTimeout(() => setSplashVisible(false), 1800);
     return () => clearTimeout(timeout);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+    if (reducedMotion) {
+      setWelcomeTyped(welcomeText);
+      setWelcomeDone(true);
+      return;
+    }
+
+    setWelcomeTyped('');
+    setWelcomeDone(false);
+
+    let i = 0;
+    const intervalId = window.setInterval(() => {
+      i += 1;
+      setWelcomeTyped(welcomeText.slice(0, i));
+      if (i >= welcomeText.length) {
+        window.clearInterval(intervalId);
+        setWelcomeDone(true);
+      }
+    }, 45);
+
+    return () => window.clearInterval(intervalId);
+  }, [welcomeText]);
 
   useEffect(() => {
     try {
@@ -287,7 +315,7 @@ export default function LoginPage() {
               transition={{ delay: 1.8, duration: 0.8, ease: 'easeOut' }}
               className="inline-flex items-center justify-center mb-2"
             >
-              <div className="relative w-[220px] h-[55px] mx-auto">
+              <div className="relative w-[240px] h-[60px] md:w-[280px] md:h-[70px] mx-auto">
                 <Image
                   src="/logo_sofia.png"
                   alt="SOFIA"
@@ -304,7 +332,10 @@ export default function LoginPage() {
 
           <Card className="border-0 shadow-2xl bg-card/50 backdrop-blur-sm">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-heading">Bem-vindo de volta</CardTitle>
+              <CardTitle className="text-2xl font-heading">
+                <span>{welcomeTyped}</span>
+                <span className={`inline-block w-[1ch] ${welcomeDone ? 'opacity-0' : 'opacity-100 animate-pulse'}`}>|</span>
+              </CardTitle>
               <CardDescription className="font-sans">
                 Entre com suas credenciais para acessar o sistema
               </CardDescription>

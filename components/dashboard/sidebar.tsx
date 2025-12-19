@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import BrandSVG from '@/components/layout/BrandSVG';
+import Image from 'next/image';
 import FaviconSVG from '@/components/layout/FaviconSVG';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -16,15 +16,12 @@ import {
   FileText,
   User,
   Brain,
-  X,
   ChevronLeft,
   ChevronRight,
-  Zap,
   Activity,
   Target,
   History,
   Dices,
-  Wrench,
   HelpCircle,
   TestTubes,
   Puzzle,
@@ -38,10 +35,8 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
-  RotateCcw,
   Database
 } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
 
 const navigationSections = [
   {
@@ -114,7 +109,6 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
     });
     return initialState;
   });
-  const { user } = useAuth();
   // Removida persistência de scroll para evitar resets automáticos
 
   const toggleSection = (sectionTitle: string) => {
@@ -130,7 +124,15 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       <div className="flex h-16 items-center border-b px-4 justify-between">
         <div className={`flex items-center gap-3 w-full ${!collapsed ? 'justify-center' : ''}`}>
           {!collapsed ? (
-            <BrandSVG width={120} height={30} className="block" />
+            <div className="relative w-[140px] h-[34px]">
+              <Image
+                src="/logo_sofia.png"
+                alt="SOFIA"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
           ) : (
             <div className="flex h-8 w-8 items-center justify-center">
               <FaviconSVG width={32} height={32} />

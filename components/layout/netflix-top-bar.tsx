@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
   Bell, 
@@ -24,7 +24,6 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import BrandSVG from '@/components/layout/BrandSVG';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 
@@ -67,7 +66,15 @@ export function NetflixTopBar() {
       {/* Left Section: Logo + Nav */}
       <div className="flex items-center gap-8">
         <Link href="/dashboard" className="shrink-0 hover:opacity-80 transition-opacity">
-          <BrandSVG width={90} height={24} className="text-white" />
+          <div className="relative w-[110px] h-[26px]">
+            <Image
+              src="/logo_sofia.png"
+              alt="SOFIA"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
         </Link>
 
         <nav className="hidden md:flex items-center gap-5">
