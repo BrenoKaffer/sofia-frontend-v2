@@ -55,6 +55,20 @@ export default async function InsightsPage() {
 
   const badgeArtworkSrc = heroContent.badge === 'Masterclass Exclusiva' ? '/logo_noalvoclass.png' : undefined;
 
+  const continueItems =
+    continueWatchingData.length > 0
+      ? continueWatchingData
+      : firstModule?.lessons?.length
+        ? [
+            {
+              ...firstModule.lessons[0],
+              id: firstModule.lessons[0].slug || firstModule.lessons[0].id,
+              subtitle: firstModule.lessons[0].subtitle || 'Assista sua primeira aula para começar.',
+              progress: 0,
+            },
+          ]
+        : [];
+
   return (
     <div className="min-h-screen bg-black text-foreground pb-20 overflow-x-hidden">
       
@@ -78,25 +92,25 @@ export default async function InsightsPage() {
       <div className="relative z-20 space-y-12 pl-4 md:pl-12 lg:pl-16 -mt-32">
         
         {/* Continue de Onde Parou */}
-        {continueWatchingData.length > 0 && (
-            <InsightsCarousel title="Continue de Onde Parou">
-            {continueWatchingData.map((lesson) => (
-                <div key={lesson.id} className="min-w-[240px] md:min-w-[320px]">
-                <InsightCard 
-                    {...lesson}
-                    id={lesson.slug || lesson.id}
-                    subtitle={lesson.subtitle || ''}
+        {continueItems.length > 0 && (
+          <InsightsCarousel title="Continue de Onde Parou">
+            {continueItems.map((lesson) => (
+              <div key={lesson.id} className="min-w-[240px] md:min-w-[320px]">
+                <InsightCard
+                  {...lesson}
+                  id={lesson.slug || lesson.id}
+                  subtitle={lesson.subtitle || ''}
                 />
-                </div>
+              </div>
             ))}
-            </InsightsCarousel>
+          </InsightsCarousel>
         )}
 
         {/* Featured First Row - "Comece por Aqui" */}
         {firstModule && (
           <div className="relative">
              <div className="absolute -left-4 md:-left-12 lg:-left-16 top-0 bottom-0 w-1 bg-primary/50 rounded-r-full" />
-             <InsightsCarousel title={firstModule.title}>
+             <InsightsCarousel title="Comece por Aqui">
               {firstModule.lessons.map((lesson) => (
                 <div key={lesson.id} className="min-w-[240px] md:min-w-[320px]">
                   <InsightCard 
