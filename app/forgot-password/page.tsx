@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, Brain, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import BrandSVG from '@/components/layout/BrandSVG';
 import { motion } from 'framer-motion';
 
 function ShinyButton({ children, className = '', type = 'button', disabled = false }: { children: React.ReactNode; className?: string; type?: 'button' | 'submit' | 'reset'; disabled?: boolean }) {
@@ -362,9 +362,26 @@ export default function ForgotPasswordPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <div className="text-center mb-8 relative">
-            <BrandSVG width={220} height={55} className="mx-auto block" />
-            <p className="text-muted-foreground mt-2 font-sans">Sistema de Operação de Fichas Inteligentes e Autônomas</p>
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="inline-flex items-center justify-center mb-2"
+            >
+              <div className="relative w-[240px] h-[60px] md:w-[280px] md:h-[70px] mx-auto">
+                <Image
+                  src="/logo_sofia.png"
+                  alt="SOFIA"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </motion.div>
+            <p className="text-muted-foreground mt-2 font-sans">
+              Sistema de Operação de Fichas Inteligentes e Autônomas
+            </p>
           </div>
 
           <Card className="border-0 shadow-2xl bg-card/50 backdrop-blur-sm">
