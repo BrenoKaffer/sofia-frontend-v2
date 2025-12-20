@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,6 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CPFService } from '@/lib/cpf-service';
-import BrandSVG from '@/components/layout/BrandSVG';
 
 function ShinyButton({ children, className = '', type = 'button', disabled = false }: { children: React.ReactNode; className?: string; type?: 'button' | 'submit' | 'reset'; disabled?: boolean }) {
   return (
@@ -516,7 +516,15 @@ export default function RegisterPage() {
         >
           {/* Header */}
           <div className="text-center mb-2 relative">
-            <BrandSVG width={220} height={55} className="mx-auto block" />
+            <div className="relative w-[240px] h-[60px] md:w-[280px] md:h-[70px] mx-auto">
+              <Image
+                src="/logo_sofia.png"
+                alt="SOFIA"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
             <p className="text-muted-foreground mt-2 font-sans">
               Sistema de Operação de Fichas Inteligentes e Autônomas
             </p>

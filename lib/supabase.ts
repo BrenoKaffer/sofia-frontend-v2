@@ -25,15 +25,25 @@ if ((!supabaseUrl || !supabaseAnonKey) && isBrowser) {
 const defaultUrl = supabaseUrl || 'https://placeholder.supabase.co'
 const defaultKey = supabaseAnonKey || 'placeholder-key'
 
-// Singleton instance for browser client
-let supabaseInstance: SupabaseClient | null = null
-
 // Singleton getter for browser client
 export const getSupabaseClient = (): SupabaseClient => {
-  if (!supabaseInstance) {
-    supabaseInstance = createBrowserClient(defaultUrl, defaultKey)
+  const globalAny = globalThis as unknown as { __sofiaSupabaseClient?: SupabaseClient }
+
+  if (globalAny.__sofiaSupabaseClient) {
+    return globalAny.__sofiaSupabaseClient
   }
-  return supabaseInstance
+
+  globalAny.__sofiaSupabaseClient = isBrowser
+    ? createBrowserClient(defaultUrl, defaultKey)
+    : createClient(defaultUrl, defaultKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false,
+        },
+      })
+
+  return globalAny.__sofiaSupabaseClient
 }
 
 // Export singleton instance for direct use
@@ -43,7 +53,14 @@ export const supabase = getSupabaseClient()
 export const createServerClient = () => {
   return createClient(
     defaultUrl,
-    defaultKey
+    defaultKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    }
   )
 }
 
