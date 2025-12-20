@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backendIntegration } from '@/lib/backend-integration';
 
+export const runtime = 'nodejs';
+
 /**
  * Endpoint: GET /api/kpis-estrategias
  * Retorna KPIs e métricas de performance das estratégias

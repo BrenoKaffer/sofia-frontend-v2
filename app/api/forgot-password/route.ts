@@ -1,5 +1,3 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -23,57 +21,34 @@ export async function POST(request: NextRequest) {
     }
 
     const backendUrl = process.env.BACKEND_URL;
-    if (backendUrl) {
-      try {
-        const response = await fetch(`${backendUrl}/api/auth/forgot-password`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email }),
-        });
-
-        const rawText = await response.text();
-        let data: any = null;
-        try {
-          data = rawText ? JSON.parse(rawText) : null;
-        } catch {
-          data = { message: rawText };
-        }
-
-        if (!response.ok) {
-          console.error('Erro no backend ao processar forgot-password:', data);
-          if (response.status < 500) {
-            return NextResponse.json(
-              { error: data?.message || 'Erro ao processar solicitação' },
-              { status: response.status }
-            );
-          }
-        } else {
-          return NextResponse.json(
-            {
-              message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.',
-              success: true,
-            },
-            { status: 200 }
-          );
-        }
-      } catch (error) {
-        console.error('Falha ao chamar backend no forgot-password:', error);
-      }
+    if (!backendUrl) {
+      return NextResponse.json(
+        { error: 'BACKEND_URL não configurado' },
+        { status: 500 }
+      );
     }
 
-    const url = new URL(request.url);
-    const origin = request.headers.get('origin') || url.origin;
-    const redirectTo = `${origin}/reset-password`;
+    const response = await fetch(`${backendUrl}/api/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
 
-    const supabase = createRouteHandlerClient({ cookies });
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) {
-      console.error('Erro no Supabase ao processar forgot-password:', error);
+    const rawText = await response.text();
+    let data: any = null;
+    try {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch {
+      data = { message: rawText };
+    }
+
+    if (!response.ok) {
+      console.error('Erro no backend ao processar forgot-password:', data);
       return NextResponse.json(
-        { error: 'Erro ao processar solicitação' },
-        { status: 500 }
+        { error: data?.message || 'Erro ao processar solicitação' },
+        { status: response.status >= 400 && response.status <= 599 ? response.status : 500 }
       );
     }
 

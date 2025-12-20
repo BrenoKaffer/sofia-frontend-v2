@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-server';
 import { backendIntegration } from '@/lib/backend-integration';
 
+export const runtime = 'nodejs';
+
 /**
  * Endpoint: GET /api/user/preferences
  * Retorna preferências do usuário autenticado

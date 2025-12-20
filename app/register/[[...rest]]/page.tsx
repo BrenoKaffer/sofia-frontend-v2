@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Eye, EyeOff, Brain, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -515,16 +515,23 @@ export default function RegisterPage() {
           transition={{ duration: 0.5 }}
         >
           {/* Header */}
-          <div className="text-center mb-2 relative">
-            <div className="relative w-[240px] h-[60px] md:w-[280px] md:h-[70px] mx-auto">
-              <Image
-                src="/logo_sofia.png"
-                alt="SOFIA"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="inline-flex items-center justify-center mb-2"
+            >
+              <div className="relative w-[240px] h-[60px] md:w-[280px] md:h-[70px] mx-auto">
+                <Image
+                  src="/logo_sofia.png"
+                  alt="SOFIA"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </motion.div>
             <p className="text-muted-foreground mt-2 font-sans">
               Sistema de Operação de Fichas Inteligentes e Autônomas
             </p>

@@ -14,6 +14,8 @@ export interface Lesson {
   mux_playback_id?: string;
   is_free: boolean;
   order: number;
+  published?: boolean;
+  featured?: boolean;
 }
 
 export interface Module {
@@ -22,6 +24,7 @@ export interface Module {
   slug: string;
   order: number;
   lessons: Lesson[];
+  published?: boolean;
 }
 
 export interface UserProgress {

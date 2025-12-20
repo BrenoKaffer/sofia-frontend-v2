@@ -208,7 +208,29 @@ function ResetPasswordContent() {
   if (isValidToken === false) {
     return (
       <div className="min-h-screen flex items-center justify-center p-8">
-        <Card className="w-full max-w-md">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="inline-flex items-center justify-center mb-2"
+            >
+              <div className="relative w-[240px] h-[60px] md:w-[280px] md:h-[70px] mx-auto">
+                <Image
+                  src="/logo_sofia.png"
+                  alt="SOFIA"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </motion.div>
+            <p className="text-muted-foreground mt-2 font-sans">
+              Sistema de Operação de Fichas Inteligentes e Autônomas
+            </p>
+          </div>
+          <Card className="w-full">
           <CardHeader className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full mb-4 mx-auto">
               <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
@@ -242,6 +264,7 @@ function ResetPasswordContent() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     );
   }

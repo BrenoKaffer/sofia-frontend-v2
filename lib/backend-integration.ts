@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './api-client';
+import { sendFallbackAlertEmail } from './email';
 
 interface BackendStatus {
   isAvailable: boolean;
@@ -19,6 +20,47 @@ class BackendIntegration {
   
   private checkInterval = 30000; // 30 segundos
   private useMockFallback = process.env.USE_MOCK_DATA === 'true';
+  private fallbackActive = false;
+  private lastFallbackAlertAt = 0;
+  private fallbackAlertMinIntervalMs = 15 * 60 * 1000;
+
+  private triggerFallbackAlert(reason: string, error?: unknown) {
+    if (!this.useMockFallback) return;
+
+    const now = Date.now();
+    if (now - this.lastFallbackAlertAt < this.fallbackAlertMinIntervalMs) {
+      this.fallbackActive = true;
+      return;
+    }
+
+    if (!this.fallbackActive) {
+      this.fallbackActive = true;
+    }
+
+    this.lastFallbackAlertAt = now;
+
+    const backendUrl =
+      process.env.SOFIA_BACKEND_URL ||
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      'http://localhost:3001';
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : this.status.error || undefined;
+
+    void sendFallbackAlertEmail({
+      reason,
+      error: errorMessage || null,
+      backendUrl,
+      occurredAt: new Date(now).toISOString(),
+    }).catch((err) => {
+      console.warn('Falha ao enviar email de fallback:', err);
+    });
+  }
 
   constructor() {
     this.checkBackendHealth();
@@ -30,6 +72,7 @@ class BackendIntegration {
    * Verifica se o backend está disponível
    */
   async checkBackendHealth(): Promise<boolean> {
+    const wasAvailable = this.status.isAvailable;
     try {
       const response = await apiClient.getSystemHealth();
       this.status = {
@@ -39,7 +82,12 @@ class BackendIntegration {
       };
       
       if (response.success) {
+        if (!wasAvailable) {
+          this.fallbackActive = false;
+        }
         console.log('✅ Backend SOFIA conectado com sucesso');
+      } else {
+        this.triggerFallbackAlert('Health check falhou', response.error);
       }
       
       return response.success;
@@ -51,6 +99,7 @@ class BackendIntegration {
       };
       
       console.warn('⚠️ Backend SOFIA não disponível, usando dados mock:', error);
+      this.triggerFallbackAlert('Backend SOFIA indisponível (exceção no health check)', error);
       return false;
     }
   }
@@ -285,6 +334,7 @@ class BackendIntegration {
   
   private handleMockFallback<T>(mockMethod: () => T, errorMessage: string): T {
     if (this.useMockFallback) {
+      this.triggerFallbackAlert(errorMessage);
       return mockMethod();
     }
     throw new Error(`${errorMessage} - Backend indisponível e dados mock desabilitados`);

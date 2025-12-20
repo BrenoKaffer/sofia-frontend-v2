@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-server';
 import { backendIntegration } from '@/lib/backend-integration';
 
+export const runtime = 'nodejs';
+
 /**
  * Endpoint: GET /api/ai-signals
  * Retorna sinais de IA para apostas na roleta

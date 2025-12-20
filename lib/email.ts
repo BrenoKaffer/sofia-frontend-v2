@@ -166,3 +166,46 @@ export async function sendDunningEmail(options: {
   const from = process.env.SMTP_FROM || 'no-reply@localhost';
   await transport.sendMail({ from, to: options.to, subject, html, text });
 }
+
+export async function sendFallbackAlertEmail(options: {
+  reason: string;
+  error?: string | null;
+  backendUrl?: string | null;
+  occurredAt?: string | null;
+}) {
+  const transport = createTransport();
+  const to = process.env.FALLBACK_ALERT_EMAIL_TO || 'b.kaffer07@gmail.com';
+  const from = process.env.SMTP_FROM || 'no-reply@localhost';
+  const environment = process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown';
+  const occurredAt = options.occurredAt || new Date().toISOString();
+  const backendUrl = options.backendUrl || process.env.SOFIA_BACKEND_URL || 'unknown';
+
+  const subject = 'SOFIA - Fallback ativado';
+
+  const content = `
+    <h2 style="margin:0;font-size:24px;font-weight:700;color:#081217;">
+      Fallback ativado
+    </h2>
+    <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+      O sistema entrou em modo fallback ao tentar consumir o backend.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;font-size:14px;color:#111;">
+      <tr><td style="padding:6px 0;color:#555;">Motivo</td><td style="padding:6px 0;font-weight:700;">${options.reason}</td></tr>
+      <tr><td style="padding:6px 0;color:#555;">Ambiente</td><td style="padding:6px 0;font-weight:700;">${environment}</td></tr>
+      <tr><td style="padding:6px 0;color:#555;">Backend</td><td style="padding:6px 0;font-weight:700;">${backendUrl}</td></tr>
+      <tr><td style="padding:6px 0;color:#555;">Timestamp</td><td style="padding:6px 0;font-weight:700;">${occurredAt}</td></tr>
+      ${options.error ? `<tr><td style="padding:6px 0;color:#555;">Erro</td><td style="padding:6px 0;font-weight:700;">${options.error}</td></tr>` : ''}
+    </table>
+  `;
+
+  const html = BaseTemplate(content);
+  const text =
+    `SOFIA - Fallback ativado\n\n` +
+    `Motivo: ${options.reason}\n` +
+    `Ambiente: ${environment}\n` +
+    `Backend: ${backendUrl}\n` +
+    `Timestamp: ${occurredAt}\n` +
+    (options.error ? `Erro: ${options.error}\n` : '');
+
+  await transport.sendMail({ from, to, subject, html, text });
+}

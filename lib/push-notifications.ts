@@ -28,14 +28,19 @@ class PushNotificationService {
   }
 
   private checkSupport(): void {
-    this.isSupported = 
-      'serviceWorker' in navigator && 
-      'PushManager' in window && 
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      this.isSupported = false;
+      return;
+    }
+
+    this.isSupported =
+      'serviceWorker' in navigator &&
+      'PushManager' in window &&
       'Notification' in window;
   }
 
   private updatePermissionStatus(): void {
-    if (this.isSupported) {
+    if (this.isSupported && typeof Notification !== 'undefined') {
       this.permission = Notification.permission;
     }
   }
