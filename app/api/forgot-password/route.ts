@@ -20,36 +20,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendUrl = process.env.BACKEND_URL;
-    if (!backendUrl) {
+    const backendUrl =
+      process.env.SOFIA_BACKEND_URL ||
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      'https://api.v1sofia.com';
+
+    const normalizedBase = backendUrl.replace(/\/+$/, '');
+    if (!normalizedBase) {
+      console.error('Backend URL não configurada para forgot-password');
       return NextResponse.json(
-        { error: 'BACKEND_URL não configurado' },
-        { status: 500 }
+        {
+          message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.',
+          success: true,
+        },
+        { status: 200 }
       );
     }
 
-    const response = await fetch(`${backendUrl}/api/auth/forgot-password`, {
+    const endpoint = normalizedBase.endsWith('/api')
+      ? `${normalizedBase}/auth/forgot-password`
+      : `${normalizedBase}/api/auth/forgot-password`;
+
+    const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
 
-    const rawText = await response.text();
-    let data: any = null;
-    try {
-      data = rawText ? JSON.parse(rawText) : null;
-    } catch {
-      data = { message: rawText };
-    }
-
     if (!response.ok) {
-      console.error('Erro no backend ao processar forgot-password:', data);
-      return NextResponse.json(
-        { error: data?.message || 'Erro ao processar solicitação' },
-        { status: response.status >= 400 && response.status <= 599 ? response.status : 500 }
-      );
+      const rawText = await response.text();
+      console.error('Falha no backend ao processar forgot-password:', {
+        status: response.status,
+        body: rawText,
+      });
     }
 
     return NextResponse.json(
@@ -63,8 +68,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Erro interno no endpoint forgot-password:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
+      { 
+        message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.',
+        success: true 
+      },
+      { status: 200 }
     );
   }
 }
