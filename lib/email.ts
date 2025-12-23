@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-const LOGO_URL = process.env.LOGO_URL || 'https://placehold.co/240x80/081217/FFF?text=SOFIA';
+const LOGO_URL = process.env.LOGO_URL || 'https://app.v1sofia.com/logo_sofia.png';
 const YEAR = new Date().getFullYear();
 
 const BaseTemplate = (content: string, footerText = `© ${YEAR} SOFIA — Inteligência que não brinca em serviço.`) => `

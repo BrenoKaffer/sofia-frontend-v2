@@ -34,7 +34,11 @@ export const getSupabaseClient = (): SupabaseClient => {
   }
 
   globalAny.__sofiaSupabaseClient = isBrowser
-    ? createBrowserClient(defaultUrl, defaultKey)
+    ? createBrowserClient(defaultUrl, defaultKey, {
+        auth: {
+          detectSessionInUrl: false,
+        },
+      })
     : createClient(defaultUrl, defaultKey, {
         auth: {
           autoRefreshToken: false,
