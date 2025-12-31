@@ -1,0 +1,266 @@
+@import url('https://fonts.googleapis.com/css2?family=Bruno+Ace&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,500;1,600;1,700;1,800&family=Urbanist:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+@layer base {
+  :root {
+    /* Light theme */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 123 74% 54%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 201 51% 10%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 140 100% 50%;
+    --success: 142.1 76.2% 36.3%;
+    --warning: 47.9 95.8% 53.1%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.75rem;
+  }
+  
+  .dark {
+    /* Dark theme - New color scheme */
+    --background: 240 3% 6%;
+    --foreground: 0 0% 100%;
+    --card: 240 3% 11%;
+    --card-foreground: 0 0% 100%;
+    --popover: 240 3% 11%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 123 74% 54%;
+    --primary-foreground: 240 3% 6%;
+    --secondary: 240 3% 18%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 3% 18%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 201 51% 10%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 3% 18%;
+    --input: 240 3% 18%;
+    --ring: 140 100% 50%;
+    --success: 142.1 70.6% 45.3%;
+    --warning: 47.9 95.8% 53.1%;
+    --chart-1: 217 100% 48%;
+    --chart-2: 140 100% 50%;
+    --chart-3: 210 40% 98%;
+    --chart-4: 226 71% 40%;
+    --chart-5: 210 20% 87%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border transition-colors duration-300;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+  
+  .glass-dark {
+    @apply bg-black/10 backdrop-blur-md border border-white/10;
+  }
+
+  .animate-gradient {
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .marquee {
+    animation: marquee 20s linear infinite;
+  }
+
+  .marquee-reverse {
+    animation: marquee-reverse 20s linear infinite;
+  }
+}
+
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes marquee-reverse {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-muted rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-accent rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-accent/80;
+}
+
+/* Estilos para comportamento de hover dos números */
+
+/* Classe aplicada a todos os elementos com o mesmo número */
+.highlight {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+  border: 2px solid rgba(59, 130, 246, 0.8);
+  z-index: 10;
+  position: relative;
+}
+
+/* Classe aplicada ao elemento atualmente sob o mouse */
+.highlight-active {
+  transform: scale(1.2);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.9);
+  border: 3px solid rgba(59, 130, 246, 1);
+  z-index: 20;
+  position: relative;
+}
+
+/* Transições suaves para todos os números */
+[data-number] {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Efeito especial para números vermelhos quando destacados */
+[data-number].highlight.bg-red-500 {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+  border-color: rgba(239, 68, 68, 0.8);
+}
+
+[data-number].highlight-active.bg-red-500 {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.9);
+  border-color: rgba(239, 68, 68, 1);
+}
+
+/* Efeito especial para números pretos quando destacados */
+[data-number].highlight.bg-black {
+  box-shadow: 0 0 15px rgba(107, 114, 128, 0.6);
+  border-color: rgba(107, 114, 128, 0.8);
+}
+
+[data-number].highlight-active.bg-black {
+  box-shadow: 0 0 20px rgba(107, 114, 128, 0.9);
+  border-color: rgba(107, 114, 128, 1);
+}
+
+/* Efeito especial para o zero (verde) quando destacado */
+[data-number].highlight.bg-green-600 {
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.6);
+  border-color: rgba(34, 197, 94, 0.8);
+}
+
+[data-number].highlight-active.bg-green-600 {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.9);
+  border-color: rgba(34, 197, 94, 1);
+}
+
+/* Efeito para badges */
+.highlight.badge {
+  transform: scale(1.15);
+}
+
+.highlight-active.badge {
+  transform: scale(1.25);
+}
+
+/* Animação pulsante para o número ativo */
+.highlight-active {
+  animation: pulse-glow 1.5s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Garantir que os elementos destacados fiquem acima de outros */
+.highlight,
+.highlight-active {
+  position: relative;
+  z-index: 10;
+}
+
+.highlight-active {
+  z-index: 20;
+}

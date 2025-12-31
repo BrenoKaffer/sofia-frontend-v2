@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2.1",
+  "version": "1.0.0",
+  "template_key": "sectorDominante",
+  "name": "Setor Dominante",
+  "source": "template",
+  "locked": true,
+  "description": "Agrupa giros por setores do zero (Voisins, Tiers, Órfãos) e sugere vizinhança dominante.",
+  "nodes": [
+    { "id": "t1", "type": "trigger", "data": { "config": { "janela": 120 } } },
+    { "id": "c1", "type": "condition", "subtype": "sector", "data": { "config": { "metodo": "setorDominante", "vizinhanca": 2 } } },
+    { "id": "s1", "type": "signal", "data": { "config": { "acao": "emitir_sinal" } } }
+  ],
+  "connections": [
+    { "source": "t1", "target": "c1" },
+    { "source": "c1", "target": "s1" }
+  ]
+}

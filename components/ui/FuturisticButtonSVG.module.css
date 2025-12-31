@@ -1,0 +1,61 @@
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(10, 18, 12, 0.25);
+  border: 1px solid rgba(52, 224, 60, 0.25);
+  box-shadow: 0 0 24px rgba(52, 224, 60, 0.18), 0 0 14px rgba(0, 210, 255, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.svgRoot {
+  display: block;
+  filter: drop-shadow(0 0 10px rgba(52, 224, 60, 0.25)) drop-shadow(0 0 6px rgba(0, 210, 255, 0.18));
+}
+
+.neonStroke {
+  fill: none;
+  stroke: url(#neonGradient);
+  stroke-width: 2;
+  filter: url(#glowFilter);
+}
+
+.neonAccent {
+  fill: url(#neonGradient);
+  filter: url(#softShadowFilter);
+}
+
+.sweep {
+  fill: none;
+  stroke: url(#sweepGradient);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 140;
+  stroke-dashoffset: 0;
+  animation: sweep 2.8s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    stroke-dashoffset: -280;
+  }
+}
+
+.glowPulse {
+  animation: glowPulse 3.2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0% {
+    box-shadow: 0 0 16px rgba(52, 224, 60, 0.18), 0 0 8px rgba(0, 210, 255, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(52, 224, 60, 0.28), 0 0 14px rgba(0, 210, 255, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 16px rgba(52, 224, 60, 0.18), 0 0 8px rgba(0, 210, 255, 0.12);
+  }
+}

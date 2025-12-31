@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2.1",
+  "version": "1.0.0",
+  "template_key": "columnHot",
+  "name": "Coluna Quente",
+  "source": "template",
+  "locked": true,
+  "description": "Detecta colunas predominantes e gera lista de números da coluna mais quente.",
+  "nodes": [
+    { "id": "t1", "type": "trigger", "data": { "config": { "janela": 50 } } },
+    { "id": "c1", "type": "condition", "subtype": "column_hot", "data": { "config": { "janela": 18, "frequenciaMinima": 6 } } },
+    { "id": "s1", "type": "signal", "data": { "config": { "acao": "emitir_sinal" } } }
+  ],
+  "connections": [
+    { "source": "t1", "target": "c1" },
+    { "source": "c1", "target": "s1" }
+  ]
+}

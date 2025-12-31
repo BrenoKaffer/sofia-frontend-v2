@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "2.1",
+  "version": "1.0.0",
+  "template_key": "espelhos",
+  "name": "Espelhos",
+  "source": "template",
+  "locked": true,
+  "description": "Detecta padrões espelhados em sequências recentes para emissão de sinal.",
+  "nodes": [
+    { "id": "t1", "type": "trigger", "data": { "config": { "janela": 60 } } },
+    { "id": "c1", "type": "condition", "subtype": "pattern", "data": { "config": { "tipo": "espelho", "tamanho": 4 } } },
+    { "id": "s1", "type": "signal", "data": { "config": { "acao": "emitir_sinal" } } }
+  ],
+  "connections": [
+    { "source": "t1", "target": "c1" },
+    { "source": "c1", "target": "s1" }
+  ]
+}
