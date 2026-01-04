@@ -214,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const getToken = async (): Promise<string | null> => {
+  const getToken = React.useCallback(async (): Promise<string | null> => {
     try {
       if (AUTH_DEV_BYPASS) {
         return 'dev-bypass-token';
@@ -226,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.error('Não foi possível obter o token de acesso.');
       return null;
     }
-  };
+  }, [AUTH_DEV_BYPASS]);
 
   return (
     <AuthContext.Provider value={{ user, login, register, logout, getToken, isLoading }}>

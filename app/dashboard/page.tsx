@@ -86,6 +86,7 @@ export default function DashboardPage() {
   const [selectedActiveTable, setSelectedActiveTable] = useState<{ tableId: string; strategyName: string; suggestedBets: (string | number)[] } | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const lastActivityRef = useRef<number>(Date.now());
+  const loadedUserRef = useRef<string | null>(null);
   // Assinar sinais em tempo real e filtrar por mesa ativa (se houver)
   const { signals: realtimeSignals, status: realtimeStatus } = useRealtimeSignals({ 
     limit: 50,
@@ -722,7 +723,16 @@ export default function DashboardPage() {
           }
         };
 
-      loadInitialData();
+      if (loadedUserRef.current !== user.email) {
+        loadedUserRef.current = user.email || '';
+        loadInitialData();
+      } else {
+        console.log('🔄 Usuário já carregado, atualizando dados silenciosamente...');
+        fetchRecentSignals();
+        updateKPIs();
+        fetchRouletteHistory();
+        updateRouletteStatus();
+      }
 
       // Configurar polling para atualizações em tempo real
       console.log('🔄 Configurando polling para atualizações...');
