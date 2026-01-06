@@ -320,7 +320,8 @@ async function persistWebhookEvent(params: {
   } as any);
 }
 
-export async function POST(request: NextRequest) {
+export async function POST() { return new NextResponse('Gone. Webhook processing moved to Backend.', { status: 410 }); }
+async function POST_DISABLED(request: NextRequest) {
   try {
     // Obter o corpo da requisição
     const body = await request.text();
@@ -398,7 +399,8 @@ export async function POST(request: NextRequest) {
 }
 
 // Método GET para verificar se o endpoint está funcionando
-export async function GET() {
+export async function GET() { return new NextResponse('Gone. Webhook processing moved to Backend.', { status: 410 }); }
+async function GET_DISABLED() {
   return NextResponse.json({
     message: 'Webhook endpoint da Pagar.me está funcionando',
     timestamp: new Date().toISOString(),
