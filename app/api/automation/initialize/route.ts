@@ -7,7 +7,26 @@ import { USE_MOCKS, fetchBackend, safeJson } from '@/lib/backend-proxy';
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      const text = await request.text();
+      try {
+        body = JSON.parse(text);
+      } catch {
+        console.error('Invalid JSON body received:', text);
+        return NextResponse.json(
+          { success: false, error: 'Invalid JSON body' },
+          { status: 400 }
+        );
+      }
+    } catch (e) {
+      console.error('Error reading request body:', e);
+      return NextResponse.json(
+        { success: false, error: 'Failed to read request body' },
+        { status: 400 }
+      );
+    }
+
     const { config } = body;
 
     // Validar configuração
