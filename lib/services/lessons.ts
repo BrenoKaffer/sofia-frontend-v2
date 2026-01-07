@@ -38,7 +38,7 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
     // Check user_profiles first (cache/summary)
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('status, plan, role, account_status')
+      .select('status, plan, role')
       .eq('user_id', userId)
       .single();
       

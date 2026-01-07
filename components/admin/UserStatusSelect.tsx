@@ -1,14 +1,15 @@
 import React from 'react';
 import { 
   AccountStatus, 
+  UserStatus,
   getSelectableStatuses, 
   getStatusConfig,
   isValidStatusTransition 
 } from '@/lib/user-status';
 
 interface UserStatusSelectProps {
-  currentStatus: AccountStatus | string;
-  onStatusChange: (newStatus: AccountStatus) => void;
+  currentStatus: AccountStatus | UserStatus | string;
+  onStatusChange: (newStatus: AccountStatus | UserStatus) => void;
   disabled?: boolean;
   showTransitionValidation?: boolean;
   className?: string;
@@ -24,7 +25,7 @@ export function UserStatusSelect({
   const selectableStatuses = getSelectableStatuses();
   
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStatus = event.target.value as AccountStatus;
+    const newStatus = event.target.value as AccountStatus | UserStatus;
     onStatusChange(newStatus);
   };
 
@@ -126,8 +127,8 @@ export function UserStatusBadge({
 interface StatusChangeHistoryProps {
   changes: Array<{
     id: string;
-    old_status: AccountStatus;
-    new_status: AccountStatus;
+    old_status: AccountStatus | UserStatus;
+    new_status: AccountStatus | UserStatus;
     reason?: string;
     changed_by?: string;
     changed_at: string;

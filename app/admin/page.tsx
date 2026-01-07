@@ -16,11 +16,11 @@ export default async function AdminDashboard() {
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('account_status')
+    .select('role')
     .eq('user_id', session.user.id)
     .maybeSingle();
 
-  if (!profile || !userIsAdmin(profile.account_status)) {
+  if (!profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) {
     redirect('/insights');
   }
 

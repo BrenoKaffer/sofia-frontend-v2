@@ -30,15 +30,7 @@ export function MonitoringProvider({ children }: { children: React.ReactNode }) 
         const channel = supabase.channel('account_status').on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles', filter: `user_id=eq.${userId}` }, payload => {
           try {
             const newData = (payload?.new as any) || {};
-            const oldData = (payload?.old as any) || {};
             
-            // Legacy
-            const status = newData.account_status || oldData.account_status || '';
-            if (status) {
-              document.cookie = `sofia_account_status=${status}; path=/; max-age=${60 * 60 * 24 * 30}`
-              window.dispatchEvent(new CustomEvent('sofia:account_status', { detail: { status } }))
-            }
-
             // New Schema Cookies
             if (newData.status) document.cookie = `sofia_status=${newData.status}; path=/; max-age=${60 * 60 * 24 * 30}`;
             if (newData.plan) document.cookie = `sofia_plan=${newData.plan}; path=/; max-age=${60 * 60 * 24 * 30}`;

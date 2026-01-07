@@ -171,22 +171,13 @@ export async function getUserData(userId: string) {
       throw new Error(`Erro ao buscar perfil do usuário: ${userProfileError.message}`);
     }
 
-    // Buscar preferências do sistema
-    const { data: systemPreferences, error: preferencesError } = await supabase
-      .from('user_preferences')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (preferencesError) {
-      console.warn('Preferências do sistema não encontradas, usando padrões');
-    }
-
+    // Retornar dados com preferências integradas do user_profiles
     return {
       success: true,
       data: {
         userProfile,
-        systemPreferences: systemPreferences || {
+        // Usar as preferências armazenadas no JSONB do perfil, ou fallback para defaults
+        systemPreferences: userProfile.preferences || {
           theme: 'light',
           notifications: true,
           language: 'pt-BR'

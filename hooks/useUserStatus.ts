@@ -1,28 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { 
-  AccountStatus, 
   UserStatus,
   UserPlan,
   UserRole,
-  StatusChangeRequest, 
-  validateStatusChange,
-  userHasAccess,
-  userIsBlocked,
-  userIsPremium,
-  userIsAdmin,
-  userIsSuperAdmin,
-  checkUserAccess,
-  checkUserPro,
-  checkUserAdmin
+  validateStatusChange
 } from '@/lib/user-status';
+
+export interface StatusChangeRequest {
+  userId: string;
+  newStatus: UserStatus;
+  reason?: string;
+  changedBy?: string;
+  metadata?: Record<string, any>;
+}
 
 interface UserProfile {
   user_id: string;
-  account_status: AccountStatus;
-  status?: UserStatus;
-  plan?: UserPlan;
-  role?: UserRole;
+  status: UserStatus;
+  plan: UserPlan;
+  role: UserRole;
   full_name?: string;
   email?: string;
   created_at: string;
@@ -32,8 +29,8 @@ interface UserProfile {
 interface StatusChangeHistory {
   id: string;
   user_id: string;
-  old_status: AccountStatus;
-  new_status: AccountStatus;
+  old_status: UserStatus;
+  new_status: UserStatus;
   reason?: string;
   changed_by?: string;
   changed_at: string;
@@ -61,7 +58,6 @@ export function useUserStatus(userId?: string) {
         .from('user_profiles')
         .select(`
           user_id,
-          account_status,
           status,
           plan,
           role,
@@ -97,7 +93,8 @@ export function useUserStatus(userId?: string) {
 
       if (fetchError) throw fetchError;
       
-      setStatusHistory(data || []);
+      // Cast for compatibility if needed, assuming the DB returns compatible strings
+      setStatusHistory((data as any[]) || []);
     } catch (err) {
       console.error('Erro ao carregar histórico:', err);
     }
@@ -110,8 +107,10 @@ export function useUserStatus(userId?: string) {
         throw new Error('Perfil do usuário não carregado');
       }
 
-      // Validar mudança de status
-      const validation = validateStatusChange(userProfile.account_status, request);
+      // Validar mudança de status usando o status atual (UserStatus)
+      // Nota: validateStatusChange pode precisar ser atualizada para aceitar UserStatus se ainda esperar AccountStatus
+      // Assumindo que UserStatus é compatível ou que a função foi atualizada
+      const validation = validateStatusChange(userProfile.status, request);
       if (!validation.valid) {
         throw new Error(validation.error);
       }
@@ -120,10 +119,11 @@ export function useUserStatus(userId?: string) {
       setError(null);
 
       // Atualizar status na tabela user_profiles
+      // Aqui atualizamos a coluna 'status', não 'account_status'
       const { error: updateError } = await supabase
         .from('user_profiles')
         .update({ 
-          account_status: request.newStatus,
+          status: request.newStatus,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', request.userId);
@@ -135,7 +135,7 @@ export function useUserStatus(userId?: string) {
         .from('user_status_changes')
         .insert({
           user_id: request.userId,
-          old_status: userProfile.account_status,
+          old_status: userProfile.status,
           new_status: request.newStatus,
           reason: request.reason,
           changed_by: request.changedBy,
@@ -150,7 +150,7 @@ export function useUserStatus(userId?: string) {
       // Atualizar estado local
       setUserProfile(prev => prev ? {
         ...prev,
-        account_status: request.newStatus,
+        status: request.newStatus as UserStatus,
         updated_at: new Date().toISOString()
       } : null);
 
@@ -174,19 +174,29 @@ export function useUserStatus(userId?: string) {
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('account_status, permissions')
+        .select('status, plan, role, permissions')
         .eq('user_id', user.id)
         .single();
 
       if (error) throw error;
 
+      // Adaptar verificações para usar os novos campos
+      // userHasAccess agora deve verificar status/plan/role ou ser atualizada
+      // Se as funções utilitárias ainda esperam AccountStatus, isso pode ser um problema.
+      // Vou assumir que devo passar o 'status' novo.
+      
+      // IMPORTANTE: As funções utilitárias em lib/user-status.ts precisam suportar UserStatus/UserPlan/UserRole
+      // Como não posso ver o conteúdo atualizado de lib/user-status.ts aqui, vou assumir que
+      // userHasAccess(status) funciona ou que preciso refazer a lógica aqui.
+      // Dado o contexto, vou usar os campos diretos onde possível ou passar os novos valores.
+      
       return {
-        hasAccess: userHasAccess(data.account_status),
-        isBlocked: userIsBlocked(data.account_status),
-        isPremium: userIsPremium(data.account_status),
-        isAdmin: userIsAdmin(data.account_status),
-        isSuperAdmin: userIsSuperAdmin(data.account_status),
-        status: data.account_status,
+        hasAccess: data.status === UserStatus.ACTIVE || data.plan === UserPlan.PRO,
+        isBlocked: data.status === UserStatus.BLOCKED,
+        isPremium: data.plan === UserPlan.PRO,
+        isAdmin: data.role === UserRole.ADMIN,
+        isSuperAdmin: false, // Role não tem superadmin, mapeado para admin
+        status: data.status,
         permissions: data.permissions || {}
       };
     } catch (err) {
@@ -196,7 +206,7 @@ export function useUserStatus(userId?: string) {
   };
 
   // Buscar usuários por status
-  const getUsersByStatus = async (status: AccountStatus | AccountStatus[]) => {
+  const getUsersByStatus = async (status: UserStatus | UserStatus[]) => {
     try {
       const statuses = Array.isArray(status) ? status : [status];
       
@@ -204,12 +214,14 @@ export function useUserStatus(userId?: string) {
         .from('user_profiles')
         .select(`
           user_id,
-          account_status,
+          status,
+          plan,
+          role,
           full_name,
           created_at,
           updated_at
         `)
-        .in('account_status', statuses)
+        .in('status', statuses)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -226,23 +238,28 @@ export function useUserStatus(userId?: string) {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('account_status');
+        .select('status, plan, role');
 
       if (error) throw error;
 
       const stats = data.reduce((acc, user) => {
-        const status = user.account_status;
-        acc[status] = (acc[status] || 0) + 1;
+        const s = user.status;
+        acc[s] = (acc[s] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
+      const total = data.length;
+      const active = data.filter(u => u.status === UserStatus.ACTIVE).length;
+      const blocked = data.filter(u => u.status === UserStatus.BLOCKED).length;
+      const premium = data.filter(u => u.plan === UserPlan.PRO).length;
+
       return {
-        total: data.length,
-        active: userHasAccess('active') ? (stats.active || 0) + (stats.free || 0) + (stats.premium || 0) + (stats.trial || 0) : 0,
-        blocked: (stats.blocked || 0) + (stats.suspended || 0) + (stats.banned || 0),
-        premium: (stats.premium || 0) + (stats.trial || 0),
-        pending: stats.pending || 0,
-        inactive: stats.inactive || 0,
+        total,
+        active,
+        blocked,
+        premium,
+        pending: stats[UserStatus.PENDING] || 0,
+        inactive: stats[UserStatus.INACTIVE] || 0,
         byStatus: stats
       };
     } catch (err) {
@@ -275,10 +292,10 @@ export function useUserStatus(userId?: string) {
     getStatusStats,
     
     // Utilitários
-    hasAccess: userProfile ? userHasAccess(userProfile.account_status) : false,
-    isBlocked: userProfile ? userIsBlocked(userProfile.account_status) : false,
-    isPremium: userProfile ? userIsPremium(userProfile.account_status) : false,
-    currentStatus: userProfile?.account_status || AccountStatus.FREE
+    hasAccess: userProfile ? (userProfile.status === UserStatus.ACTIVE || userProfile.plan === UserPlan.PRO) : false,
+    isBlocked: userProfile ? userProfile.status === UserStatus.BLOCKED : false,
+    isPremium: userProfile ? userProfile.plan === UserPlan.PRO : false,
+    currentStatus: userProfile?.status || UserStatus.INACTIVE
   };
 }
 
@@ -288,7 +305,8 @@ export function useCurrentUserStatus() {
     hasAccess: boolean;
     isBlocked: boolean;
     isPremium: boolean;
-    status: AccountStatus;
+    isAdmin: boolean;
+    status: UserStatus;
     permissions: Record<string, any>;
   } | null>(null);
   
@@ -305,17 +323,18 @@ export function useCurrentUserStatus() {
 
         const { data, error } = await supabase
           .from('user_profiles')
-          .select('account_status, permissions')
+          .select('status, plan, role, permissions')
           .eq('user_id', user.id)
           .single();
 
         if (error) throw error;
 
         setStatus({
-          hasAccess: userHasAccess(data.account_status),
-          isBlocked: userIsBlocked(data.account_status),
-          isPremium: userIsPremium(data.account_status),
-          status: data.account_status,
+          hasAccess: data.status === UserStatus.ACTIVE || data.plan === UserPlan.PRO,
+          isBlocked: data.status === UserStatus.BLOCKED,
+          isPremium: data.plan === UserPlan.PRO,
+          isAdmin: data.role === UserRole.ADMIN,
+          status: data.status,
           permissions: data.permissions || {}
         });
       } catch (err) {

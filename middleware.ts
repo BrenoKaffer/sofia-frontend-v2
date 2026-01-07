@@ -103,10 +103,6 @@ export async function middleware(req: NextRequest) {
     if (profile.role === 'admin' || profile.role === 'superadmin') {
       isAdmin = true;
     }
-    // 2. Check Legacy
-    else if (profile.account_status === 'admin' || profile.account_status === 'superadmin') {
-      isAdmin = true;
-    }
 
     if (!isAdmin) {
       const url = req.nextUrl.clone()

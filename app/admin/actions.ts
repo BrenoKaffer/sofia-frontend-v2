@@ -133,29 +133,8 @@ export async function updateUser(userId: string, data: { status?: string; plan?:
   const updateData: any = { ...data };
 
   // Sync legacy account_status based on new fields
-  // This is a heuristic to maintain compatibility
-  if (data.status || data.plan || data.role) {
-    // Fetch current profile to merge
-    const { data: current } = await supabase.from('user_profiles').select('*').eq('user_id', userId).single();
-    
-    if (current) {
-      const newStatus = data.status || current.status;
-      const newPlan = data.plan || current.plan;
-      const newRole = data.role || current.role;
-
-      let legacyStatus = AccountStatus.ACTIVE;
-
-      if (newStatus === UserStatus.BLOCKED) legacyStatus = AccountStatus.BLOCKED;
-      else if (newStatus === UserStatus.INACTIVE) legacyStatus = AccountStatus.INACTIVE;
-      else if (newStatus === UserStatus.REFUNDED) legacyStatus = AccountStatus.REFUNDED;
-      else if (newRole === UserRole.ADMIN) legacyStatus = AccountStatus.ADMIN;
-      else if (newRole === UserRole.SUPERADMIN) legacyStatus = AccountStatus.SUPERADMIN;
-      else if (newPlan === UserPlan.PRO) legacyStatus = AccountStatus.PREMIUM;
-      else if (newPlan === UserPlan.FREE) legacyStatus = AccountStatus.FREE;
-
-      updateData.account_status = legacyStatus;
-    }
-  }
+  // REMOVED: Legacy account_status synchronization is no longer needed.
+  // The column has been removed and the logic is now fully based on UserStatus, UserPlan, and UserRole.
 
   const { error } = await supabase
     .from('user_profiles')

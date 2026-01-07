@@ -172,11 +172,10 @@ export default function BuilderPage() {
 
   useEffect(() => {
     if (!loading && userProfile) {
-      // Check both new fields and legacy status for backward compatibility
+      // Check new fields
       const isPro = 
         (userProfile.plan === 'pro') || 
-        (userProfile.role === 'admin' || userProfile.role === 'superadmin') || 
-        ['premium', 'trial', 'admin', 'superadmin'].includes(userProfile.account_status)
+        (userProfile.role === 'admin' || userProfile.role === 'superadmin')
         
       if (!isPro) {
         openUpgradeModal('Builder de Estratégias')

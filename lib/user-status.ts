@@ -127,21 +127,11 @@ export function getStatusColor(status: string): string {
 }
 
 export function getSelectableStatuses() {
-  // Retorna apenas os status principais para evitar poluição visual e uso de legados redundantes.
-  const EXCLUDED_FROM_SELECTION = [
-    AccountStatus.SUSPENDED,
-    AccountStatus.BANNED,
-    AccountStatus.TRIAL,
-    AccountStatus.PENDING,
-    AccountStatus.REFUNDED
-  ];
-
-  return Object.values(AccountStatus)
-    .filter(s => !EXCLUDED_FROM_SELECTION.includes(s))
-    .map(s => ({
-      value: s,
-      ...getStatusConfig(s)
-    }));
+  // Retorna apenas os status do novo Schema
+  return Object.values(UserStatus).map(s => ({
+    value: s,
+    ...getStatusConfig(s)
+  }));
 }
 
 export function isValidStatusTransition(from: string, to: string): boolean {
@@ -152,14 +142,14 @@ export function isValidStatusTransition(from: string, to: string): boolean {
 
 export interface StatusChangeRequest {
   userId: string;
-  newStatus: AccountStatus;
+  newStatus: UserStatus | AccountStatus;
   reason?: string;
   changedBy?: string;
   metadata?: Record<string, any>;
 }
 
 export function validateStatusChange(
-  currentStatus: AccountStatus | string,
+  currentStatus: UserStatus | AccountStatus | string,
   request: StatusChangeRequest
 ): { valid: boolean; error?: string } {
   // Basic validation

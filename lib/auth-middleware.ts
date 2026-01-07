@@ -123,11 +123,11 @@ export async function requireAdmin(req: NextRequest): Promise<AuthContext> {
 
   const { data: profile, error } = await supabaseAdmin
     .from('user_profiles')
-    .select('account_status')
+    .select('role')
     .eq('user_id', authContext.user.userId)
     .maybeSingle();
 
-  if (error || !profile || !userIsAdmin(profile.account_status)) {
+  if (error || !profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) {
     logger.warn('Admin access denied', {
       metadata: {
         userId: authContext.user.userId,

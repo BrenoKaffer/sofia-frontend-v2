@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { userIsAdmin, UserRole, AccountStatus } from '@/lib/user-status';
+import { UserRole } from '@/lib/user-status';
 import { redirect } from 'next/navigation';
 import { UsersTable } from './UsersTable';
 
