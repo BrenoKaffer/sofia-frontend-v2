@@ -11,8 +11,6 @@ const publicPaths = [
 ]
 
 const proOnlyPaths = [
-  '/builder',
-  '/strategy-builder',
   '/automation',
   '/betting',
   '/analytics',
@@ -96,7 +94,7 @@ export async function middleware(req: NextRequest) {
   const requiresPro = proOnlyPaths.some(p => pathname.startsWith(p))
   if (requiresPro) {
     const status = req.cookies.get('sofia_account_status')?.value || ''
-    const isPro = status === 'premium' || status === 'trial' || status === 'admin' || status === 'superadmin' || status === 'pro'
+    const isPro = status === 'premium' || status === 'trial' || status === 'admin' || status === 'superadmin'
     if (!isPro) {
       const url = req.nextUrl.clone()
       url.pathname = '/account/upgrade'

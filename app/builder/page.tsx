@@ -27,6 +27,9 @@ import ReactFlow, { Background, Controls, MiniMap, MarkerType, Connection as RFC
 import { parseHistoryInput, evaluateConditionNode, evaluateLogicNode } from '../lib/strategySemantics'
 import { compileBuilderToJS } from '../../lib/builder-compiler'
 import { useFeatureFlag, FEATURE_FLAGS } from '@/lib/feature-flags'
+import { useAuth } from '@/contexts/auth-context'
+import { useUserStatus } from '@/hooks/useUserStatus'
+import { useUpgrade } from '@/contexts/upgrade-context'
 
 type NodeType = 'trigger' | 'condition' | 'logic' | 'signal'
 
@@ -163,6 +166,19 @@ export default function BuilderPage() {
       </div>
     )
   }
+  const { user } = useAuth()
+  const { userProfile, loading } = useUserStatus(user?.id)
+  const { openUpgradeModal } = useUpgrade()
+
+  useEffect(() => {
+    if (!loading && userProfile) {
+      const isPro = ['premium', 'trial', 'admin', 'superadmin'].includes(userProfile.account_status)
+      if (!isPro) {
+        openUpgradeModal('Builder de Estratégias')
+      }
+    }
+  }, [loading, userProfile, openUpgradeModal])
+
   const [activeTab, setActiveTab] = useState('estratégias')
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [draftStrategyName, setDraftStrategyName] = useState('')
