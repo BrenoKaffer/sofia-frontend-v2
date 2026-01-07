@@ -97,7 +97,7 @@ export async function middleware(req: NextRequest) {
     const isPro = status === 'premium' || status === 'trial' || status === 'admin' || status === 'superadmin'
     if (!isPro) {
       const url = req.nextUrl.clone()
-      url.pathname = '/account/upgrade'
+      url.pathname = '/dashboard' // Redirect to dashboard instead of missing upgrade page
       return NextResponse.redirect(url)
     }
   }

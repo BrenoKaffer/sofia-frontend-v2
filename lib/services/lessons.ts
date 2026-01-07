@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { Module, Lesson, UserProgress } from '@/types/lessons';
 import { insightsData } from '@/lib/insights-data';
+import { checkUserFullAccess } from '@/lib/user-status';
 
 // Helper to generate a slug from title
 const toSlug = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s-]/g, "").replace(/\s+/g, "-");
@@ -37,11 +38,11 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
     // Check user_profiles first (cache/summary)
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('account_status')
+      .select('status, plan, role, account_status')
       .eq('user_id', userId)
       .single();
       
-    if (profile?.account_status === 'premium' || profile?.account_status === 'pro') return true;
+    if (profile && checkUserFullAccess(profile)) return true;
     
     // Check subscriptions table (source of truth)
     const { data: sub } = await supabase

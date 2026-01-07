@@ -2,18 +2,27 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { 
   AccountStatus, 
+  UserStatus,
+  UserPlan,
+  UserRole,
   StatusChangeRequest, 
   validateStatusChange,
   userHasAccess,
   userIsBlocked,
   userIsPremium,
   userIsAdmin,
-  userIsSuperAdmin
+  userIsSuperAdmin,
+  checkUserAccess,
+  checkUserPro,
+  checkUserAdmin
 } from '@/lib/user-status';
 
 interface UserProfile {
   user_id: string;
   account_status: AccountStatus;
+  status?: UserStatus;
+  plan?: UserPlan;
+  role?: UserRole;
   full_name?: string;
   email?: string;
   created_at: string;
@@ -53,6 +62,9 @@ export function useUserStatus(userId?: string) {
         .select(`
           user_id,
           account_status,
+          status,
+          plan,
+          role,
           full_name,
           created_at,
           updated_at

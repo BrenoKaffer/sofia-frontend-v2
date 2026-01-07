@@ -20,11 +20,6 @@ export function PremiumGateModal({ isOpen, onClose, featureName }: PremiumGateMo
     window.location.href = 'https://pay.v1sofia.com/?plan=premium&price_id=sofia-premium-mensal';
   };
 
-  const handleViewPlans = () => {
-    router.push('/account/upgrade');
-    onClose();
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden bg-background border-border">
@@ -93,14 +88,6 @@ export function PremiumGateModal({ isOpen, onClose, featureName }: PremiumGateMo
               className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] transition-all hover:scale-[1.02]"
             >
               Ativar SOFIA PRO
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              onClick={handleViewPlans}
-              className="w-full text-muted-foreground hover:text-foreground"
-            >
-              Ver comparação de planos
             </Button>
           </div>
 

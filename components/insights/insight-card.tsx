@@ -161,7 +161,7 @@ export function InsightCard({
           <DialogFooter className="sm:justify-center">
             <ShinyButton 
               className="w-full font-bold h-11 shadow-lg shadow-primary/20"
-              onClick={() => router.push('/account/upgrade')}
+              onClick={() => window.location.href = 'https://pay.v1sofia.com/?plan=premium&price_id=sofia-premium-mensal'}
             >
               Ativar SOFIA PRO Agora
             </ShinyButton>

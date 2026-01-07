@@ -36,18 +36,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let profileData = null;
     try {
       profileData = await getUserProfile(supabaseUser.id);
-    } catch (e) {
+      console.log('Dados do perfil sincronizados:', profileData);
+    } catch (e: any) {
       console.error('Error fetching user profile:', e);
-      // Fallback silencioso para metadados de auth se o perfil não existir
+      // Notificar usuário se houver erro de permissão (geralmente RLS)
+      if (e.message && (e.message.includes('permission') || e.message.includes('policy'))) {
+        toast.error('Erro de permissão ao sincronizar perfil. Contate o suporte.');
+      }
     }
+
+    // Prioridade: Perfil (DB) > Metadata (Auth) > Fallback
+    const name = profileData?.full_name || profileData?.name || supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name || 'Usuário';
+    const cpf = profileData?.cpf || supabaseUser.user_metadata?.cpf;
+    const avatar = profileData?.avatar_url || profileData?.avatar || supabaseUser.user_metadata?.avatar_url;
 
     return {
       id: supabaseUser.id,
-      name: profileData?.full_name || supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name || 'Usuário',
+      name: name,
       email: profileData?.email || supabaseUser.email || '',
-      avatar: supabaseUser.user_metadata?.avatar_url,
-      cpf: profileData?.cpf || supabaseUser.user_metadata?.cpf,
-      fullName: profileData?.full_name || supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name
+      avatar: avatar,
+      cpf: cpf,
+      fullName: name
     };
   };
 

@@ -85,12 +85,6 @@ const navigationSections = [
       { name: 'Central de Ajuda', href: '/help', icon: HelpCircle },
       { name: 'Comunidade', href: '/community', icon: Globe },
     ]
-  },
-  {
-    title: 'Conta',
-    items: [
-      { name: 'Meu Plano', href: '/account/upgrade', icon: Rocket },
-    ]
   }
 ];
 

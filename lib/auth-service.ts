@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { supabase } from './supabase';
 import { logger } from './logger';
+import { UserAccessProfile } from './user-status';
 
 // Tipos para o sistema de autenticação
 export interface UserRole {
@@ -147,6 +148,9 @@ export class AuthService {
         };
       }
 
+      // Atualizar último login
+      await AuthService.updateLastLogin(user.id);
+
       return {
         success: true,
         user: userData,
@@ -160,6 +164,29 @@ export class AuthService {
         error: 'Erro interno na validação',
         method: 'jwt'
       };
+    }
+  }
+
+  /**
+   * Buscar perfil de acesso completo do usuário (user_profiles)
+   */
+  static async getUserProfileFull(userId: string): Promise<UserAccessProfile | null> {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('status, plan, role, account_status')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        // Se não encontrar, pode ser um usuário novo sem perfil.
+        // Retorna null e deixa o chamador decidir (fallback ou erro).
+        return null;
+      }
+      return data;
+    } catch (error) {
+      logger.error('Erro ao buscar perfil do usuário:', undefined, error as Error);
+      return null;
     }
   }
 
