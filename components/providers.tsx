@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/auth-context';
 import { SofiaProvider } from '@/contexts/sofia-context';
+import { UpgradeProvider } from '@/contexts/upgrade-context';
 import { AnalyticsProvider } from '@/components/providers/analytics-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -35,7 +36,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <AuthProvider>
         <SofiaProvider>
-          <AnalyticsProvider
+          <UpgradeProvider>
+            <AnalyticsProvider
             config={{
               enablePerformanceTracking: true,
               enableEngagementTracking: true,
@@ -46,6 +48,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           >
             {children}
           </AnalyticsProvider>
+        </UpgradeProvider>
         </SofiaProvider>
       </AuthProvider>
     </ThemeProvider>

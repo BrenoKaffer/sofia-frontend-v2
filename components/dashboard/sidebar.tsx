@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useUpgrade } from '@/contexts/upgrade-context';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 // Remover ScrollArea para preservar posição de scroll manualmente
@@ -99,6 +100,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open, setOpen }: SidebarProps) {
+  const { openUpgradeModal } = useUpgrade();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
@@ -192,7 +194,16 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
                     };
                     const dataTestId = testIdMap[item.href];
                     return (
-                      <Link key={item.name} href={item.href}>
+                      <Link 
+                        key={item.name} 
+                        href={item.href}
+                        onClick={(e) => {
+                          if (item.href === '/account/upgrade') {
+                            e.preventDefault();
+                            openUpgradeModal();
+                          }
+                        }}
+                      >
                         <div
                           data-testid={dataTestId}
                           className={cn(
