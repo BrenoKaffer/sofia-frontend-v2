@@ -10,17 +10,16 @@ export default async function AdminUsersPage() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) redirect('/auth/login');
 
-  // 2. Permission Check (Hybrid)
+  // 2. Permission Check (Modern Only)
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('account_status, role')
+    .select('role')
     .eq('user_id', session.user.id)
     .maybeSingle();
 
   const isRoleAdmin = profile?.role === UserRole.ADMIN || profile?.role === UserRole.SUPERADMIN;
-  const isLegacyAdmin = profile && userIsAdmin(profile.account_status);
 
-  if (!profile || (!isRoleAdmin && !isLegacyAdmin)) {
+  if (!profile || !isRoleAdmin) {
     redirect('/dashboard');
   }
 

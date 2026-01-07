@@ -121,7 +121,8 @@ async function handleOrderPaid(data: any, objectId?: string) {
           full_name,
           cpf,
           email,
-          account_status: 'premium',
+          status: 'active',
+          plan: 'pro',
         }, { onConflict: 'user_id' });
       }
     } catch (profileErr) {

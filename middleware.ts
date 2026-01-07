@@ -81,12 +81,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Obter cookies de perfil (New Schema + Legacy)
+  // Obter cookies de perfil (New Schema)
   const profile = {
     status: req.cookies.get('sofia_status')?.value,
     plan: req.cookies.get('sofia_plan')?.value,
     role: req.cookies.get('sofia_role')?.value,
-    account_status: req.cookies.get('sofia_account_status')?.value,
   }
 
   // Verificar se o usuário está ativo (se houver info)
@@ -123,14 +122,6 @@ export async function middleware(req: NextRequest) {
     // 1. Check Plan/Role (New Schema)
     if (profile.plan === 'pro') isPro = true;
     if (profile.role === 'admin' || profile.role === 'superadmin') isPro = true;
-
-    // 2. Check Legacy
-    if (!isPro && profile.account_status) {
-      const s = profile.account_status;
-      if (['premium', 'trial', 'admin', 'superadmin'].includes(s)) {
-        isPro = true;
-      }
-    }
 
     if (!isPro) {
       const url = req.nextUrl.clone()

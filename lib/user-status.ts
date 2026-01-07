@@ -31,15 +31,20 @@ export enum AccountStatus {
   ACTIVE = 'active',
   FREE = 'free',
   PREMIUM = 'premium',
+  /** @deprecated Use UserStatus.ACTIVE + UserPlan.PRO */
   TRIAL = 'trial',
   BLOCKED = 'blocked',
+  /** @deprecated Use AccountStatus.BLOCKED */
   SUSPENDED = 'suspended',
+  /** @deprecated Use AccountStatus.BLOCKED */
   BANNED = 'banned',
   INACTIVE = 'inactive',
+  /** @deprecated Use UserStatus.INACTIVE or email verification */
   PENDING = 'pending',
   ADMIN = 'admin',
   SUPERADMIN = 'superadmin',
-  REFUNDED = 'refunded' // Adicionado para evitar quebras se usado
+  /** @deprecated Use UserStatus.REFUNDED */
+  REFUNDED = 'refunded'
 }
 
 export type UserAccountStatus = keyof typeof AccountStatus | AccountStatus;
@@ -56,10 +61,10 @@ export const STATUS_CONFIG = {
   // Legado (Mapeado visualmente)
   [AccountStatus.FREE]: { label: 'Gratuito', color: 'blue', icon: '✅', priority: 2 },
   [AccountStatus.PREMIUM]: { label: 'Premium', color: 'gold', icon: '✅', priority: 0 },
-  [AccountStatus.TRIAL]: { label: 'Teste', color: 'purple', icon: '✅', priority: 1 },
-  [AccountStatus.SUSPENDED]: { label: 'Suspenso', color: 'orange', icon: '❌', priority: 11 },
-  [AccountStatus.BANNED]: { label: 'Banido', color: 'darkred', icon: '❌', priority: 12 },
-  [AccountStatus.PENDING]: { label: 'Pendente', color: 'yellow', icon: '⏳', priority: 3 },
+  [AccountStatus.TRIAL]: { label: 'Teste (Legacy)', color: 'purple', icon: '✅', priority: 1 },
+  [AccountStatus.SUSPENDED]: { label: 'Suspenso (Legacy)', color: 'orange', icon: '❌', priority: 11 },
+  [AccountStatus.BANNED]: { label: 'Banido (Legacy)', color: 'darkred', icon: '❌', priority: 12 },
+  [AccountStatus.PENDING]: { label: 'Pendente (Legacy)', color: 'yellow', icon: '⏳', priority: 3 },
   [AccountStatus.ADMIN]: { label: 'Admin', color: 'indigo', icon: '👑', priority: -1 },
   [AccountStatus.SUPERADMIN]: { label: 'Super Admin', color: 'violet', icon: '👑', priority: -2 },
 } as const;
@@ -122,13 +127,21 @@ export function getStatusColor(status: string): string {
 }
 
 export function getSelectableStatuses() {
-  // Retorna mistura de novos e velhos para compatibilidade do select, 
-  // mas idealmente deveria ser migrado para 3 selects separados.
-  // Por enquanto, retornamos os legacy para não quebrar a UI de Admin existente.
-  return Object.values(AccountStatus).map(s => ({
-    value: s,
-    ...getStatusConfig(s)
-  }));
+  // Retorna apenas os status principais para evitar poluição visual e uso de legados redundantes.
+  const EXCLUDED_FROM_SELECTION = [
+    AccountStatus.SUSPENDED,
+    AccountStatus.BANNED,
+    AccountStatus.TRIAL,
+    AccountStatus.PENDING,
+    AccountStatus.REFUNDED
+  ];
+
+  return Object.values(AccountStatus)
+    .filter(s => !EXCLUDED_FROM_SELECTION.includes(s))
+    .map(s => ({
+      value: s,
+      ...getStatusConfig(s)
+    }));
 }
 
 export function isValidStatusTransition(from: string, to: string): boolean {

@@ -26,7 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { UserStatus, UserPlan, UserRole, AccountStatus, getStatusColor, getStatusLabel } from '@/lib/user-status';
+import { UserStatus, UserPlan, UserRole, getStatusColor, getStatusLabel } from '@/lib/user-status';
 import { updateUser, getUsers } from '../actions';
 import { useRouter } from 'next/navigation';
 
@@ -37,7 +37,6 @@ interface UserProfile {
   status: string;
   plan: string;
   role: string;
-  account_status: string;
   created_at: string;
 }
 
@@ -124,7 +123,6 @@ export function UsersTable({ initialUsers, initialCount }: UsersTableProps) {
               <TableHead>Status</TableHead>
               <TableHead>Plano</TableHead>
               <TableHead>Permissão</TableHead>
-              <TableHead>Legado</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -147,11 +145,6 @@ export function UsersTable({ initialUsers, initialCount }: UsersTableProps) {
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{user.role || 'User'}</Badge>
-                </TableCell>
-                <TableCell>
-                  <span className="text-xs text-muted-foreground">
-                    {user.account_status}
-                  </span>
                 </TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(user)}>

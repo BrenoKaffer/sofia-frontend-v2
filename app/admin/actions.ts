@@ -29,14 +29,13 @@ async function checkAdminPermission() {
   const supabase = getSupabaseAdmin();
   const { data: profile, error } = await supabase
     .from('user_profiles')
-    .select('account_status, role')
+    .select('role')
     .eq('user_id', user.id)
     .maybeSingle();
 
   const isRoleAdmin = profile?.role === UserRole.ADMIN || profile?.role === UserRole.SUPERADMIN;
-  const isLegacyAdmin = profile && userIsAdmin(profile.account_status);
 
-  if (error || !profile || (!isRoleAdmin && !isLegacyAdmin)) {
+  if (error || !profile || !isRoleAdmin) {
     throw new Error('Forbidden: Admin access required');
   }
   
