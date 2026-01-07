@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { getUserProfile } from '@/lib/user-profiles-integration';
 
 interface User {
   id: string;
@@ -30,15 +31,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const AUTH_DEV_BYPASS = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true';
 
-  // Função para converter usuário do Supabase para o formato local
-  const convertSupabaseUser = (supabaseUser: SupabaseUser): User => {
+  // Função para converter usuário do Supabase para o formato local, buscando dados atualizados do perfil
+  const fetchAndConvertUser = async (supabaseUser: SupabaseUser): Promise<User> => {
+    let profileData = null;
+    try {
+      profileData = await getUserProfile(supabaseUser.id);
+    } catch (e) {
+      console.error('Error fetching user profile:', e);
+      // Fallback silencioso para metadados de auth se o perfil não existir
+    }
+
     return {
       id: supabaseUser.id,
-      name: supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name || 'Usuário',
-      email: supabaseUser.email || '',
+      name: profileData?.full_name || supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name || 'Usuário',
+      email: profileData?.email || supabaseUser.email || '',
       avatar: supabaseUser.user_metadata?.avatar_url,
-      cpf: supabaseUser.user_metadata?.cpf,
-      fullName: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name
+      cpf: profileData?.cpf || supabaseUser.user_metadata?.cpf,
+      fullName: profileData?.full_name || supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name
     };
   };
 
@@ -62,7 +71,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          setUser(convertSupabaseUser(session.user));
+          const userWithProfile = await fetchAndConvertUser(session.user);
+          setUser(userWithProfile);
         }
       } catch (error) {
         console.error('Erro ao obter sessão inicial:', error);
@@ -89,7 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         if (session?.user) {
-          setUser(convertSupabaseUser(session.user));
+          const userWithProfile = await fetchAndConvertUser(session.user);
+          setUser(userWithProfile);
         } else {
           setUser(null);
         }
@@ -141,7 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (data.user) {
-          setUser(convertSupabaseUser(data.user));
+          const userWithProfile = await fetchAndConvertUser(data.user);
+          setUser(userWithProfile);
         }
         
         toast.success('Login realizado com sucesso! Bem-vindo de volta ao SOFIA!');
