@@ -66,7 +66,25 @@ export default async function AdminDashboard() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="h-full">
+                <CardHeader>
+                    <CardTitle>Gerenciamento de Usuários</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        Visualize e gerencie usuários, planos e permissões.
+                    </p>
+                    <div className="flex flex-col gap-2">
+                        <Link href="/admin/users">
+                            <Button className="w-full justify-start" variant="secondary">
+                                👥 Gerenciar Usuários
+                            </Button>
+                        </Link>
+                    </div>
+                </CardContent>
+            </Card>
+
             <Card className="h-full">
                 <CardHeader>
                     <CardTitle>Gerenciamento de Conteúdo</CardTitle>

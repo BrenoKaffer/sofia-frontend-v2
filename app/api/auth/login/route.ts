@@ -128,21 +128,34 @@ export async function POST(req: NextRequest) {
     // Configurar cookies
     const maxAge = remember_me ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 30 dias ou 1 dia
     
-    response.cookies.set('sb-access-token', authData.session.access_token, {
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       maxAge,
       path: '/'
-    });
+    };
 
-    response.cookies.set('sb-refresh-token', authData.session.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge,
-      path: '/'
-    });
+    response.cookies.set('sb-access-token', authData.session.access_token, cookieOptions);
+    response.cookies.set('sb-refresh-token', authData.session.refresh_token, cookieOptions);
+
+    // Definir cookies de performance (Edge Middleware)
+    // Buscamos o perfil completo para garantir que os cookies estejam sincronizados
+    const userProfile = await AuthService.getUserProfileFull(user.id);
+    
+    if (userProfile) {
+      // Cookies acessíveis via JS para que o MonitoringProvider possa atualizá-los via Realtime
+      const publicCookieOptions = { ...cookieOptions, httpOnly: false };
+
+      if (userProfile.status) response.cookies.set('sofia_status', userProfile.status as string, publicCookieOptions);
+      if (userProfile.plan) response.cookies.set('sofia_plan', userProfile.plan as string, publicCookieOptions);
+      if (userProfile.role) response.cookies.set('sofia_role', userProfile.role as string, publicCookieOptions);
+      
+      // Cookie legado para compatibilidade
+      if (userProfile.account_status) {
+        response.cookies.set('sofia_account_status', userProfile.account_status as string, publicCookieOptions);
+      }
+    }
 
     logger.info('Login realizado com sucesso', {
       metadata: {

@@ -52,7 +52,7 @@ export function UserStatusSelect({
                 opacity: isValidTransition ? 1 : 0.6
               }}
             >
-              {status.label} - {status.description}
+              {status.label}
             </option>
           );
         })}
@@ -113,17 +113,11 @@ export function UserStatusBadge({
           ${sizeClasses[size]}
           ${colorClasses[config.color as keyof typeof colorClasses] || colorClasses.gray}
         `}
-        title={config.description}
+        title={config.label}
       >
         <span className="mr-1">{config.icon}</span>
         {config.label}
       </span>
-      
-      {showDescription && (
-        <p className="mt-1 text-xs text-gray-600">
-          {config.description}
-        </p>
-      )}
     </div>
   );
 }

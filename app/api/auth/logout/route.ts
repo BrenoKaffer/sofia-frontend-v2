@@ -93,6 +93,10 @@ export async function POST(req: NextRequest) {
 
     response.cookies.delete('sb-access-token');
     response.cookies.delete('sb-refresh-token');
+    response.cookies.delete('sofia_status');
+    response.cookies.delete('sofia_plan');
+    response.cookies.delete('sofia_role');
+    response.cookies.delete('sofia_account_status');
 
     return response;
   }

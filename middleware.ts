@@ -81,9 +81,34 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Obter cookies de perfil (New Schema + Legacy)
+  const profile = {
+    status: req.cookies.get('sofia_status')?.value,
+    plan: req.cookies.get('sofia_plan')?.value,
+    role: req.cookies.get('sofia_role')?.value,
+    account_status: req.cookies.get('sofia_account_status')?.value,
+  }
+
+  // Verificar se o usuário está ativo (se houver info)
+  if (profile.status && profile.status !== 'active') {
+    // Se temos status novo e não é active, redirecionar ou bloquear?
+    // Por enquanto, vamos deixar passar se não for rota protegida, 
+    // mas idealmente deveríamos bloquear tudo.
+    // O auth-service já barra no login, mas o middleware pega acesso direto.
+  }
+
   if (pathname.startsWith('/admin')) {
-    const status = req.cookies.get('sofia_account_status')?.value || ''
-    const isAdmin = status === 'admin' || status === 'superadmin'
+    let isAdmin = false;
+
+    // 1. Check Role (New Schema)
+    if (profile.role === 'admin' || profile.role === 'superadmin') {
+      isAdmin = true;
+    }
+    // 2. Check Legacy
+    else if (profile.account_status === 'admin' || profile.account_status === 'superadmin') {
+      isAdmin = true;
+    }
+
     if (!isAdmin) {
       const url = req.nextUrl.clone()
       url.pathname = '/'
@@ -93,8 +118,20 @@ export async function middleware(req: NextRequest) {
 
   const requiresPro = proOnlyPaths.some(p => pathname.startsWith(p))
   if (requiresPro) {
-    const status = req.cookies.get('sofia_account_status')?.value || ''
-    const isPro = status === 'premium' || status === 'trial' || status === 'admin' || status === 'superadmin'
+    let isPro = false;
+
+    // 1. Check Plan/Role (New Schema)
+    if (profile.plan === 'pro') isPro = true;
+    if (profile.role === 'admin' || profile.role === 'superadmin') isPro = true;
+
+    // 2. Check Legacy
+    if (!isPro && profile.account_status) {
+      const s = profile.account_status;
+      if (['premium', 'trial', 'admin', 'superadmin'].includes(s)) {
+        isPro = true;
+      }
+    }
+
     if (!isPro) {
       const url = req.nextUrl.clone()
       url.pathname = '/dashboard' // Redirect to dashboard instead of missing upgrade page

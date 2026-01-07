@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { auth } from '@/lib/auth-server';
-import { userIsAdmin } from '@/lib/user-status';
+import { userIsAdmin, UserRole, UserStatus, UserPlan, AccountStatus } from '@/lib/user-status';
 import { revalidatePath } from 'next/cache';
 
 // Initialize Supabase Admin Client (Service Role)
@@ -98,6 +98,75 @@ export async function deleteModule(id: string) {
     revalidatePath('/admin/modules');
     revalidatePath('/insights');
     return { success: true };
+}
+
+// --- User Actions ---
+
+export async function getUsers(page = 1, limit = 50, search = '') {
+  await checkAdminPermission();
+  const supabase = getSupabaseAdmin();
+  
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
+    .from('user_profiles')
+    .select('*', { count: 'exact' });
+
+  if (search) {
+    query = query.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`);
+  }
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) throw new Error(error.message);
+
+  return { data, count, page, limit };
+}
+
+export async function updateUser(userId: string, data: { status?: string; plan?: string; role?: string }) {
+  await checkAdminPermission();
+  const supabase = getSupabaseAdmin();
+
+  // Prepare update data
+  const updateData: any = { ...data };
+
+  // Sync legacy account_status based on new fields
+  // This is a heuristic to maintain compatibility
+  if (data.status || data.plan || data.role) {
+    // Fetch current profile to merge
+    const { data: current } = await supabase.from('user_profiles').select('*').eq('user_id', userId).single();
+    
+    if (current) {
+      const newStatus = data.status || current.status;
+      const newPlan = data.plan || current.plan;
+      const newRole = data.role || current.role;
+
+      let legacyStatus = AccountStatus.ACTIVE;
+
+      if (newStatus === UserStatus.BLOCKED) legacyStatus = AccountStatus.BLOCKED;
+      else if (newStatus === UserStatus.INACTIVE) legacyStatus = AccountStatus.INACTIVE;
+      else if (newStatus === UserStatus.REFUNDED) legacyStatus = AccountStatus.REFUNDED;
+      else if (newRole === UserRole.ADMIN) legacyStatus = AccountStatus.ADMIN;
+      else if (newRole === UserRole.SUPERADMIN) legacyStatus = AccountStatus.SUPERADMIN;
+      else if (newPlan === UserPlan.PRO) legacyStatus = AccountStatus.PREMIUM;
+      else if (newPlan === UserPlan.FREE) legacyStatus = AccountStatus.FREE;
+
+      updateData.account_status = legacyStatus;
+    }
+  }
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .update(updateData)
+    .eq('user_id', userId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/admin/users');
+  return { success: true };
 }
 
 // --- Lessons Actions ---
