@@ -258,7 +258,7 @@ export function useUserStatus(userId?: string) {
         active,
         blocked,
         premium,
-        pending: stats[UserStatus.PENDING] || 0,
+        pending: stats['pending'] || 0,
         inactive: stats[UserStatus.INACTIVE] || 0,
         byStatus: stats
       };
