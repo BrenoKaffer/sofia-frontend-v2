@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -18,7 +19,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, cpf?: string, fullName?: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, cpf?: string, fullName?: string, confirmPassword?: string) => Promise<boolean>;
   logout: () => void;
   getToken: () => Promise<string | null>;
   isLoading: boolean;
@@ -27,6 +28,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const AUTH_DEV_BYPASS = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true';
@@ -39,7 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Dados do perfil sincronizados:', profileData);
     } catch (e: any) {
       console.error('Error fetching user profile:', e);
-      if (e.message && (e.message.includes('permission') || e.message.includes('policy'))) {
+      
+      // Ignorar erro de permissão na página de reset de senha para evitar confusão visual
+      // já que a sessão pode estar em estado transicional/isolado
+      const isResetPasswordPage = pathname?.startsWith('/reset-password');
+      
+      if (!isResetPasswordPage && e.message && (e.message.includes('permission') || e.message.includes('policy'))) {
         toast.error('Erro de permissão ao sincronizar perfil. Contate o suporte.');
       }
       try {
@@ -139,8 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     
     try {
-      // Use relative path to ensure we hit the Next.js API Routes in the same origin
-      // This matches the behavior of register function and ensures we use the local API route
+      console.log('Tentando login via API...');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -149,30 +155,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.warn('Falha ao analisar resposta JSON da API de login:', e);
+        data = { message: 'Erro de comunicação com o servidor' };
+      }
 
       if (!response.ok) {
-        console.error('Erro no login:', data.message);
-        if (data.message && (data.message.includes('incorretos') || data.message.includes('credentials'))) {
-          toast.error('Credenciais inválidas. Verifique seu email e senha.');
-        } else if (data.message && data.message.includes('not confirmed')) {
-          toast.error('Por favor, confirme seu email antes de fazer login.');
-        } else {
-          toast.error(data.message || 'Erro ao fazer login');
-        }
-        setIsLoading(false);
-        return false;
+        console.warn(`API de login retornou erro ${response.status}:`, data.message);
+        throw new Error(data.message || `Erro ${response.status}`);
       }
 
       if (data.session) {
-        // Set the session in the Supabase client
         const { error: sessionError } = await supabase.auth.setSession(data.session);
         
         if (sessionError) {
           console.error('Erro ao definir sessão no cliente:', sessionError);
-          toast.error('Erro ao autenticar sessão localmente.');
-          setIsLoading(false);
-          return false;
+          throw sessionError;
         }
 
         if (data.user) {
@@ -184,18 +185,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
         return true;
       }
+    } catch (apiError) {
+      console.warn('Falha no login via API, tentando fallback direto via Supabase Client:', apiError);
+      
+      try {
+        // Fallback: Login direto via Supabase Client
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
 
-      setIsLoading(false);
-      return false;
-    } catch (error: any) {
-      console.error('Erro no login:', error);
-      toast.error('Erro interno do servidor');
-      setIsLoading(false);
-      return false;
+        if (error) {
+          console.error('Erro no login (fallback):', error.message);
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error('Credenciais inválidas. Verifique seu email e senha.');
+          } else if (error.message.includes('Email not confirmed')) {
+            toast.error('Por favor, confirme seu email antes de fazer login.');
+          } else {
+            toast.error('Erro ao fazer login: ' + error.message);
+          }
+          setIsLoading(false);
+          return false;
+        }
+
+        if (data.session) {
+          if (data.user) {
+            const userWithProfile = await fetchAndConvertUser(data.user);
+            setUser(userWithProfile);
+          }
+          
+          toast.success('Login realizado com sucesso! (Modo Fallback)');
+          setIsLoading(false);
+          return true;
+        }
+      } catch (fallbackError) {
+        console.error('Erro fatal no login:', fallbackError);
+        toast.error('Não foi possível realizar o login. Tente novamente mais tarde.');
+      }
     }
+
+    setIsLoading(false);
+    return false;
   };
 
-  const register = async (name: string, email: string, password: string, cpf?: string, fullName?: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string, cpf?: string, fullName?: string, confirmPassword?: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
@@ -210,7 +243,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password, 
           name, 
           cpf, 
-          fullName 
+          fullName,
+          confirm_password: confirmPassword
         }),
       });
 

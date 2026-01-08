@@ -258,7 +258,7 @@ export default function RegisterPage() {
     try {
       // Use auth-context register function which uses backend API
       // Backend now handles user creation, profile insertion, and sending premium verification email
-      const success = await register(fullName, email, password, '', fullName);
+      const success = await register(fullName, email, password, '', fullName, confirmPassword);
       
       if (success) {
         router.push(`/email-confirmation?email=${encodeURIComponent(email)}`);
