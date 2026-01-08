@@ -27,12 +27,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Tentar fazer login
+    console.log('[Login API] Tentando autenticar com Supabase...');
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
     if (authError) {
+      console.error('[Login API] Erro no signInWithPassword:', authError.message);
       logger.warn('Tentativa de login falhada', {
         metadata: {
           email,
@@ -165,9 +167,22 @@ export async function POST(req: NextRequest) {
     return response;
 
   } catch (error) {
-    logger.error(`Erro no endpoint de login: ${error instanceof Error ? error.message : String(error)}`);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('[Login API] Critical Error:', errorMsg, errorStack);
+    
+    // Tenta usar o logger, mas protege contra falhas nele
+    try {
+      logger.error(`Erro no endpoint de login: ${errorMsg}`);
+    } catch (e) {
+      console.error('[Login API] Falha ao registrar log:', e);
+    }
+
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { 
+        error: 'Erro interno do servidor',
+        debug_error: process.env.NODE_ENV === 'development' ? errorMsg : undefined
+      },
       { status: 500 }
     );
   }

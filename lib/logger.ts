@@ -222,8 +222,18 @@ class Logger {
         }
         return; // Não continuar com fetch para evitar aborts em transições
       } else {
-        // Ambiente sem sendBeacon
-        const response = await fetch('/api/logs', {
+        // Ambiente sem sendBeacon (Node.js ou navegadores antigos)
+      
+      // Se estiver no servidor (sem window), não tentar fetch relativo para /api/logs
+      // Apenas logar no console é suficiente (Vercel captura stdout)
+      if (typeof window === 'undefined') {
+        if (this.isDevelopment) {
+          console.debug('Log no servidor (stdout apenas):', logData.message);
+        }
+        return;
+      }
+
+      const response = await fetch('/api/logs', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
