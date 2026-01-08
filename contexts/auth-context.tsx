@@ -20,7 +20,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string, cpf?: string, fullName?: string, confirmPassword?: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   getToken: () => Promise<string | null>;
   isLoading: boolean;
 }
