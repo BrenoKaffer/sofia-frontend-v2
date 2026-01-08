@@ -14,7 +14,6 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CPFService } from '@/lib/cpf-service';
 
 function ShinyButton({ children, className = '', type = 'button', disabled = false }: { children: React.ReactNode; className?: string; type?: 'button' | 'submit' | 'reset'; disabled?: boolean }) {
   return (
@@ -119,7 +118,6 @@ function ShinyButton({ children, className = '', type = 'button', disabled = fal
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
-  const [cpf, setCpf] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -127,13 +125,10 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingCPF, setIsLoadingCPF] = useState(false);
-  const [nameFromAPI, setNameFromAPI] = useState(false);
 
   // Estados para validação em tempo real
   const [errors, setErrors] = useState({
     fullName: '',
-    cpf: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -142,7 +137,6 @@ export default function RegisterPage() {
 
   const [touched, setTouched] = useState({
     fullName: false,
-    cpf: false,
     email: false,
     password: false,
     confirmPassword: false,
@@ -170,15 +164,6 @@ export default function RegisterPage() {
           error = 'Nome deve ter pelo menos 2 caracteres';
         } else if (!/^[a-zA-ZÀ-ÿ\s]+$/.test(value)) {
           error = 'Nome deve conter apenas letras e espaços';
-        }
-        break;
-
-      case 'cpf':
-        const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/;
-        if (!value) {
-          error = 'CPF é obrigatório';
-        } else if (!cpfRegex.test(value)) {
-          error = 'CPF deve estar no formato 000.000.000-00';
         }
         break;
 
@@ -240,70 +225,14 @@ export default function RegisterPage() {
     validateField(field, value);
   };
 
-  const handleCPFChange = async (value: string) => {
-    // Formatar CPF automaticamente
-    let formattedValue = value.replace(/\D/g, '');
-    if (formattedValue.length <= 11) {
-      formattedValue = formattedValue.replace(/(\d{3})(\d)/, '$1.$2');
-      formattedValue = formattedValue.replace(/(\d{3})(\d)/, '$1.$2');
-      formattedValue = formattedValue.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-      setCpf(formattedValue);
-    }
 
-    // Se CPF estiver completo (11 dígitos), buscar nome na API
-    const cleanCPF = value.replace(/\D/g, '');
-    if (cleanCPF.length === 11) {
-      setIsLoadingCPF(true);
-      try {
-        // Para demonstração, vamos simular uma data de nascimento
-        // Em produção, você pode pedir a data de nascimento ou usar outra abordagem
-        const birthDate = '01/01/1990'; // Data fictícia para teste
-        const response = await CPFService.validateCPF(formattedValue, birthDate);
-
-        if (response.success && response.data.name) {
-          setFullName(response.data.name);
-          setNameFromAPI(true);
-          toast.success('Nome encontrado automaticamente!');
-        } else {
-          toast.warning('CPF não encontrado. Digite o nome manualmente.');
-          setNameFromAPI(false);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar CPF:', error);
-        setNameFromAPI(false);
-
-        // Feedback de erro mais amigável
-        const isDevelopment = process.env.NODE_ENV === 'development' ||
-          window.location.hostname === 'localhost';
-
-        if (isDevelopment) {
-          toast.success('Modo de desenvolvimento: Consulta de CPF simulada. Em produção, dados reais serão consultados.');
-        } else {
-          toast.error('Erro na consulta do CPF. Não foi possível consultar os dados. Você pode preencher o nome manualmente.');
-        }
-      } finally {
-        setIsLoadingCPF(false);
-      }
-    } else {
-      // Se CPF não estiver completo, permitir edição do nome
-      setNameFromAPI(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    if (!fullName || !cpf || !email || !password || !confirmPassword) {
+    if (!fullName || !email || !password || !confirmPassword) {
       toast.error('Por favor, preencha todos os campos');
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Validar CPF (formato básico)
-    const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/;
-    if (!cpfRegex.test(cpf)) {
-      toast.error('CPF deve estar no formato 000.000.000-00 ou conter 11 dígitos');
       setIsSubmitting(false);
       return;
     }
@@ -329,7 +258,7 @@ export default function RegisterPage() {
     try {
       // Use auth-context register function which uses backend API
       // Backend now handles user creation, profile insertion, and sending premium verification email
-      const success = await register(fullName, email, password, cpf, fullName);
+      const success = await register(fullName, email, password, '', fullName);
       
       if (success) {
         // Success message is handled by auth-context, but we can redirect here
@@ -547,48 +476,10 @@ export default function RegisterPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* CPF em primeiro lugar */}
-                <div className="space-y-2">
-                  <Label htmlFor="cpf" className="font-sans">CPF</Label>
-                  <div className="relative">
-                    <Input
-                      id="cpf"
-                      type="text"
-                      placeholder="000.000.000-00"
-                      value={cpf}
-                      onChange={(e) => {
-                        handleCPFChange(e.target.value);
-                        if (touched.cpf) validateField('cpf', e.target.value);
-                      }}
-                      onBlur={(e) => handleFieldBlur('cpf', e.target.value)}
-                      className={`h-11 font-sans ${touched.cpf && errors.cpf
-                          ? 'border-red-500 focus:border-red-500'
-                          : touched.cpf && !errors.cpf
-                            ? 'border-green-500 focus:border-green-500'
-                            : ''
-                        }`}
-                      maxLength={14}
-                      required
-                    />
-                    {isLoadingCPF && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <LoadingSpinner size="sm" />
-                      </div>
-                    )}
-                    {touched.cpf && !errors.cpf && !isLoadingCPF && (
-                      <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
-                    )}
-                  </div>
-                  {touched.cpf && errors.cpf && (
-                    <p className="text-sm text-red-500 font-sans">{errors.cpf}</p>
-                  )}
-                </div>
-
-                {/* Nome Completo - preenchido automaticamente */}
+                {/* Nome Completo */}
                 <div className="space-y-2">
                   <Label htmlFor="fullName" className="font-sans">
                     Nome Completo
-                    {nameFromAPI && <span className="text-xs text-green-600 ml-2">(Preenchido automaticamente)</span>}
                   </Label>
                   <div className="relative">
                     <Input
@@ -597,27 +488,22 @@ export default function RegisterPage() {
                       placeholder="Seu nome completo"
                       value={fullName}
                       onChange={(e) => {
-                        if (!nameFromAPI) {
-                          handleFieldChange('fullName', e.target.value);
-                        }
+                        handleFieldChange('fullName', e.target.value);
                       }}
-                      onBlur={(e) => !nameFromAPI && handleFieldBlur('fullName', e.target.value)}
-                      className={`h-11 font-sans ${nameFromAPI
-                          ? 'bg-muted cursor-not-allowed border-green-500'
-                          : touched.fullName && errors.fullName
-                            ? 'border-red-500 focus:border-red-500'
-                            : touched.fullName && !errors.fullName
-                              ? 'border-green-500 focus:border-green-500'
-                              : ''
+                      onBlur={(e) => handleFieldBlur('fullName', e.target.value)}
+                      className={`h-11 font-sans ${touched.fullName && errors.fullName
+                          ? 'border-red-500 focus:border-red-500'
+                          : touched.fullName && !errors.fullName
+                            ? 'border-green-500 focus:border-green-500'
+                            : ''
                         }`}
-                      readOnly={nameFromAPI}
                       required
                     />
-                    {(touched.fullName && !errors.fullName && !nameFromAPI) || nameFromAPI ? (
+                    {touched.fullName && !errors.fullName ? (
                       <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
                     ) : null}
                   </div>
-                  {touched.fullName && errors.fullName && !nameFromAPI && (
+                  {touched.fullName && errors.fullName && (
                     <p className="text-sm text-red-500 font-sans">{errors.fullName}</p>
                   )}
                 </div>
