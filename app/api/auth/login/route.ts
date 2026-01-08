@@ -150,11 +150,6 @@ export async function POST(req: NextRequest) {
       if (userProfile.status) response.cookies.set('sofia_status', userProfile.status as string, publicCookieOptions);
       if (userProfile.plan) response.cookies.set('sofia_plan', userProfile.plan as string, publicCookieOptions);
       if (userProfile.role) response.cookies.set('sofia_role', userProfile.role as string, publicCookieOptions);
-      
-      // Cookie legado para compatibilidade
-      if (userProfile.account_status) {
-        response.cookies.set('sofia_account_status', userProfile.account_status as string, publicCookieOptions);
-      }
     }
 
     logger.info('Login realizado com sucesso', {

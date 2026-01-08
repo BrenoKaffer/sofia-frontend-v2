@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
 
     // Verificar se já existe usuário com este email
     const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
+      .from('user_profiles')
+      .select('user_id')
       .eq('email', email.toLowerCase())
       .single();
 
@@ -93,16 +93,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Criar registro na tabela users
+    // Criar registro na tabela user_profiles
     const { data: user, error: userError } = await supabase
-      .from('users')
+      .from('user_profiles')
       .insert({
-        id: authData.user.id,
+        user_id: authData.user.id,
         email: email.toLowerCase(),
-        name: name || email.split('@')[0],
-        role_id: 'user', // Role padrão
-        created_at: new Date().toISOString(),
-        is_active: true
+        full_name: name || email.split('@')[0],
+        role: 'user', // Role padrão
+        status: 'active',
+        created_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -126,9 +126,9 @@ export async function POST(req: NextRequest) {
     // Log de registro bem-sucedido
     logger.info('Usuário registrado com sucesso', {
       metadata: {
-        userId: user.id,
+        userId: user.user_id,
         email: user.email,
-        name: user.name,
+        name: user.full_name,
         ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
         userAgent: req.headers.get('user-agent') || 'unknown'
       }
@@ -139,10 +139,10 @@ export async function POST(req: NextRequest) {
       success: true,
       data: {
         user: {
-          id: user.id,
+          id: user.user_id,
           email: user.email,
-          name: user.name,
-          role_id: user.role_id,
+          name: user.full_name,
+          role: user.role,
           created_at: user.created_at
         },
         requires_confirmation: !authData.session // Se não há sessão, precisa confirmar email

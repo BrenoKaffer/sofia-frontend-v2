@@ -271,9 +271,9 @@ async function handleDelete(req: NextRequest) {
 
     // Verificar se existem usuários com esta role
     const { count } = await supabase
-      .from('users')
+      .from('user_profiles')
       .select('*', { count: 'exact', head: true })
-      .eq('role_id', roleId);
+      .eq('role', roleId);
 
     if (count && count > 0) {
       return NextResponse.json(

@@ -27,7 +27,7 @@ export function MonitoringProvider({ children }: { children: React.ReactNode }) 
           }
           if (!userId) return
         } catch { }
-        const channel = supabase.channel('account_status').on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles', filter: `user_id=eq.${userId}` }, payload => {
+        const channel = supabase.channel('user_status_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles', filter: `user_id=eq.${userId}` }, payload => {
           try {
             const newData = (payload?.new as any) || {};
             

@@ -195,29 +195,22 @@ export class AuthService {
    */
   static async getUserWithRole(userId: string): Promise<AuthenticatedUser | null> {
     try {
-      // Buscar dados do usuário
+      // Buscar dados do usuário no user_profiles
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select(`
-          id,
+          user_id,
           email,
-          name,
-          role_id,
+          full_name,
+          role,
           created_at,
-          last_login,
-          is_active,
-          user_roles (
-            id,
-            name,
-            permissions,
-            level
-          )
+          status
         `)
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
       if (userError || !userData) {
-        logger.warn(`Usuário ${userId} não encontrado no banco de dados`);
+        logger.warn(`Usuário ${userId} não encontrado no user_profiles`);
         
         // Criar usuário com role padrão se não existir
         const newUser = await this.createDefaultUser(userId);
@@ -227,23 +220,40 @@ export class AuthService {
       // Determinar role do usuário
       let userRole: UserRole;
       
-      if (userData.user_roles && userData.user_roles.length > 0) {
-        userRole = userData.user_roles[0];
-      } else {
-        // Usar role padrão se não tiver role específica
-        userRole = DEFAULT_ROLES[userData.role_id] || DEFAULT_ROLES.user;
+      // Tentar buscar permissões personalizadas da tabela user_roles se necessário
+      // Por enquanto, usamos DEFAULT_ROLES baseado no campo role (enum/string)
+      // Se userData.role for um ID de role personalizada, precisaríamos buscar em user_roles
+      
+      const roleKey = String(userData.role || 'user');
+      userRole = DEFAULT_ROLES[roleKey] || DEFAULT_ROLES.user;
+      
+      // Se não encontrou em DEFAULT_ROLES, pode ser uma role customizada no banco
+      if (!DEFAULT_ROLES[roleKey]) {
+         const { data: customRole } = await supabase
+           .from('user_roles')
+           .select('*')
+           .eq('id', roleKey)
+           .single();
+         if (customRole) {
+            userRole = {
+              id: customRole.id,
+              name: customRole.name,
+              permissions: customRole.permissions,
+              level: customRole.level
+            };
+         }
       }
 
       return {
-        id: userData.id,
+        id: userData.user_id,
         email: userData.email,
-        name: userData.name,
+        name: userData.full_name,
         role: userRole,
         permissions: userRole.permissions,
         session_id: `session_${Date.now()}`,
         created_at: userData.created_at,
-        last_login: userData.last_login || new Date().toISOString(),
-        is_active: userData.is_active !== false // Default para true se não especificado
+        last_login: new Date().toISOString(), // user_profiles não tem last_login por padrão, usamos current
+        is_active: userData.status === 'active'
       };
 
     } catch (error) {
@@ -387,10 +397,11 @@ export class AuthService {
    */
   static async updateLastLogin(userId: string): Promise<void> {
     try {
+      // user_profiles pode não ter last_login, atualizamos updated_at
       await supabase
-        .from('users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', userId);
+        .from('user_profiles')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('user_id', userId);
     } catch (error) {
       logger.error('Erro ao atualizar último login:', undefined, error as Error);
     }

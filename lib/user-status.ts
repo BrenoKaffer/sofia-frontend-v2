@@ -163,38 +163,18 @@ export interface UserAccessProfile {
   status?: UserStatus | string;
   plan?: UserPlan | string;
   role?: UserRole | string;
-  account_status?: AccountStatus | string;
 }
 
 export function checkUserFullAccess(profile: UserAccessProfile): boolean {
   if (!profile) return false;
 
   // 1. Check Status
-  let isActive = false;
-  if (profile.status) {
-    isActive = profile.status === UserStatus.ACTIVE;
-  } else {
-    // Legacy fallback
-    const s = profile.account_status as AccountStatus;
-    isActive = ![
-      AccountStatus.BLOCKED, 
-      AccountStatus.SUSPENDED, 
-      AccountStatus.BANNED, 
-      AccountStatus.INACTIVE,
-      AccountStatus.REFUNDED
-    ].includes(s);
-  }
-
+  const isActive = profile.status === UserStatus.ACTIVE;
   if (!isActive) return false;
 
   // 2. Check Permission (Pro or Admin)
   if (profile.plan === UserPlan.PRO) return true;
   if (profile.role === UserRole.ADMIN || profile.role === UserRole.SUPERADMIN) return true;
-
-  // Legacy Permission
-  if (['premium', 'trial', 'admin', 'superadmin'].includes(profile.account_status as string)) {
-    return true;
-  }
 
   return false;
 }

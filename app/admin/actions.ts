@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { auth } from '@/lib/auth-server';
-import { userIsAdmin, UserRole, UserStatus, UserPlan, AccountStatus } from '@/lib/user-status';
+import { userIsAdmin, UserRole, UserStatus, UserPlan } from '@/lib/user-status';
 import { revalidatePath } from 'next/cache';
 
 // Initialize Supabase Admin Client (Service Role)

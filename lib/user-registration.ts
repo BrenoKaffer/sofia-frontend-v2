@@ -171,7 +171,7 @@ export async function getUserData(userId: string) {
       throw new Error(`Erro ao buscar perfil do usuário: ${userProfileError.message}`);
     }
 
-    // Retornar dados com preferências integradas do user_profiles
+      // Retornar dados com preferências integradas do user_profiles
     return {
       success: true,
       data: {

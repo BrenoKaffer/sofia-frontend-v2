@@ -19,29 +19,23 @@ async function handleGet(req: NextRequest) {
 
     // Construir query
     let query = supabase
-      .from('users')
+      .from('user_profiles')
       .select(`
-        id,
+        user_id,
         email,
-        name,
-        role_id,
+        full_name,
+        role,
         created_at,
-        last_login,
-        is_active,
-        user_roles (
-          id,
-          name,
-          level
-        )
+        status
       `, { count: 'exact' });
 
     // Aplicar filtros
     if (search) {
-      query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
+      query = query.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`);
     }
 
     if (role) {
-      query = query.eq('role_id', role);
+      query = query.eq('role', role);
     }
 
     // Aplicar paginação
@@ -49,7 +43,7 @@ async function handleGet(req: NextRequest) {
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false });
 
-    const { data: users, error, count } = await query;
+    const { data: profiles, error, count } = await query;
 
     if (error) {
       logger.error(`Erro ao buscar usuários: ${error.message || String(error)}`);
@@ -59,13 +53,25 @@ async function handleGet(req: NextRequest) {
       );
     }
 
+    // Mapear para o formato esperado pelo frontend
+    const users = profiles?.map(p => ({
+        id: p.user_id,
+        email: p.email,
+        name: p.full_name,
+        role_id: p.role,
+        created_at: p.created_at,
+        last_login: null,
+        is_active: p.status === 'active',
+        user_roles: { name: p.role }
+    })) || [];
+
     // Calcular estatísticas
     const totalPages = Math.ceil((count || 0) / limit);
 
     return NextResponse.json({
       success: true,
       data: {
-        users: users || [],
+        users: users,
         pagination: {
           page,
           limit,
@@ -126,17 +132,17 @@ async function handlePost(req: NextRequest) {
       );
     }
 
-    // Criar registro na tabela users
+    // Criar registro na tabela user_profiles
     const { data: user, error: userError } = await supabase
-      .from('users')
-      .insert({
-        id: authUser.user.id,
+      .from('user_profiles')
+      .upsert({
+        user_id: authUser.user.id,
         email,
-        name: name || email.split('@')[0],
-        role_id,
+        full_name: name || email.split('@')[0],
+        role: role_id,
         created_at: new Date().toISOString(),
-        is_active: true
-      })
+        status: 'active'
+      }, { onConflict: 'user_id' })
       .select()
       .single();
 
@@ -154,19 +160,19 @@ async function handlePost(req: NextRequest) {
 
     logger.info('Usuário criado com sucesso', {
       metadata: {
-        userId: user.id,
+        userId: user.user_id,
         email: user.email,
-        role: role_id
+        role: user.role
       }
     });
 
     return NextResponse.json({
       success: true,
       data: {
-        id: user.id,
+        id: user.user_id,
         email: user.email,
-        name: user.name,
-        role_id: user.role_id,
+        name: user.full_name,
+        role_id: user.role,
         created_at: user.created_at
       },
       message: 'Usuário criado com sucesso'
@@ -204,15 +210,15 @@ async function handlePut(req: NextRequest) {
 
     // Preparar dados para atualização
     const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (role_id !== undefined) updateData.role_id = role_id;
-    if (is_active !== undefined) updateData.is_active = is_active;
+    if (name !== undefined) updateData.full_name = name;
+    if (role_id !== undefined) updateData.role = role_id;
+    if (is_active !== undefined) updateData.status = is_active ? 'active' : 'inactive';
 
-    // Atualizar usuário
+    // Atualizar usuário em user_profiles
     const { data: user, error } = await supabase
-      .from('users')
+      .from('user_profiles')
       .update(updateData)
-      .eq('id', user_id)
+      .eq('user_id', user_id)
       .select()
       .single();
 
@@ -233,14 +239,21 @@ async function handlePut(req: NextRequest) {
 
     logger.info('Usuário atualizado com sucesso', {
       metadata: {
-        userId: user.id,
+        userId: user.user_id,
         changes: updateData
       }
     });
 
     return NextResponse.json({
       success: true,
-      data: user,
+      data: {
+          id: user.user_id,
+          email: user.email,
+          name: user.full_name,
+          role_id: user.role,
+          created_at: user.created_at,
+          is_active: user.status === 'active'
+      },
       message: 'Usuário atualizado com sucesso'
     });
 
@@ -266,11 +279,11 @@ async function handleDelete(req: NextRequest) {
       );
     }
 
-    // Verificar se usuário existe
+    // Verificar se usuário existe em user_profiles
     const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select('id, email')
-      .eq('id', userId)
+      .from('user_profiles')
+      .select('user_id, email')
+      .eq('user_id', userId)
       .single();
 
     if (checkError || !existingUser) {
@@ -280,25 +293,15 @@ async function handleDelete(req: NextRequest) {
       );
     }
 
-    // Deletar do banco de dados
-    const { error: deleteError } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', userId);
-
-    if (deleteError) {
-      logger.error(`Erro ao deletar usuário do banco: ${deleteError.message || String(deleteError)}`);
-      return NextResponse.json(
-        { error: 'Erro ao deletar usuário' },
-        { status: 500 }
-      );
-    }
-
-    // Deletar do Supabase Auth
+    // Deletar do Supabase Auth (Cascade irá remover do user_profiles e outras tabelas)
     const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
 
     if (authDeleteError) {
-      logger.warn(`Erro ao deletar usuário do Auth (usuário já removido do banco): ${authDeleteError.message || String(authDeleteError)}`);
+      logger.error(`Erro ao deletar usuário do Auth: ${authDeleteError.message || String(authDeleteError)}`);
+       return NextResponse.json(
+        { error: 'Erro ao deletar usuário' },
+        { status: 500 }
+      );
     }
 
     logger.info('Usuário deletado com sucesso', {
@@ -339,10 +342,3 @@ export async function OPTIONS() {
     },
   });
 }
-
-// Documentação da API
-// Admin Users API - Endpoints para administração de usuários (apenas admins)
-// GET /api/admin/users - Listar usuários com paginação e filtros
-// POST /api/admin/users - Criar novo usuário
-// PUT /api/admin/users - Atualizar usuário existente
-// DELETE /api/admin/users - Deletar usuário
