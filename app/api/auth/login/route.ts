@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Buscar dados do usuário com role
-    const user = await AuthService.getUserWithRole(authData.user.id, authData.user);
+    const user = await AuthService.getUserWithRole(authData.user.id, authData.user, supabase);
 
     if (!user) {
       logger.error('Usuário autenticado não encontrado no banco', {
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
 
     // Definir cookies de performance (Edge Middleware)
     // Buscamos o perfil completo para garantir que os cookies estejam sincronizados
-    const userProfile = await AuthService.getUserProfileFull(user.id);
+    const userProfile = await AuthService.getUserProfileFull(user.id, supabase);
     
     if (userProfile) {
       // Cookies acessíveis via JS para que o MonitoringProvider possa atualizá-los via Realtime
