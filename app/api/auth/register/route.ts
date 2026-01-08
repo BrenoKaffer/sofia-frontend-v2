@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { AuthService } from '@/lib/auth-service';
 import { logger } from '@/lib/logger';
+import { createClient } from '@supabase/supabase-js';
 
 // POST - Registro de novo usuário
 export async function POST(req: NextRequest) {
@@ -94,7 +95,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Criar registro na tabela user_profiles
-    const { data: user, error: userError } = await supabase
+    // Tentar usar Service Role Key para bypassar RLS se disponível
+    let dbClient = supabase;
+    
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      dbClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+    } else {
+      logger.warn('SUPABASE_SERVICE_ROLE_KEY não definida. Usando cliente anônimo para criação de perfil (pode falhar por RLS).');
+    }
+
+    const { data: user, error: userError } = await dbClient
       .from('user_profiles')
       .insert({
         user_id: authData.user.id,
