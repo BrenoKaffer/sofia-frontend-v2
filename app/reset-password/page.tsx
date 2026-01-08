@@ -134,26 +134,36 @@ function ResetPasswordContent() {
           }
 
           try {
-            const { error } = await withTimeout(supabase.auth.setSession({
+            console.log('Tentando definir sessão com tokens da URL...');
+            // Removido timeout explícito para evitar falsos negativos em conexões lentas
+            const { error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
-            }));
+            });
 
             if (error) {
-              console.error('Erro ao validar token:', error);
-              setIsValidToken(false);
-              toast.error('Link de recuperação inválido ou expirado');
+              console.error('Erro ao validar token via setSession:', error);
+              
+              // Fallback: Tentar validar o usuário diretamente com o token
+              console.log('Tentando validar usuário diretamente...');
+              const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+              
+              if (userError || !userData.user) {
+                console.error('Erro ao validar usuário diretamente:', userError);
+                setIsValidToken(false);
+                toast.error('Link de recuperação inválido ou expirado');
+              } else {
+                console.log('Usuário validado com sucesso via getUser');
+                setIsValidToken(true);
+              }
             } else {
+              console.log('Sessão definida com sucesso');
               setIsValidToken(true);
             }
           } catch (error: any) {
-            console.error('Erro ao processar token:', error);
+            console.error('Erro ao processar token (catch):', error);
             setIsValidToken(false);
-            if (error.message === 'Timeout na operação') {
-               toast.error('Tempo limite excedido ao validar o token.');
-            } else {
-               toast.error('Erro ao processar link de recuperação');
-            }
+            toast.error('Erro ao processar link de recuperação: ' + (error.message || 'Erro desconhecido'));
           }
           return;
         } 
