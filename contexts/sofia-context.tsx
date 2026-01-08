@@ -7,6 +7,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { apiClient } from '@/lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
 import { useRealTimeSignals, useRealTimeKPIs } from '@/hooks/use-real-time-data';
 import { useErrorMonitoring, useApiMonitoring } from '@/hooks/use-error-monitoring';
 
@@ -258,6 +259,7 @@ interface SofiaProviderProps {
 
 export function SofiaProvider({ children }: SofiaProviderProps) {
   const [state, dispatch] = useReducer(sofiaReducer, initialState);
+  const { user } = useAuth();
   
   // Hooks de monitoramento de erros e API
   const { captureError, captureMessage } = useErrorMonitoring();
@@ -328,13 +330,15 @@ export function SofiaProvider({ children }: SofiaProviderProps) {
         dispatch({ type: 'SET_AVAILABLE_TABLES', payload: tables || [] });
       }
 
-      // Carregar preferências do usuário
-      const preferencesResponse = await trackApiCall(
-        () => apiClient.getUserPreferences(),
-        'getUserPreferences'
-      );
-      if (preferencesResponse.success) {
-        dispatch({ type: 'SET_USER_PREFERENCES', payload: preferencesResponse.data as UserPreferences });
+      // Carregar preferências do usuário apenas se autenticado
+      if (user) {
+        const preferencesResponse = await trackApiCall(
+          () => apiClient.getUserPreferences(),
+          'getUserPreferences'
+        );
+        if (preferencesResponse.success) {
+          dispatch({ type: 'SET_USER_PREFERENCES', payload: preferencesResponse.data as UserPreferences });
+        }
       }
 
       // Carregar mesas públicas
@@ -355,7 +359,7 @@ export function SofiaProvider({ children }: SofiaProviderProps) {
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [trackApiCall, captureError]);
+  }, [trackApiCall, captureError, user]);
 
   // Carregar dados iniciais
   useEffect(() => {

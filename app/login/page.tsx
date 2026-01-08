@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import PageTransitionWithBackground from '@/components/layout/PageTransitionWithBackground';
 import { supabase } from '@/lib/supabase';
 import { ShinyButton } from '@/components/ui/shiny-button';
+import ClientOnly from '@/components/ClientOnly';
 
 export default function LoginPage() {
   const [splashVisible, setSplashVisible] = useState(true);
@@ -259,9 +260,17 @@ export default function LoginPage() {
     }
 
     try {
-      console.log('Tentando fazer login com:', { email, password: password.length + ' caracteres' });
-      const success = await login(email, password);
-      console.log('Resultado do login:', success);
+      console.warn('Tentando fazer login com:', { email, password: password.length + ' caracteres' });
+      
+      // Timeout de 15 segundos para evitar travamento infinito
+      const loginPromise = login(email, password);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Tempo limite excedido')), 15000)
+      );
+
+      const success = await Promise.race([loginPromise, timeoutPromise]) as boolean;
+      
+      console.warn('Resultado do login:', success);
       if (success) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -298,7 +307,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="dark min-h-screen flex">
+    <ClientOnly>
+      <div className="dark min-h-screen flex">
       <PageTransitionWithBackground isVisible={splashVisible} />
       {/* Left side - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden bg-black">
@@ -497,6 +507,7 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </ClientOnly>
   );
 }
 
