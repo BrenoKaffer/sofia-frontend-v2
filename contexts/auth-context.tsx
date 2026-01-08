@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isLoggingOutRef = React.useRef(false);
   const AUTH_DEV_BYPASS = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true';
 
   // Função para converter usuário do Supabase para o formato local, buscando dados atualizados do perfil
@@ -123,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (isLoggingOutRef.current) return;
         if (AUTH_DEV_BYPASS) {
           setUser({
             id: 'dev-bypass-user',
@@ -287,6 +289,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    // Marcar que estamos fazendo logout para evitar atualizações de estado que quebrem a UI
+    isLoggingOutRef.current = true;
+    
     try {
       // 1. Chamar rota de logout do servidor para limpar cookies
       try {
@@ -296,16 +301,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2. Logout no cliente Supabase
+      // Isso dispararia onAuthStateChange, mas o ref isLoggingOutRef vai prevenir o setUser(null)
       await supabase.auth.signOut();
       
-      // 3. Limpar estado local e redirecionar
-      setUser(null);
+      // 3. Redirecionar via hard refresh
+      // Não chamamos setUser(null) aqui propositalmente para manter a UI estável até o refresh
       toast.success('Logout realizado com sucesso!');
-      router.push('/login');
+      
+      // Usar window.location.href para garantir um reset completo do estado
+      window.location.href = '/login';
     } catch (error) {
       console.error('Erro no logout:', error);
       toast.error('Erro ao fazer logout');
-      router.push('/login');
+      window.location.href = '/login';
     }
   };
 
