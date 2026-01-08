@@ -41,15 +41,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileData = await getUserProfile(supabaseUser.id);
       console.log('Dados do perfil sincronizados:', profileData);
     } catch (e: any) {
-      console.error('Error fetching user profile:', e);
-      
-      // Ignorar erro de permissão na página de reset de senha para evitar confusão visual
-      // já que a sessão pode estar em estado transicional/isolado
-      const isResetPasswordPage = pathname?.startsWith('/reset-password');
-      
-      if (!isResetPasswordPage && e.message && (e.message.includes('permission') || e.message.includes('policy'))) {
-        toast.error('Erro de permissão ao sincronizar perfil. Contate o suporte.');
+      // Tentar recuperar criando o perfil automaticamente
+      // Suprimir toast de erro de permissão pois o sistema tentará corrigir
+      const isPermissionError = e.message && (e.message.includes('permission') || e.message.includes('policy'));
+      if (!isPermissionError) {
+        // Logar outros erros que não sejam de permissão/RLS
+        console.error('Error fetching user profile:', e);
+      } else {
+        console.warn('Perfil não encontrado ou erro de permissão (RLS). Tentando criar perfil via RPC...');
       }
+
       try {
         await supabase.rpc('insert_user_profile_on_registration', {
           p_user_id: supabaseUser.id,
@@ -65,6 +66,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profileData = data || null;
       } catch (createErr: any) {
         console.error('Error creating user profile:', createErr);
+        // Só mostrar erro se a recuperação falhar também
+        if (isPermissionError) {
+           toast.error('Erro ao sincronizar perfil. Algumas funcionalidades podem estar limitadas.');
+        }
       }
     }
 
