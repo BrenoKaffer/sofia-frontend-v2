@@ -73,6 +73,12 @@ export async function middleware(req: NextRequest) {
   // }
 
   if (isAssetOrApi(pathname) || isPublicRoute(pathname)) {
+    // Se o usuário estiver autenticado e tentar acessar login ou register, redirecionar para dashboard
+    if ((pathname === '/login' || pathname === '/register') && await isAuthenticated(req)) {
+      const url = req.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
     return NextResponse.next()
   }
 
