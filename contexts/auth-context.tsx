@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -29,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const AUTH_DEV_BYPASS = process.env.NEXT_PUBLIC_AUTH_DEV_BYPASS === 'true';
@@ -274,12 +275,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // 1. Chamar rota de logout do servidor para limpar cookies
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+      } catch (e) {
+        console.warn('Erro ao chamar API de logout:', e);
+      }
+
+      // 2. Logout no cliente Supabase
       await supabase.auth.signOut();
+      
+      // 3. Limpar estado local e redirecionar
       setUser(null);
       toast.success('Logout realizado com sucesso!');
+      router.push('/login');
     } catch (error) {
       console.error('Erro no logout:', error);
       toast.error('Erro ao fazer logout');
+      router.push('/login');
     }
   };
 
