@@ -261,8 +261,7 @@ export default function RegisterPage() {
       const success = await register(fullName, email, password, '', fullName);
       
       if (success) {
-        // Success message is handled by auth-context, but we can redirect here
-        router.push('/login');
+        router.push(`/email-confirmation?email=${encodeURIComponent(email)}`);
       }
       // If failed, toast is already handled by auth-context
     } catch (error) {
