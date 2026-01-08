@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Atualizar último login
-    await AuthService.updateLastLogin(user.id);
+    await AuthService.updateLastLogin(user.id, supabase);
 
     // Preparar dados da resposta
     const userData = {

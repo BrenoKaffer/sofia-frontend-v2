@@ -304,7 +304,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Isso dispararia onAuthStateChange, mas o ref isLoggingOutRef vai prevenir o setUser(null)
       await supabase.auth.signOut();
       
-      // 3. Redirecionar via hard refresh
+      // 3. Limpar cookies manualmente no cliente para garantir
+      if (typeof document !== 'undefined') {
+        document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      }
+
+      // 4. Redirecionar via hard refresh
       // Não chamamos setUser(null) aqui propositalmente para manter a UI estável até o refresh
       toast.success('Logout realizado com sucesso!');
       

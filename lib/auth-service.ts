@@ -404,7 +404,8 @@ export class AuthService {
   /**
    * Atualizar último login do usuário
    */
-  static async updateLastLogin(userId: string): Promise<void> {
+  static async updateLastLogin(userId: string, supabaseClient?: SupabaseClient): Promise<void> {
+    const supabase = supabaseClient || globalSupabase;
     try {
       await supabase
         .from('user_profiles')
