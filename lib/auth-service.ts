@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
-import { supabase } from './supabase';
+import { supabase as globalSupabase } from './supabase';
 import { logger } from './logger';
 import { UserAccessProfile } from './user-status';
-import { User } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
+import type { User, SupabaseClient } from '@supabase/supabase-js';
 
 // Tipos para o sistema de autenticação
 export interface UserRole {
@@ -125,7 +126,28 @@ export class AuthService {
   /**
    * Validar token JWT e obter dados do usuário
    */
-  static async validateToken(token: string): Promise<AuthResult> {
+  static async validateToken(token: string, supabaseClient?: SupabaseClient): Promise<AuthResult> {
+    // Se não foi passado um cliente, criar um temporário com o token para respeitar RLS
+    let supabase = supabaseClient;
+    if (!supabase) {
+      supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          },
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false
+          }
+        }
+      );
+    }
+
     try {
       // Validar token com Supabase
       const { data: { user }, error } = await supabase.auth.getUser(token);
@@ -139,7 +161,8 @@ export class AuthService {
       }
 
       // Buscar dados completos do usuário incluindo role
-      const userData = await AuthService.getUserWithRole(user.id);
+      // Passamos o cliente autenticado
+      const userData = await AuthService.getUserWithRole(user.id, user, supabase);
       
       if (!userData) {
         return {
@@ -150,7 +173,7 @@ export class AuthService {
       }
 
       // Atualizar último login
-      await AuthService.updateLastLogin(user.id);
+      await AuthService.updateLastLogin(user.id, supabase);
 
       return {
         success: true,
@@ -171,7 +194,8 @@ export class AuthService {
   /**
    * Buscar perfil de acesso completo do usuário (user_profiles)
    */
-  static async getUserProfileFull(userId: string): Promise<UserAccessProfile | null> {
+  static async getUserProfileFull(userId: string, supabaseClient?: SupabaseClient): Promise<UserAccessProfile | null> {
+    const supabase = supabaseClient || globalSupabase;
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -194,7 +218,8 @@ export class AuthService {
   /**
    * Buscar dados do usuário com role do banco de dados
    */
-  static async getUserWithRole(userId: string, authUser?: User): Promise<AuthenticatedUser | null> {
+  static async getUserWithRole(userId: string, authUser?: User, supabaseClient?: SupabaseClient): Promise<AuthenticatedUser | null> {
+    const supabase = supabaseClient || globalSupabase;
     try {
       // Buscar dados do usuário no user_profiles
       const { data: userData, error: userError } = await supabase
@@ -214,7 +239,7 @@ export class AuthService {
         logger.warn(`Usuário ${userId} não encontrado no user_profiles`);
         
         // Criar usuário com role padrão se não existir
-        const newUser = await this.createDefaultUser(userId, authUser);
+        const newUser = await this.createDefaultUser(userId, authUser, supabase);
         return newUser;
       }
 
@@ -266,7 +291,8 @@ export class AuthService {
   /**
    * Criar usuário com role padrão
    */
-  static async createDefaultUser(userId: string, authUser?: User): Promise<AuthenticatedUser | null> {
+  static async createDefaultUser(userId: string, authUser?: User, supabaseClient?: SupabaseClient): Promise<AuthenticatedUser | null> {
+    const supabase = supabaseClient || globalSupabase;
     try {
       let user = authUser;
       
