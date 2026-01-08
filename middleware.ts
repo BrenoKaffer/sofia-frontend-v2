@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server'
 const publicPaths = [
   '/login',
   '/register',
+  '/email-confirmation',
+  '/verify-email',
   '/forgot-password',
   '/reset-password',
   '/public',
