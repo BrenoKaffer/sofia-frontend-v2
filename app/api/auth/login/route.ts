@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { AuthService } from '@/lib/auth-service';
 import { logger } from '@/lib/logger';
 
@@ -25,6 +25,28 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Preparar cliente Supabase com SSR
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    
+    // Armazenar cookies temporariamente para aplicar na resposta final
+    let responseCookiesToSet: { name: string, value: string, options: CookieOptions }[] = [];
+
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseKey,
+      {
+        cookies: {
+          getAll() {
+            return req.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            responseCookiesToSet = cookiesToSet;
+          },
+        },
+      }
+    );
 
     // Tentar fazer login
     console.log('[Login API] Tentando autenticar com Supabase...');
@@ -112,7 +134,7 @@ export async function POST(req: NextRequest) {
       is_active: user.is_active
     };
 
-    // Configurar cookie de sessão
+    // Configurar resposta JSON
     const response = NextResponse.json({
       success: true,
       data: {
@@ -127,7 +149,12 @@ export async function POST(req: NextRequest) {
       message: 'Login realizado com sucesso'
     });
 
-    // Configurar cookies
+    // 1. Aplicar cookies do Supabase SSR (sb-access-token chunked)
+    responseCookiesToSet.forEach(({ name, value, options }) => {
+      response.cookies.set(name, value, options);
+    });
+
+    // 2. Configurar cookies legados (manuais) para middleware
     const maxAge = remember_me ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 30 dias ou 1 dia
     
     const cookieOptions = {

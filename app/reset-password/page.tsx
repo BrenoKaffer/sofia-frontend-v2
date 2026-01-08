@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -23,104 +23,174 @@ function ResetPasswordContent() {
   const [isPasswordReset, setIsPasswordReset] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const validatingRef = useRef(false);
 
   useEffect(() => {
     // Verificar se há parâmetros de recuperação de senha na URL
     const checkTokenValidity = async () => {
-      // Tentar pegar parâmetros da URL (query string)
-      let error = searchParams.get('error');
-      let errorCode = searchParams.get('error_code');
-      let errorDescription = searchParams.get('error_description');
-      let code = searchParams.get('code');
-      let accessToken = searchParams.get('access_token');
-      let refreshToken = searchParams.get('refresh_token');
-      let type = searchParams.get('type');
+      // Evita validação duplicada em Strict Mode ou re-renders rápidos
+      if (validatingRef.current) return;
+      validatingRef.current = true;
 
-      // Se não encontrou na query string, tentar pegar do hash (fragmento)
-      if (!code && !accessToken && !error && typeof window !== 'undefined' && window.location.hash) {
-        const hash = window.location.hash.substring(1); // remove o #
-        const params = new URLSearchParams(hash);
-        
-        error = params.get('error') || error;
-        errorCode = params.get('error_code') || errorCode;
-        errorDescription = params.get('error_description') || errorDescription;
-        code = params.get('code') || code;
-        accessToken = params.get('access_token') || accessToken;
-        refreshToken = params.get('refresh_token') || refreshToken;
-        type = params.get('type') || type;
-      }
+      try {
+        // Tentar pegar parâmetros da URL (query string)
+        let error = searchParams.get('error');
+        let errorCode = searchParams.get('error_code');
+        let errorDescription = searchParams.get('error_description');
+        let code = searchParams.get('code');
+        let accessToken = searchParams.get('access_token');
+        let refreshToken = searchParams.get('refresh_token');
+        let type = searchParams.get('type');
 
-      console.log('Debug Reset Password:', { 
-        code: code ? 'present' : 'missing', 
-        accessToken: accessToken ? 'present' : 'missing', 
-        error, 
-        hash: typeof window !== 'undefined' ? window.location.hash : 'N/A' 
-      });
-
-      // Primeiro, verificar se há erros na URL
-      if (error) {
-        console.error('Erro na URL:', { error, errorCode, errorDescription });
-        setIsValidToken(false);
-        
-        // Mostrar mensagem específica baseada no tipo de erro
-        if (errorCode === 'otp_expired' || error === 'access_denied') {
-          toast.error('Link de recuperação expirado ou inválido');
-        } else {
-          toast.error('Erro no link de recuperação: ' + (errorDescription || error));
+        // Se não encontrou na query string, tentar pegar do hash (fragmento)
+        if (!code && !accessToken && !error && typeof window !== 'undefined' && window.location.hash) {
+          const hash = window.location.hash.substring(1); // remove o #
+          const params = new URLSearchParams(hash);
+          
+          error = params.get('error') || error;
+          errorCode = params.get('error_code') || errorCode;
+          errorDescription = params.get('error_description') || errorDescription;
+          code = params.get('code') || code;
+          accessToken = params.get('access_token') || accessToken;
+          refreshToken = params.get('refresh_token') || refreshToken;
+          type = params.get('type') || type;
         }
-        return;
-      }
 
-      // Verificar tokens válidos
-      // Variáveis já capturadas acima (query ou hash)
+        console.log('Debug Reset Password:', { 
+          code: code ? 'present' : 'missing', 
+          accessToken: accessToken ? 'present' : 'missing', 
+          refreshToken: refreshToken ? 'present' : 'missing',
+          type,
+          error, 
+          hash: typeof window !== 'undefined' ? window.location.hash : 'N/A' 
+        });
 
-      if (code) {
-        try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.error('Erro ao trocar código por sessão:', error);
-            setIsValidToken(false);
-            toast.error('Código de recuperação inválido ou expirado');
-          } else {
-            setIsValidToken(true);
-          }
-        } catch (error) {
-          console.error('Erro ao processar código:', error);
+        // Primeiro, verificar se há erros na URL
+        if (error) {
+          console.error('Erro na URL:', { error, errorCode, errorDescription });
           setIsValidToken(false);
-          toast.error('Erro ao processar link de recuperação');
-        }
-        return;
-      }
-
-      if (type === 'recovery' && accessToken && refreshToken) {
-        try {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (error) {
-            console.error('Erro ao validar token:', error);
-            setIsValidToken(false);
-            toast.error('Link de recuperação inválido ou expirado');
+          
+          // Mostrar mensagem específica baseada no tipo de erro
+          if (errorCode === 'otp_expired' || error === 'access_denied') {
+            toast.error('Link de recuperação expirado ou inválido');
           } else {
-            setIsValidToken(true);
+            toast.error('Erro no link de recuperação: ' + (errorDescription || error));
           }
-        } catch (error) {
-          console.error('Erro ao processar token:', error);
-          setIsValidToken(false);
-          toast.error('Erro ao processar link de recuperação');
+          return;
         }
-      } else {
+
+        // Função auxiliar para timeout
+        const withTimeout = <T,>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
+          return Promise.race([
+            promise,
+            new Promise<T>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout na operação')), ms)
+            )
+          ]);
+        };
+
+        // Verificar tokens válidos
+        
+        // 1. Caso PKCE (Code Flow)
+        if (code) {
+          try {
+            // Usando timeout para evitar hang infinito
+            const { error } = await withTimeout(supabase.auth.exchangeCodeForSession(code));
+            
+            if (error) {
+              console.error('Erro ao trocar código por sessão:', error);
+              setIsValidToken(false);
+              // Mensagem amigável para erro comum de código já usado
+              if (error.message?.includes('Flow state not found') || error.message?.includes('code has expired')) {
+                toast.error('Este link já foi utilizado ou expirou. Solicite um novo.');
+              } else {
+                toast.error('Código de recuperação inválido ou expirado');
+              }
+            } else {
+              setIsValidToken(true);
+            }
+          } catch (error: any) {
+            console.error('Erro ao processar código:', error);
+            setIsValidToken(false);
+            if (error.message === 'Timeout na operação') {
+               toast.error('Tempo limite excedido ao validar o código. Tente novamente.');
+            } else {
+               toast.error('Erro ao processar link de recuperação');
+            }
+          }
+          return;
+        }
+
+        // 2. Caso Implicit Flow (Hash com tokens)
+        if (type === 'recovery' && accessToken) {
+          // Mesmo se refresh_token estiver faltando, tentamos validar apenas com access_token se possível,
+          // mas setSession exige refresh_token. 
+          // Se refresh_token estiver faltando, assumimos erro.
+          if (!refreshToken) {
+             console.error('Refresh token ausente no link de recuperação');
+             setIsValidToken(false);
+             toast.error('Link de recuperação incompleto (refresh token ausente)');
+             return;
+          }
+
+          try {
+            const { error } = await withTimeout(supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            }));
+
+            if (error) {
+              console.error('Erro ao validar token:', error);
+              setIsValidToken(false);
+              toast.error('Link de recuperação inválido ou expirado');
+            } else {
+              setIsValidToken(true);
+            }
+          } catch (error: any) {
+            console.error('Erro ao processar token:', error);
+            setIsValidToken(false);
+            if (error.message === 'Timeout na operação') {
+               toast.error('Tempo limite excedido ao validar o token.');
+            } else {
+               toast.error('Erro ao processar link de recuperação');
+            }
+          }
+          return;
+        } 
+
+        // 3. Caso nenhum token encontrado
+        console.warn('Nenhum token de recuperação encontrado na URL');
         setIsValidToken(false);
         // Não mostrar toast se já foi mostrado um erro específico
         if (!error) {
-          toast.error('Link de recuperação inválido');
+          // toast.error('Link de recuperação inválido (nenhum token encontrado)');
         }
+
+      } catch (err) {
+        console.error('Erro inesperado na validação do token:', err);
+        setIsValidToken(false);
+        toast.error('Erro inesperado ao validar link');
       }
     };
 
     checkTokenValidity();
+    
+    // Fallback de segurança global para garantir que a UI não fique travada
+    const timeoutId = setTimeout(() => {
+      setIsValidToken((current) => {
+        if (current === null) {
+          console.warn('Timeout global na validação do token');
+          // Só mostra toast se ainda não tiver validado
+          if (validatingRef.current) {
+             toast.error('Tempo limite excedido na validação');
+          }
+          return false;
+        }
+        return current;
+      });
+    }, 15000); // 15 segundos (fallback final)
+
+    return () => clearTimeout(timeoutId);
   }, [searchParams, supabase.auth]);
 
   const validatePassword = (password: string) => {
