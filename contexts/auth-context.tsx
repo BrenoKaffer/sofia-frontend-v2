@@ -210,15 +210,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (data.session) {
-          if (data.user) {
-            const userWithProfile = await fetchAndConvertUser(data.user);
-            setUser(userWithProfile);
+            if (data.user) {
+              const userWithProfile = await fetchAndConvertUser(data.user);
+              setUser(userWithProfile);
+            }
+
+            // Garantir que os cookies sejam definidos para o middleware
+            if (typeof window !== 'undefined') {
+              const maxAge = 60 * 60 * 24 * 7; // 7 dias
+              document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${maxAge}; samesite=lax`;
+              document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
+            }
+            
+            toast.success('Login realizado com sucesso! (Modo Fallback)');
+            router.push('/dashboard');
+            setIsLoading(false);
+            return true;
           }
-          
-          toast.success('Login realizado com sucesso! (Modo Fallback)');
-          setIsLoading(false);
-          return true;
-        }
       } catch (fallbackError) {
         console.error('Erro fatal no login:', fallbackError);
         toast.error('Não foi possível realizar o login. Tente novamente mais tarde.');
