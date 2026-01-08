@@ -194,7 +194,7 @@ export class AuthService {
   /**
    * Buscar dados do usuário com role do banco de dados
    */
-  static async getUserWithRole(userId: string): Promise<AuthenticatedUser | null> {
+  static async getUserWithRole(userId: string, authUser?: User): Promise<AuthenticatedUser | null> {
     try {
       // Buscar dados do usuário no user_profiles
       const { data: userData, error: userError } = await supabase
@@ -214,7 +214,7 @@ export class AuthService {
         logger.warn(`Usuário ${userId} não encontrado no user_profiles`);
         
         // Criar usuário com role padrão se não existir
-        const newUser = await this.createDefaultUser(userId);
+        const newUser = await this.createDefaultUser(userId, authUser);
         return newUser;
       }
 
