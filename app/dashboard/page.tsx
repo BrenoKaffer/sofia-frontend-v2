@@ -872,10 +872,16 @@ export default function DashboardPage() {
   }, [user, getToken]); // Removida fetchRouletteStatus das dependências
 
   if (isLoading) {
-    return null;
+    console.log('⏳ Dashboard em estado de carregamento...');
+    return (
+      <DashboardLayout>
+        <DashboardSkeleton />
+      </DashboardLayout>
+    );
   }
 
   if (!user) {
+    console.log('🚫 Usuário não autenticado, redirecionando...');
     redirect('/login');
   }
 

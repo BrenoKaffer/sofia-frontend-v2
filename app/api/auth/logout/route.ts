@@ -54,8 +54,13 @@ export async function POST(req: NextRequest) {
     });
 
     // Limpar cookies de autenticação
-    response.cookies.delete('sb-access-token');
-    response.cookies.delete('sb-refresh-token');
+    response.cookies.delete({ name: 'sb-access-token', path: '/' });
+    response.cookies.delete({ name: 'sb-refresh-token', path: '/' });
+    
+    // Limpar cookies de perfil
+    response.cookies.delete({ name: 'sofia_status', path: '/' });
+    response.cookies.delete({ name: 'sofia_plan', path: '/' });
+    response.cookies.delete({ name: 'sofia_role', path: '/' });
 
     // Adicionar headers para limpar cache
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -91,11 +96,11 @@ export async function POST(req: NextRequest) {
       message: 'Logout realizado com sucesso'
     });
 
-    response.cookies.delete('sb-access-token');
-    response.cookies.delete('sb-refresh-token');
-    response.cookies.delete('sofia_status');
-    response.cookies.delete('sofia_plan');
-    response.cookies.delete('sofia_role');
+    response.cookies.delete({ name: 'sb-access-token', path: '/' });
+    response.cookies.delete({ name: 'sb-refresh-token', path: '/' });
+    response.cookies.delete({ name: 'sofia_status', path: '/' });
+    response.cookies.delete({ name: 'sofia_plan', path: '/' });
+    response.cookies.delete({ name: 'sofia_role', path: '/' });
 
     return response;
   }

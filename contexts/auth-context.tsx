@@ -92,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Verificar sessão inicial
     const getInitialSession = async () => {
+      console.log('🔄 [AuthContext] Iniciando verificação de sessão inicial...');
       try {
         // Se bypass ativo, simula usuário sem consultar Supabase
         if (AUTH_DEV_BYPASS) {
@@ -108,13 +109,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔄 [AuthContext] Sessão obtida:', session ? 'Sessão ativa' : 'Nenhuma sessão');
+        
         if (session?.user) {
           const userWithProfile = await fetchAndConvertUser(session.user);
           setUser(userWithProfile);
+          console.log('✅ [AuthContext] Usuário definido:', userWithProfile.email);
         }
       } catch (error) {
-        console.error('Erro ao obter sessão inicial:', error);
+        console.error('❌ [AuthContext] Erro ao obter sessão inicial:', error);
       } finally {
+        console.log('🏁 [AuthContext] Finalizando carregamento inicial (setIsLoading false)');
         setIsLoading(false);
       }
     };
@@ -124,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log(`🔔 [AuthContext] Evento de Auth: ${event}`);
         if (isLoggingOutRef.current) return;
         if (AUTH_DEV_BYPASS) {
           setUser({
@@ -306,8 +312,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // 3. Limpar cookies manualmente no cliente para garantir
       if (typeof document !== 'undefined') {
-        document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        const cookieOptions = '; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = 'sb-access-token=' + cookieOptions;
+        document.cookie = 'sb-refresh-token=' + cookieOptions;
+        document.cookie = 'sofia_status=' + cookieOptions;
+        document.cookie = 'sofia_plan=' + cookieOptions;
+        document.cookie = 'sofia_role=' + cookieOptions;
       }
 
       // 4. Redirecionar via hard refresh
