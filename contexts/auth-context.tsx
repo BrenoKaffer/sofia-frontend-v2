@@ -273,17 +273,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error('Erro no registro:', data.message);
-        if (data.message && data.message.includes('already registered')) {
+        const errorMessage = data.error || data.message || 'Erro ao criar conta';
+        console.error('Erro no registro:', errorMessage);
+        
+        if (errorMessage.includes('already registered')) {
           toast.error('Este email já está cadastrado. Tente fazer login.');
         } else {
-          toast.error(data.message || 'Erro ao criar conta');
+          toast.error(errorMessage);
         }
         setIsLoading(false);
         return false;
       }
 
-      toast.success(data.message || 'Conta criada com sucesso! Verifique seu email para confirmar a conta.');
+      toast.success(data.message || data.error || 'Conta criada com sucesso! Verifique seu email para confirmar a conta.');
       setIsLoading(false);
       return true;
     } catch (error: any) {
