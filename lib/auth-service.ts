@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { supabase } from './supabase';
 import { logger } from './logger';
 import { UserAccessProfile } from './user-status';
+import { User } from '@supabase/supabase-js';
 
 // Tipos para o sistema de autenticação
 export interface UserRole {
@@ -265,13 +266,21 @@ export class AuthService {
   /**
    * Criar usuário com role padrão
    */
-  static async createDefaultUser(userId: string): Promise<AuthenticatedUser | null> {
+  static async createDefaultUser(userId: string, authUser?: User): Promise<AuthenticatedUser | null> {
     try {
-      // Buscar dados básicos do Supabase Auth
-      const { data: { user }, error } = await supabase.auth.admin.getUserById(userId);
+      let user = authUser;
       
-      if (error || !user) {
-        return null;
+      // Se não foi passado o objeto de usuário, tentar buscar (requer service role se for admin api)
+      if (!user) {
+        // Buscar dados básicos do Supabase Auth
+        // Nota: isso falhará se estiver usando anon key e o usuário não for o próprio
+        const { data, error } = await supabase.auth.admin.getUserById(userId);
+        
+        if (error || !data.user) {
+          logger.error('Erro ao buscar usuário no Auth para criação de perfil:', undefined, error as Error);
+          return null;
+        }
+        user = data.user;
       }
 
       // Inserir usuário na tabela user_profiles com role padrão

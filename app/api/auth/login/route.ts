@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Buscar dados do usuário com role
-    const user = await AuthService.getUserWithRole(authData.user.id);
+    const user = await AuthService.getUserWithRole(authData.user.id, authData.user);
 
     if (!user) {
       logger.error('Usuário autenticado não encontrado no banco', {

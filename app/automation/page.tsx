@@ -33,6 +33,9 @@ import { AdvancedRiskPanel } from '@/components/automation/advanced-risk-panel';
 import { formatTimeHHMMSS } from '@/lib/utils';
 import { SessionManagementPanel } from '@/components/automation/session-management-panel';
 import { useFeatureFlag, FEATURE_FLAGS } from '@/lib/feature-flags';
+import { useAuth } from '@/contexts/auth-context';
+import { useUserStatus } from '@/hooks/useUserStatus';
+import { useUpgrade } from '@/contexts/upgrade-context';
 
 interface SystemStatus {
   isInitialized: boolean;
