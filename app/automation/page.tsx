@@ -56,6 +56,22 @@ interface AutomationMetrics {
 export default function AutomationPage() {
   const isMvpMode = useFeatureFlag(FEATURE_FLAGS.MVP_MODE);
 
+  const { user } = useAuth()
+  const { userProfile, loading } = useUserStatus(user?.id)
+  const { openUpgradeModal } = useUpgrade()
+
+  useEffect(() => {
+    if (!loading && userProfile) {
+      const isPro = 
+        (userProfile.plan === 'pro') || 
+        (userProfile.role === 'admin' || userProfile.role === 'superadmin')
+        
+      if (!isPro) {
+        openUpgradeModal('Sistema de Automação')
+      }
+    }
+  }, [loading, userProfile, openUpgradeModal])
+
   // Gate: mostrar aviso simples em modo MVP
   if (isMvpMode) {
     return (

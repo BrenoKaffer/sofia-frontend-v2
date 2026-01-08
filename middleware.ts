@@ -122,9 +122,10 @@ export async function middleware(req: NextRequest) {
     if (profile.role === 'admin' || profile.role === 'superadmin') isPro = true;
 
     if (!isPro) {
-      const url = req.nextUrl.clone()
-      url.pathname = '/dashboard' // Redirect to dashboard instead of missing upgrade page
-      return NextResponse.redirect(url)
+      // Client-side will handle the upgrade modal
+      // const url = req.nextUrl.clone()
+      // url.pathname = '/dashboard' // Redirect to dashboard instead of missing upgrade page
+      // return NextResponse.redirect(url)
     }
   }
 

@@ -10,8 +10,11 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        'sans': ['Poppins', 'system-ui', 'sans-serif'],
-        'heading': ['Poppins', 'system-ui', 'sans-serif'],
+        'sans': ['var(--font-poppins)', 'system-ui', 'sans-serif'],
+        'heading': ['var(--font-poppins)', 'system-ui', 'sans-serif'],
+        'bruno': ['var(--font-bruno-ace)', 'sans-serif'],
+        'jakarta': ['var(--font-plus-jakarta-sans)', 'sans-serif'],
+        'urbanist': ['var(--font-urbanist)', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

@@ -274,16 +274,16 @@ export class AuthService {
         return null;
       }
 
-      // Inserir usuário na tabela users com role padrão
+      // Inserir usuário na tabela user_profiles com role padrão
       const { data: newUser, error: insertError } = await supabase
-        .from('users')
+        .from('user_profiles')
         .insert({
-          id: userId,
+          user_id: userId,
           email: user.email,
-          name: user.user_metadata?.full_name || user.email?.split('@')[0],
-          role_id: 'user',
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+          role: 'user',
           created_at: new Date().toISOString(),
-          last_login: new Date().toISOString()
+          status: 'active'
         })
         .select()
         .single();
@@ -294,15 +294,15 @@ export class AuthService {
       }
 
       return {
-        id: newUser.id,
+        id: newUser.user_id,
         email: newUser.email,
-        name: newUser.name,
+        name: newUser.full_name,
         role: DEFAULT_ROLES.user,
         permissions: DEFAULT_ROLES.user.permissions,
         session_id: `session_${Date.now()}`,
         created_at: newUser.created_at,
-        last_login: newUser.last_login,
-        is_active: true // Usuários novos são ativos por padrão
+        last_login: new Date().toISOString(),
+        is_active: newUser.status === 'active' // Usuários novos são ativos por padrão
       };
 
     } catch (error) {
@@ -397,7 +397,6 @@ export class AuthService {
    */
   static async updateLastLogin(userId: string): Promise<void> {
     try {
-      // user_profiles pode não ter last_login, atualizamos updated_at
       await supabase
         .from('user_profiles')
         .update({ updated_at: new Date().toISOString() })

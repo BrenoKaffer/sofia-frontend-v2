@@ -34,9 +34,9 @@ async function handleGet(req: NextRequest) {
       const rolesWithUsers = await Promise.all(
         responseData.map(async (role) => {
           const { count } = await supabase
-            .from('users')
+            .from('user_profiles')
             .select('*', { count: 'exact', head: true })
-            .eq('role_id', role.id);
+            .eq('role', role.id);
 
           return {
             ...role,

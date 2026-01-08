@@ -1,11 +1,40 @@
 import './globals.css';
 import 'reactflow/dist/style.css';
 import type { Metadata } from 'next';
+import { Poppins, Bruno_Ace, Plus_Jakarta_Sans, Urbanist } from 'next/font/google';
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/react';
 import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/sonner';
 import ErrorBoundary from '@/components/error-boundary';
 import { MonitoringProvider } from '@/components/providers/MonitoringProvider';
 import ClientTransitionOverlayWithBackground from '@/components/layout/ClientTransitionOverlayWithBackground';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-poppins',
+  display: 'swap',
+});
+
+const brunoAce = Bruno_Ace({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-bruno-ace',
+  display: 'swap',
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-plus-jakarta-sans',
+  display: 'swap',
+});
+
+const urbanist = Urbanist({
+  subsets: ['latin'],
+  variable: '--font-urbanist',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'SOFIA | Sistema de Operação de Fichas Inteligentes e Autônomas',
@@ -43,12 +72,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className="font-sans" suppressHydrationWarning>
+      <body className={`${poppins.variable} ${brunoAce.variable} ${plusJakartaSans.variable} ${urbanist.variable} font-sans`} suppressHydrationWarning>
         <ErrorBoundary>
           <Providers>
             <MonitoringProvider>
               <ClientTransitionOverlayWithBackground />
               {children}
+              <SpeedInsights />
+              <Analytics />
               <Toaster position="top-right" />
             </MonitoringProvider>
           </Providers>
