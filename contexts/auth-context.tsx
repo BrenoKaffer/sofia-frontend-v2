@@ -39,9 +39,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Dados do perfil sincronizados:', profileData);
     } catch (e: any) {
       console.error('Error fetching user profile:', e);
-      // Notificar usuário se houver erro de permissão (geralmente RLS)
       if (e.message && (e.message.includes('permission') || e.message.includes('policy'))) {
         toast.error('Erro de permissão ao sincronizar perfil. Contate o suporte.');
+      }
+      try {
+        await supabase.rpc('insert_user_profile_on_registration', {
+          p_user_id: supabaseUser.id,
+          p_full_name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
+          p_cpf: supabaseUser.user_metadata?.cpf || '',
+          p_email: supabaseUser.email || ''
+        });
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', supabaseUser.id)
+          .single();
+        profileData = data || null;
+      } catch (createErr: any) {
+        console.error('Error creating user profile:', createErr);
       }
     }
 
