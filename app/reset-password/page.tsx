@@ -135,7 +135,7 @@ function ResetPasswordContent() {
 
           try {
             console.log('Tentando definir sessão com tokens da URL...');
-            // Removido timeout explícito para evitar falsos negativos em conexões lentas
+            // Tenta estabelecer a sessão com os tokens fornecidos
             const { error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -143,27 +143,25 @@ function ResetPasswordContent() {
 
             if (error) {
               console.error('Erro ao validar token via setSession:', error);
-              
-              // Fallback: Tentar validar o usuário diretamente com o token
-              console.log('Tentando validar usuário diretamente...');
-              const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
-              
-              if (userError || !userData.user) {
-                console.error('Erro ao validar usuário diretamente:', userError);
-                setIsValidToken(false);
-                toast.error('Link de recuperação inválido ou expirado');
-              } else {
-                console.log('Usuário validado com sucesso via getUser');
-                setIsValidToken(true);
-              }
-            } else {
-              console.log('Sessão definida com sucesso');
-              setIsValidToken(true);
-            }
+              throw error; // Lança o erro para o catch
+            } 
+            
+            console.log('Sessão definida com sucesso');
+            setIsValidToken(true);
+            
           } catch (error: any) {
             console.error('Erro ao processar token (catch):', error);
-            setIsValidToken(false);
-            toast.error('Erro ao processar link de recuperação: ' + (error.message || 'Erro desconhecido'));
+            
+            // Tentativa de fallback: verificar se o usuário já está logado apesar do erro
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+              console.log('Recuperação via fallback: Usuário autenticado encontrado');
+              setIsValidToken(true);
+            } else {
+              setIsValidToken(false);
+              toast.error('Link de recuperação inválido ou expirado');
+            }
           }
           return;
         } 
