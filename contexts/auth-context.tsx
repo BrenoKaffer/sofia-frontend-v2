@@ -139,9 +139,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     
     try {
-      // Use backend API to centralize auth logic and audit
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
+      // Use relative path to ensure we hit the Next.js API Routes in the same origin
+      // This matches the behavior of register function and ensures we use the local API route
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
