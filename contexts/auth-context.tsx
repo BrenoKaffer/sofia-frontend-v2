@@ -312,23 +312,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // 3. Limpar cookies manualmente no cliente para garantir
       if (typeof document !== 'undefined') {
-        const cookieOptions = '; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        document.cookie = 'sb-access-token=' + cookieOptions;
-        document.cookie = 'sb-refresh-token=' + cookieOptions;
-        document.cookie = 'sofia_status=' + cookieOptions;
-        document.cookie = 'sofia_plan=' + cookieOptions;
-        document.cookie = 'sofia_role=' + cookieOptions;
+        const cookiesToClear = [
+          'sb-access-token',
+          'sb-refresh-token',
+          'sofia_status',
+          'sofia_plan',
+          'sofia_role',
+          'supabase-auth-token' // Adicionando possíveis variantes
+        ];
+
+        // Tentar limpar em múltiplos caminhos e domínios para garantir
+        const paths = ['/', '/app', '/dashboard'];
+        const domains = [window.location.hostname];
+        if (window.location.hostname.includes('.')) {
+            domains.push('.' + window.location.hostname);
+        }
+
+        cookiesToClear.forEach(cookieName => {
+            paths.forEach(path => {
+                domains.forEach(domain => {
+                     document.cookie = `${cookieName}=; path=${path}; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+                     document.cookie = `${cookieName}=; path=${path}; expires=Thu, 01 Jan 1970 00:00:01 GMT;`; // Tentar sem domínio também
+                });
+            });
+        });
       }
 
       // 4. Redirecionar via hard refresh
       // Não chamamos setUser(null) aqui propositalmente para manter a UI estável até o refresh
       toast.success('Logout realizado com sucesso!');
       
-      // Usar window.location.href para garantir um reset completo do estado
-      window.location.href = '/login';
+      // Pequeno delay para garantir que o navegador processou a limpeza dos cookies
+      setTimeout(() => {
+          // Usar window.location.href para garantir um reset completo do estado
+          window.location.href = '/login';
+      }, 100);
+      
     } catch (error) {
       console.error('Erro no logout:', error);
       toast.error('Erro ao fazer logout');
+      // Forçar redirecionamento mesmo com erro
       window.location.href = '/login';
     }
   };
