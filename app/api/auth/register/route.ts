@@ -77,11 +77,15 @@ export async function POST(req: NextRequest) {
         }
       );
 
+      const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
+      const redirectTo = `${origin}/auth/callback`;
+
       const { data, error } = await adminClient.auth.admin.generateLink({
         type: 'signup',
         email: email.toLowerCase(),
         password: password,
         options: {
+          redirectTo,
           data: {
             full_name: name || email.split('@')[0]
           }
