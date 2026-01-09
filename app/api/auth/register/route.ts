@@ -64,6 +64,9 @@ export async function POST(req: NextRequest) {
     let authData: any = {};
     let authError: any = null;
     let customEmailSent = false;
+    const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    logger.info(`Iniciando registro para ${email}. Service Role Key presente: ${hasServiceRole}`);
 
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       const adminClient = createClient(
@@ -79,6 +82,8 @@ export async function POST(req: NextRequest) {
 
       const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
       const redirectTo = `${origin}/auth/callback`;
+      
+      logger.info(`Gerando link de confirmação. RedirectTo: ${redirectTo}`);
 
       const { data, error } = await adminClient.auth.admin.generateLink({
         type: 'signup',
@@ -95,6 +100,12 @@ export async function POST(req: NextRequest) {
       authData = data;
       authError = error;
 
+      if (error) {
+        logger.error(`Erro ao gerar link de confirmação: ${error.message}`);
+      } else {
+        logger.info('Link gerado com sucesso', { metadata: { hasLink: !!data.properties?.action_link } });
+      }
+
       if (!error && data.properties?.action_link) {
         // Verificar se configurações SMTP estão presentes
         if (!process.env.SMTP_HOST && !process.env.SMTP_USER) {
@@ -110,11 +121,14 @@ export async function POST(req: NextRequest) {
           customEmailSent = true;
           logger.info(`Email de verificação enviado via SMTP para ${email}`);
         } catch (emailErr) {
-          logger.error(`Erro ao enviar email via SMTP: ${emailErr}`);
+          logger.error(`Erro ao enviar email via SMTP: ${emailErr}`, undefined, emailErr as Error);
           // Não falhar o registro, o usuário pode pedir reenvio depois
         }
+      } else if (!error) {
+        logger.warn('Link de ação não retornado pelo Supabase generateLink');
       }
     } else {
+      logger.warn('Usando fallback de registro (Supabase Auth) pois SERVICE_ROLE_KEY está ausente');
       // Fallback para signUp padrão (email do Supabase)
       const { data, error } = await supabase.auth.signUp({
         email: email.toLowerCase(),
