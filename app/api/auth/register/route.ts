@@ -215,11 +215,12 @@ export async function POST(req: NextRequest) {
     // Criar registro na tabela user_profiles
     // Tentar usar Service Role Key para bypassar RLS se disponível
     let dbClient = supabase;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
     
-    if (process.env.SUPABASE_SERVICE_ROLE) {
+    if (serviceRoleKey) {
       dbClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE,
+        serviceRoleKey,
         {
           auth: {
             autoRefreshToken: false,
@@ -228,7 +229,7 @@ export async function POST(req: NextRequest) {
         }
       );
     } else {
-      logger.warn('SUPABASE_SERVICE_ROLE não definida. Usando cliente anônimo para criação de perfil (pode falhar por RLS).');
+      logger.warn('SUPABASE_SERVICE_ROLE não definida. Usando cliente anônimo para criação de perfil (pode falhar por RLS se não houver sessão ativa).');
     }
 
     const { data: user, error: userError } = await dbClient
@@ -238,6 +239,7 @@ export async function POST(req: NextRequest) {
         email: email.toLowerCase(),
         full_name: name || email.split('@')[0],
         role: 'user',
+        created_at: new Date().toISOString(), // Restaurando para garantir compatibilidade se o banco não tiver default
         email_verified: false
       }, { onConflict: 'user_id' })
       .select()

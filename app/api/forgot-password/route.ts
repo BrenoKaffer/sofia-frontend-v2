@@ -24,7 +24,10 @@ export async function POST(request: NextRequest) {
     // Inicializar Supabase Client
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     // Preferir Service Role para operações administrativas, fallback para Anon Key
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // Verificar ambas as variações comuns de nome para a chave de serviço
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE || 
+                        process.env.SUPABASE_SERVICE_ROLE_KEY || 
+                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não configuradas');
