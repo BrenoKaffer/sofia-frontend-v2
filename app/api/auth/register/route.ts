@@ -52,6 +52,49 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (existingUser) {
+      // Se o usuário existe, verificar se precisa reenviar confirmação
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        try {
+          const adminClient = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            { auth: { autoRefreshToken: false, persistSession: false } }
+          );
+          
+          const { data: { user }, error: getUserError } = await adminClient.auth.admin.getUserById(existingUser.user_id);
+          
+          if (user && !user.email_confirmed_at) {
+            logger.info(`Usuário ${email} existe mas não está confirmado. Reenviando email.`);
+            
+            const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
+            const redirectTo = `${origin}/auth/callback`;
+            
+            // Gerar link de magiclink para verificar/logar
+            const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+              type: 'magiclink',
+              email: email.toLowerCase(),
+              options: { redirectTo }
+            });
+
+            if (!linkError && linkData.properties?.action_link) {
+              await sendVerificationEmail({
+                to: email.toLowerCase(),
+                name: name || email.split('@')[0],
+                confirmationLink: linkData.properties.action_link
+              });
+              
+              return NextResponse.json({
+                success: true,
+                message: 'Conta já existe mas não estava confirmada. Reenviamos o email de confirmação.',
+                data: { requires_confirmation: true }
+              });
+            }
+          }
+        } catch (err) {
+          logger.error('Erro ao tentar reenviar confirmação:', undefined, err as Error);
+        }
+      }
+
       return NextResponse.json(
         { error: 'Já existe uma conta com este email' },
         { status: 409 }
