@@ -110,14 +110,17 @@ export async function POST(req: NextRequest) {
     let authData: any = {};
     let authError: any = null;
     let customEmailSent = false;
-    const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE;
+    
+    // Suporte a múltiplas variações de nome da variável de ambiente
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const hasServiceRole = !!serviceRoleKey;
     
     logger.info(`Iniciando registro para ${email}. Service Role Key presente: ${hasServiceRole}`);
 
-    if (process.env.SUPABASE_SERVICE_ROLE) {
+    if (serviceRoleKey) {
       const adminClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE,
+        serviceRoleKey,
         {
           auth: {
             autoRefreshToken: false,
@@ -218,7 +221,7 @@ export async function POST(req: NextRequest) {
     // Criar registro na tabela user_profiles
     // Tentar usar Service Role Key para bypassar RLS se disponível
     let dbClient = supabase;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // serviceRoleKey já foi definida anteriormente
     
     if (serviceRoleKey) {
       dbClient = createClient(
