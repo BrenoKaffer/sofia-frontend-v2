@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     if (serviceRoleKey) {
       console.log('Service Role Key encontrada. Tentando envio via Zeptomail.');
       const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
+      // CORREÇÃO: Usar a rota correta /reset-password (não /update-password)
       const redirectTo = `${origin}/reset-password`;
 
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
@@ -121,6 +122,7 @@ export async function POST(request: NextRequest) {
     // Isso acontece se não tivermos Service Role Key OU se o envio via Zeptomail falhar
     console.log('Iniciando fallback para envio padrão do Supabase...');
     const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
+    // CORREÇÃO: Usar a rota correta /reset-password (não /update-password)
     const redirectTo = `${origin}/reset-password`;
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
