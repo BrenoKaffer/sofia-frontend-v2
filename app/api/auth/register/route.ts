@@ -53,11 +53,11 @@ export async function POST(req: NextRequest) {
 
     if (existingUser) {
       // Se o usuário existe, verificar se precisa reenviar confirmação
-      if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      if (process.env.SUPABASE_SERVICE_ROLE) {
         try {
           const adminClient = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            process.env.SUPABASE_SERVICE_ROLE,
             { auth: { autoRefreshToken: false, persistSession: false } }
           );
           
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     let authData: any = {};
     let authError: any = null;
     let customEmailSent = false;
-    const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE;
     
     logger.info(`Iniciando registro para ${email}. Service Role Key presente: ${hasServiceRole}`);
 
