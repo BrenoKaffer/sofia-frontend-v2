@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { sendRecoveryEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,9 +26,10 @@ export async function POST(request: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     // Preferir Service Role para operações administrativas, fallback para Anon Key
     // Verificar ambas as variações comuns de nome para a chave de serviço
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE || 
-                        process.env.SUPABASE_SERVICE_ROLE_KEY || 
-                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || 
+                           process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    const supabaseKey = serviceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('Variáveis de ambiente do Supabase não configuradas');
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Isso é menos seguro (permite enumeração de usuários), mas solicitado pelo requisito de UX
     const { data: user, error: userError } = await supabase
       .from('user_profiles')
-      .select('user_id')
+      .select('user_id, full_name')
       .eq('email', email)
       .maybeSingle();
 
@@ -67,48 +69,66 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Usar o backend externo para envio de email, conforme implementação estável da main
-    const backendUrl =
-      process.env.SOFIA_BACKEND_URL ||
-      process.env.BACKEND_URL ||
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      process.env.NEXT_PUBLIC_API_BASE_URL ||
-      'https://api.v1sofia.com';
+    // Se tivermos a Service Role Key, podemos gerar o link e enviar via Zeptomail (custom)
+    if (serviceRoleKey) {
+      const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
+      const redirectTo = `${origin}/update-password`;
 
-    const normalizedBase = backendUrl.replace(/\/+$/, '');
-    if (!normalizedBase) {
-      console.error('Backend URL não configurada para forgot-password');
-      return NextResponse.json(
-        { error: 'Erro de configuração de backend' },
-        { status: 500 }
-      );
+      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email: email,
+        options: {
+          redirectTo
+        }
+      });
+
+      if (linkError) {
+        console.error('Erro ao gerar link de recuperação:', linkError);
+        throw linkError;
+      }
+
+      if (linkData?.properties?.action_link) {
+        try {
+          await sendRecoveryEmail({
+            to: email,
+            name: user.full_name,
+            recoveryLink: linkData.properties.action_link
+          });
+          
+          return NextResponse.json(
+            { 
+              message: 'Email de recuperação enviado com sucesso via servidor customizado.',
+              success: true 
+            },
+            { status: 200 }
+          );
+        } catch (emailError) {
+          console.error('Erro ao enviar email via Zeptomail:', emailError);
+          // Fallback para envio padrão do Supabase se o Zeptomail falhar
+        }
+      }
     }
 
-    const endpoint = normalizedBase.endsWith('/api')
-      ? `${normalizedBase}/auth/forgot-password`
-      : `${normalizedBase}/api/auth/forgot-password`;
+    // Fallback: Usar o envio de email padrão do Supabase (resetPasswordForEmail)
+    // Isso acontece se não tivermos Service Role Key OU se o envio via Zeptomail falhar
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
+    const redirectTo = `${origin}/update-password`;
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
     });
 
-    if (!response.ok) {
-      const rawText = await response.text();
-      console.error('Falha no backend ao processar forgot-password:', {
-        status: response.status,
-        body: rawText,
-      });
+    if (resetError) {
+      console.error('Erro ao solicitar reset de senha no Supabase:', resetError);
       return NextResponse.json(
-        { error: 'Erro ao enviar email pelo servidor' },
-        { status: response.status }
+        { error: 'Erro ao processar recuperação de senha' },
+        { status: 500 }
       );
     }
 
     return NextResponse.json(
       { 
-        message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.',
+        message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação (via Supabase).',
         success: true 
       },
       { status: 200 }
@@ -127,7 +147,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json(
     { 
-      message: 'Endpoint de recuperação de senha está funcionando',
+      message: 'Endpoint de recuperação de senha está funcionando (Versão Supabase/Zeptomail)',
       timestamp: new Date().toISOString()
     },
     { status: 200 }
