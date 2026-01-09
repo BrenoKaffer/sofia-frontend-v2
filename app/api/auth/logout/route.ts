@@ -54,13 +54,22 @@ export async function POST(req: NextRequest) {
     });
 
     // Limpar cookies de autenticação
-    response.cookies.delete({ name: 'sb-access-token', path: '/' });
-    response.cookies.delete({ name: 'sb-refresh-token', path: '/' });
+    response.cookies.delete({ name: 'sb-access-token', path: '/', maxAge: 0 });
+    response.cookies.delete({ name: 'sb-refresh-token', path: '/', maxAge: 0 });
     
     // Limpar cookies de perfil
-    response.cookies.delete({ name: 'sofia_status', path: '/' });
-    response.cookies.delete({ name: 'sofia_plan', path: '/' });
-    response.cookies.delete({ name: 'sofia_role', path: '/' });
+    response.cookies.delete({ name: 'sofia_status', path: '/', maxAge: 0 });
+    response.cookies.delete({ name: 'sofia_plan', path: '/', maxAge: 0 });
+    response.cookies.delete({ name: 'sofia_role', path: '/', maxAge: 0 });
+
+    // Limpar cookies do Supabase padrão (caso existam com nome diferente)
+    const supabaseProjectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (supabaseProjectUrl) {
+      const projectRef = supabaseProjectUrl.split('.')[0].split('//')[1];
+      if (projectRef) {
+         response.cookies.delete({ name: `sb-${projectRef}-auth-token`, path: '/', maxAge: 0 });
+      }
+    }
 
     // Adicionar headers para limpar cache
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -96,11 +105,20 @@ export async function POST(req: NextRequest) {
       message: 'Logout realizado com sucesso'
     });
 
-    response.cookies.delete({ name: 'sb-access-token', path: '/' });
-    response.cookies.delete({ name: 'sb-refresh-token', path: '/' });
-    response.cookies.delete({ name: 'sofia_status', path: '/' });
-    response.cookies.delete({ name: 'sofia_plan', path: '/' });
-    response.cookies.delete({ name: 'sofia_role', path: '/' });
+    response.cookies.delete({ name: 'sb-access-token', path: '/', maxAge: 0 });
+    response.cookies.delete({ name: 'sb-refresh-token', path: '/', maxAge: 0 });
+    response.cookies.delete({ name: 'sofia_status', path: '/', maxAge: 0 });
+    response.cookies.delete({ name: 'sofia_plan', path: '/', maxAge: 0 });
+    response.cookies.delete({ name: 'sofia_role', path: '/', maxAge: 0 });
+    
+    // Limpar cookies do Supabase padrão (caso existam com nome diferente)
+    const supabaseProjectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (supabaseProjectUrl) {
+      const projectRef = supabaseProjectUrl.split('.')[0].split('//')[1];
+      if (projectRef) {
+         response.cookies.delete({ name: `sb-${projectRef}-auth-token`, path: '/', maxAge: 0 });
+      }
+    }
 
     return response;
   }
