@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, Mail, RefreshCw, ArrowRight, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 function EmailConfirmationContent() {
@@ -186,13 +185,16 @@ function EmailConfirmationContent() {
                   <p className="text-muted-foreground">
                     Já confirmou seu email?
                   </p>
-                  <Link
-                    href="/login"
-                    className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      router.push('/login');
+                    }}
+                    className="text-primary hover:underline font-medium inline-flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
                   >
                     Fazer Login
                     <ArrowRight className="w-3 h-3" />
-                  </Link>
+                  </button>
                 </div>
               </>
             )}
