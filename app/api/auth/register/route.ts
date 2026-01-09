@@ -177,15 +177,26 @@ export async function POST(req: NextRequest) {
         logger.warn('Link de ação não retornado pelo Supabase generateLink');
       }
     } else {
-      // Se não tivermos a chave de serviço, não podemos gerar o link manualmente sem disparar o email do Supabase.
-      // Como o requisito é usar o ZeptoMail (nosso backend), devemos falhar se a configuração estiver ausente.
-      const errorMsg = 'SUPABASE_SERVICE_ROLE_KEY não configurada. Impossível registrar usuário com email personalizado.';
-      logger.error(errorMsg);
+      // Fallback: Se não tivermos a chave de serviço, usamos o signUp padrão do Supabase.
+      // Isso evita que o registro quebre completamente se a variável de ambiente estiver faltando.
+      // O email enviado será o template padrão do Supabase, não o customizado do ZeptoMail.
+      logger.warn('SUPABASE_SERVICE_ROLE_KEY não configurada. Usando fluxo de cadastro padrão (sem email customizado).');
       
-      return NextResponse.json(
-        { error: 'Erro de configuração do servidor (Service Role Key ausente). Contate o suporte.' },
-        { status: 500 }
-      );
+      const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
+      
+      const { data, error } = await supabase.auth.signUp({
+        email: email.toLowerCase(),
+        password: password,
+        options: {
+          data: {
+            full_name: name || email.split('@')[0]
+          },
+          emailRedirectTo: `${origin}/auth/callback`
+        }
+      });
+      
+      authData = data;
+      authError = error;
     }
 
     if (authError) {
