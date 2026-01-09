@@ -104,7 +104,7 @@ export async function requireAdmin(req: NextRequest): Promise<AuthContext> {
   const authContext = await requireAuth(req);
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
     logger.warn('Admin access denied - missing Supabase admin credentials', {

@@ -9,7 +9,7 @@ import { revalidatePath } from 'next/cache';
 // We use lazy init pattern or check inside functions to avoid build-time errors
 const getSupabaseAdmin = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE!;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error('Missing Supabase credentials for admin actions');

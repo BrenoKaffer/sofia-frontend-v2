@@ -52,52 +52,6 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (existingUser) {
-      // Se o usuário existe, verificar se precisa reenviar confirmação
-      // Tentar usar Service Role Key com suporte a ambas as variações de nome
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
-      
-      if (serviceRoleKey) {
-        try {
-          const adminClient = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            serviceRoleKey,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-          );
-          
-          const { data: { user }, error: getUserError } = await adminClient.auth.admin.getUserById(existingUser.user_id);
-          
-          if (user && !user.email_confirmed_at) {
-            logger.info(`Usuário ${email} existe mas não está confirmado. Reenviando email.`);
-            
-            const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
-            const redirectTo = `${origin}/auth/callback`;
-            
-            // Gerar link de magiclink para verificar/logar
-            const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-              type: 'magiclink',
-              email: email.toLowerCase(),
-              options: { redirectTo }
-            });
-
-            if (!linkError && linkData.properties?.action_link) {
-              await sendVerificationEmail({
-                to: email.toLowerCase(),
-                name: name || email.split('@')[0],
-                confirmationLink: linkData.properties.action_link
-              });
-              
-              return NextResponse.json({
-                success: true,
-                message: 'Conta já existe mas não estava confirmada. Reenviamos o email de confirmação.',
-                data: { requires_confirmation: true }
-              });
-            }
-          }
-        } catch (err) {
-          logger.error('Erro ao tentar reenviar confirmação:', undefined, err as Error);
-        }
-      }
-
       return NextResponse.json(
         { error: 'Já existe uma conta com este email' },
         { status: 409 }
@@ -110,17 +64,11 @@ export async function POST(req: NextRequest) {
     let authData: any = {};
     let authError: any = null;
     let customEmailSent = false;
-    
-    // Suporte a múltiplas variações de nome da variável de ambiente
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const hasServiceRole = !!serviceRoleKey;
-    
-    logger.info(`Iniciando registro para ${email}. Service Role Key presente: ${hasServiceRole}`);
 
-    if (serviceRoleKey) {
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       const adminClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        serviceRoleKey,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
         {
           auth: {
             autoRefreshToken: false,
@@ -129,17 +77,11 @@ export async function POST(req: NextRequest) {
         }
       );
 
-      const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
-      const redirectTo = `${origin}/auth/callback`;
-      
-      logger.info(`Gerando link de confirmação. RedirectTo: ${redirectTo}`);
-
       const { data, error } = await adminClient.auth.admin.generateLink({
         type: 'signup',
         email: email.toLowerCase(),
         password: password,
         options: {
-          redirectTo,
           data: {
             full_name: name || email.split('@')[0]
           }
@@ -148,12 +90,6 @@ export async function POST(req: NextRequest) {
 
       authData = data;
       authError = error;
-
-      if (error) {
-        logger.error(`Erro ao gerar link de confirmação: ${error.message}`);
-      } else {
-        logger.info('Link gerado com sucesso', { metadata: { hasLink: !!data.properties?.action_link } });
-      }
 
       if (!error && data.properties?.action_link) {
         // Verificar se configurações SMTP estão presentes
@@ -170,22 +106,23 @@ export async function POST(req: NextRequest) {
           customEmailSent = true;
           logger.info(`Email de verificação enviado via SMTP para ${email}`);
         } catch (emailErr) {
-          logger.error(`Erro ao enviar email via SMTP: ${emailErr}`, undefined, emailErr as Error);
+          logger.error(`Erro ao enviar email via SMTP: ${emailErr}`);
           // Não falhar o registro, o usuário pode pedir reenvio depois
         }
-      } else if (!error) {
-        logger.warn('Link de ação não retornado pelo Supabase generateLink');
       }
     } else {
-      // Se não tivermos a chave de serviço, não podemos gerar o link manualmente sem disparar o email do Supabase.
-      // Como o requisito é usar o ZeptoMail (nosso backend), devemos falhar se a configuração estiver ausente.
-      const errorMsg = 'SUPABASE_SERVICE_ROLE_KEY não configurada. Impossível registrar usuário com email personalizado.';
-      logger.error(errorMsg);
-      
-      return NextResponse.json(
-        { error: 'Erro de configuração do servidor (Service Role Key ausente). Contate o suporte.' },
-        { status: 500 }
-      );
+      // Fallback para signUp padrão (email do Supabase)
+      const { data, error } = await supabase.auth.signUp({
+        email: email.toLowerCase(),
+        password,
+        options: {
+          data: {
+            full_name: name || email.split('@')[0]
+          }
+        }
+      });
+      authData = data;
+      authError = error;
     }
 
     if (authError) {
@@ -217,12 +154,11 @@ export async function POST(req: NextRequest) {
     // Criar registro na tabela user_profiles
     // Tentar usar Service Role Key para bypassar RLS se disponível
     let dbClient = supabase;
-    // serviceRoleKey já foi definida anteriormente
     
-    if (serviceRoleKey) {
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       dbClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        serviceRoleKey,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
         {
           auth: {
             autoRefreshToken: false,
@@ -231,30 +167,34 @@ export async function POST(req: NextRequest) {
         }
       );
     } else {
-      logger.warn('SUPABASE_SERVICE_ROLE não definida. Usando cliente anônimo para criação de perfil (pode falhar por RLS se não houver sessão ativa).');
+      logger.warn('SUPABASE_SERVICE_ROLE_KEY não definida. Usando cliente anônimo para criação de perfil (pode falhar por RLS).');
     }
 
     const { data: user, error: userError } = await dbClient
       .from('user_profiles')
-      .upsert({
+      .insert({
         user_id: authData.user.id,
         email: email.toLowerCase(),
         full_name: name || email.split('@')[0],
-        role: 'user',
-        created_at: new Date().toISOString(), // Restaurando para garantir compatibilidade se o banco não tiver default
-        email_verified: false
-      }, { onConflict: 'user_id' })
+        role: 'user', // Role padrão
+        status: 'active',
+        created_at: new Date().toISOString()
+      })
       .select()
       .single();
 
     if (userError) {
-      logger.error(`Erro ao criar/atualizar registro do usuário: ${userError.message || String(userError)}`, undefined, userError as Error);
+      logger.error(`Erro ao criar registro do usuário: ${userError.message || String(userError)}`, undefined, userError as Error);
+      
+      // Tentar deletar usuário do Auth se falhou na criação do registro
+      try {
+        await supabase.auth.admin.deleteUser(authData.user.id);
+      } catch (deleteError) {
+        logger.error(`Erro ao deletar usuário do Auth após falha: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`, undefined, deleteError as Error);
+      }
       
       return NextResponse.json(
-        { 
-          error: 'Erro ao criar registro do usuário',
-          details: userError.message || String(userError)
-        },
+        { error: 'Erro ao criar registro do usuário' },
         { status: 500 }
       );
     }

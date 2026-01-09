@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, Mail, RefreshCw, ArrowRight, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 function EmailConfirmationContent() {
@@ -62,23 +63,14 @@ function EmailConfirmationContent() {
     setIsResending(true);
     
     try {
-      const response = await fetch('/api/auth/resend-confirmation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: userEmail }),
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: userEmail,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Erro ao reenviar email:', data.error);
-        if (data.error === 'User not found') {
-          toast.error('Email não encontrado.');
-        } else {
-          toast.error(data.error || 'Erro ao reenviar email de confirmação');
-        }
+      if (error) {
+        console.error('Erro ao reenviar email:', error);
+        toast.error('Erro ao reenviar email de confirmação');
       } else {
         setResendCount(prev => prev + 1);
         toast.success('Email de confirmação reenviado com sucesso!');
@@ -185,26 +177,13 @@ function EmailConfirmationContent() {
                   <p className="text-muted-foreground">
                     Já confirmou seu email?
                   </p>
-                  <button
-                    onClick={async () => {
-                      // 1. Tentar logout via Supabase
-                      await supabase.auth.signOut();
-                      
-                      // 2. Limpar cookies manualmente para garantir (Middleware lê estes)
-                      document.cookie = "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                      document.cookie = "sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                      document.cookie = "sofia_status=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                      document.cookie = "sofia_plan=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                      document.cookie = "sofia_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                      
-                      // 3. Forçar recarregamento completo para /login
-                      window.location.href = '/login';
-                    }}
-                    className="text-primary hover:underline font-medium inline-flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+                  <Link
+                    href="/login"
+                    className="text-primary hover:underline font-medium inline-flex items-center gap-1"
                   >
                     Fazer Login
                     <ArrowRight className="w-3 h-3" />
-                  </button>
+                  </Link>
                 </div>
               </>
             )}

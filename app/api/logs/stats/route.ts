@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 // Inicialização segura do Supabase apenas dentro dos handlers
 async function getSupabaseSafe() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !supabaseServiceKey) return null;
   const { createClient } = await import('@supabase/supabase-js');
   return createClient(supabaseUrl, supabaseServiceKey, {

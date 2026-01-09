@@ -8,7 +8,7 @@ const toSlug = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0
 // Create a Supabase client with the Service Role Key to bypass RLS
 // Note: We use a lazy initialization or check to prevent build errors if env var is missing
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function POST(request: Request) {
   try {
