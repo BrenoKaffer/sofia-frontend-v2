@@ -63,14 +63,23 @@ function EmailConfirmationContent() {
     setIsResending(true);
     
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: userEmail,
+      const response = await fetch('/api/auth/resend-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: userEmail }),
       });
 
-      if (error) {
-        console.error('Erro ao reenviar email:', error);
-        toast.error('Erro ao reenviar email de confirmação');
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Erro ao reenviar email:', data.error);
+        if (data.error === 'User not found') {
+          toast.error('Email não encontrado.');
+        } else {
+          toast.error(data.error || 'Erro ao reenviar email de confirmação');
+        }
       } else {
         setResendCount(prev => prev + 1);
         toast.success('Email de confirmação reenviado com sucesso!');
