@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -20,41 +21,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendUrl =
-      process.env.SOFIA_BACKEND_URL ||
-      process.env.BACKEND_URL ||
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      process.env.NEXT_PUBLIC_API_BASE_URL ||
-      'https://api.v1sofia.com';
+    // Inicializar Supabase Client
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    // Preferir Service Role para operações administrativas, fallback para Anon Key
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    const normalizedBase = backendUrl.replace(/\/+$/, '');
-    if (!normalizedBase) {
-      console.error('Backend URL não configurada para forgot-password');
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Variáveis de ambiente do Supabase não configuradas');
       return NextResponse.json(
-        {
-          message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.',
-          success: true,
-        },
-        { status: 200 }
+        { error: 'Erro de configuração do servidor' },
+        { status: 500 }
       );
     }
 
-    const endpoint = normalizedBase.endsWith('/api')
-      ? `${normalizedBase}/auth/forgot-password`
-      : `${normalizedBase}/api/auth/forgot-password`;
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     });
 
-    if (!response.ok) {
-      const rawText = await response.text();
-      console.error('Falha no backend ao processar forgot-password:', {
-        status: response.status,
-        body: rawText,
-      });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${request.nextUrl.origin}/reset-password`,
+    });
+
+    if (error) {
+      console.error('Erro ao enviar email de recuperação:', error);
+      return NextResponse.json(
+        { error: error.message || 'Erro ao enviar email' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json(
@@ -68,11 +64,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Erro interno no endpoint forgot-password:', error);
     return NextResponse.json(
-      { 
-        message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação.',
-        success: true 
-      },
-      { status: 200 }
+      { error: 'Erro interno ao processar solicitação' },
+      { status: 500 }
     );
   }
 }
