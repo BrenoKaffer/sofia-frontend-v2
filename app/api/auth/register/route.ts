@@ -53,11 +53,14 @@ export async function POST(req: NextRequest) {
 
     if (existingUser) {
       // Se o usuário existe, verificar se precisa reenviar confirmação
-      if (process.env.SUPABASE_SERVICE_ROLE) {
+      // Tentar usar Service Role Key com suporte a ambas as variações de nome
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
+      
+      if (serviceRoleKey) {
         try {
           const adminClient = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE,
+            serviceRoleKey,
             { auth: { autoRefreshToken: false, persistSession: false } }
           );
           
