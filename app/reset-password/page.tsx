@@ -20,6 +20,7 @@ function ResetPasswordContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+  const [errorState, setErrorState] = useState<{ code: string | null; description: string | null }>({ code: null, description: null });
   const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
@@ -77,10 +78,11 @@ function ResetPasswordContent() {
         if (error) {
           console.error('Erro na URL:', { error, errorCode, errorDescription });
           setIsValidToken(false);
+          setErrorState({ code: errorCode, description: errorDescription });
           
           // Mostrar mensagem específica baseada no tipo de erro
           if (errorCode === 'otp_expired' || error === 'access_denied') {
-            toast.error('Link de recuperação expirado ou inválido');
+            toast.error('Link de recuperação expirado (uso único)');
           } else {
             toast.error('Erro no link de recuperação: ' + (errorDescription || error));
           }
@@ -136,6 +138,7 @@ function ResetPasswordContent() {
           } catch (error: any) {
             console.error('Erro ao processar token (catch):', error);
             setIsValidToken(false);
+            setErrorState({ code: 'validation_error', description: error.message });
             toast.error('Link de recuperação inválido ou expirado');
           }
           return;
@@ -151,11 +154,13 @@ function ResetPasswordContent() {
         } else {
            // Se não tem token e não está logado, então é inválido
            setIsValidToken(false);
+           setErrorState({ code: 'no_token', description: 'Nenhum token encontrado' });
         }
 
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro inesperado na validação do token:', err);
         setIsValidToken(false);
+        setErrorState({ code: 'unexpected_error', description: err.message });
         toast.error('Erro inesperado ao validar link');
       }
     };
@@ -174,14 +179,22 @@ function ResetPasswordContent() {
         }
         return current;
       });
-    }, 15000);
+    }, 15000); 
 
     return () => clearTimeout(timeoutId);
   }, [searchParams, isMounted]); // Removido supabase.auth das deps
 
   // Evita renderização no servidor ou antes da montagem para prevenir erro #418
+  // Retorna o mesmo loader para evitar hydration mismatch com o Suspense fallback
   if (!isMounted) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
   }
 
   const validatePassword = (password: string) => {
@@ -299,16 +312,16 @@ function ResetPasswordContent() {
             </div>
             <CardTitle className="text-2xl font-heading">Link Inválido</CardTitle>
             <CardDescription className="font-sans">
-              {searchParams.get('error_code') === 'otp_expired' 
-                ? 'O link de recuperação expirou'
+              {errorState.code === 'otp_expired' 
+                ? 'O link de recuperação expirou ou já foi utilizado'
                 : 'O link de recuperação é inválido ou expirou'
               }
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-muted-foreground mb-6 font-sans">
-              {searchParams.get('error_code') === 'otp_expired'
-                ? 'Links de recuperação têm validade limitada por segurança. Solicite um novo link para continuar.'
+              {errorState.code === 'otp_expired'
+                ? 'Por segurança, os links de recuperação são de uso único e expiram rapidamente. Por favor, solicite um novo link.'
                 : 'Por favor, solicite um novo link de recuperação de senha.'
               }
             </p>
