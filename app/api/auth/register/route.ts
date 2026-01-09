@@ -177,33 +177,22 @@ export async function POST(req: NextRequest) {
         logger.warn('Link de ação não retornado pelo Supabase generateLink');
       }
     } else {
-      // Fallback: Se não tivermos a chave de serviço, usamos o signUp padrão do Supabase.
-      // Isso evita que o registro quebre completamente se a variável de ambiente estiver faltando.
-      // O email enviado será o template padrão do Supabase, não o customizado do ZeptoMail.
-      logger.warn('SUPABASE_SERVICE_ROLE_KEY não configurada. Usando fluxo de cadastro padrão (sem email customizado).');
+      // Sem fallback: Se não tivermos a chave de serviço, retornamos erro.
+      // Isso força o uso do fluxo com ZeptoMail e evita criações de conta sem o email correto.
+      logger.error('SUPABASE_SERVICE_ROLE_KEY não configurada. Impossível registrar usuário com fluxo seguro.');
       
-      const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
-      
-      const { data, error } = await supabase.auth.signUp({
-        email: email.toLowerCase(),
-        password: password,
-        options: {
-          data: {
-            full_name: name || email.split('@')[0]
-          },
-          emailRedirectTo: `${origin}/auth/callback`
-        }
-      });
-      
-      authData = data;
-      authError = error;
+      return NextResponse.json(
+        { error: 'Erro de configuração no servidor. Entre em contato com o suporte.' },
+        { status: 500 }
+      );
     }
 
     if (authError) {
       logger.error(`Erro ao criar usuário no Auth: ${authError.message || String(authError)}`);
       
       // Mapear erros específicos
-      let errorMessage = 'Erro ao criar conta';
+      let errorMessage = `Erro ao criar conta: ${authError.message}`;
+      
       if (authError.message.includes('User already registered')) {
         errorMessage = 'Usuário já registrado';
       } else if (authError.message.includes('Password should be')) {
