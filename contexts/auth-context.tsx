@@ -162,28 +162,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Função para verificar e atualizar status do usuário quando email é confirmado
   const checkAndUpdateUserStatus = async (supabaseUser: SupabaseUser) => {
     try {
-      // Verificar se o email foi confirmado e o status ainda é 'pending'
+      // Verificar se o email foi confirmado e o email_verified ainda é false
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('status, user_id')
+        .select('email_verified, user_id')
         .eq('user_id', supabaseUser.id)
         .single();
 
-      if (profile && profile.status === 'pending' && supabaseUser.email_confirmed_at) {
-        // Atualizar status para 'active'
+      if (profile && !profile.email_verified && supabaseUser.email_confirmed_at) {
+        // Atualizar email_verified para true
         const { error } = await supabase
           .from('user_profiles')
-          .update({ status: 'active' })
+          .update({ email_verified: true })
           .eq('user_id', supabaseUser.id);
 
         if (error) {
-          console.error('Erro ao atualizar status do usuário:', error);
+          console.error('Erro ao atualizar email_verified do usuário:', error);
         } else {
-          console.log('Status do usuário atualizado para active');
+          console.log('Email do usuário marcado como verificado');
         }
       }
     } catch (error) {
-      console.error('Erro ao verificar/atualizar status do usuário:', error);
+      console.error('Erro ao verificar/atualizar email_verified do usuário:', error);
     }
   };
 

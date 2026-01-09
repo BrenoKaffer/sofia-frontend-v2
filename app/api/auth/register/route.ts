@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
         email: email.toLowerCase(),
         full_name: name || email.split('@')[0],
         role: 'user', // Role padrão
-        status: 'pending', // Status inicial até confirmação de email
+        email_verified: false, // Email não verificado inicialmente
         created_at: new Date().toISOString()
       })
       .select()

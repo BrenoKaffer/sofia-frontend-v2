@@ -87,6 +87,27 @@ async function getAuthenticatedUser(req: NextRequest): Promise<any> {
   }
 }
 
+async function getUserProfile(userId: string, req: NextRequest): Promise<any> {
+  if (devBypassEnabled(req)) return null
+  const access = req.cookies.get('sb-access-token')?.value
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!access || !url || !anon) return null
+  try {
+    const res = await fetch(`${url}/rest/v1/user_profiles?user_id=eq.${userId}&select=email_verified`, {
+      headers: {
+        'Authorization': `Bearer ${access}`,
+        'apikey': anon,
+      },
+    })
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    return data && data[0] ? data[0] : null
+  } catch {
+    return null
+  }
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
@@ -113,10 +134,13 @@ export async function middleware(req: NextRequest) {
 
   // Verificar se o email foi confirmado
   const user = await getAuthenticatedUser(req)
-  if (user && !user.email_confirmed_at && pathname !== '/email-confirmation') {
-    const url = req.nextUrl.clone()
-    url.pathname = '/email-confirmation'
-    return NextResponse.redirect(url)
+  if (user) {
+    const profile = await getUserProfile(user.id, req)
+    if (profile && !profile.email_verified && pathname !== '/email-confirmation') {
+      const url = req.nextUrl.clone()
+      url.pathname = '/email-confirmation'
+      return NextResponse.redirect(url)
+    }
   }
 
   // Obter cookies de perfil (New Schema)
