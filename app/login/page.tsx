@@ -40,9 +40,15 @@ export default function LoginPage() {
     const isLogout = params.get('action') === 'logout';
 
     if (isLogout) {
+      // Clear Supabase session from localStorage
+      window.localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL + '-auth-token');
+      window.localStorage.removeItem('supabase.auth.token');
+      
       if (user) {
         // Force sign out if still logged in
-        supabase.auth.signOut();
+        supabase.auth.signOut().then(() => {
+           // Optional: force reload if still stuck?
+        });
       }
       return;
     }

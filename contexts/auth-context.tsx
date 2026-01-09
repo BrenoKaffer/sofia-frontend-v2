@@ -343,7 +343,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Isso dispararia onAuthStateChange, mas o ref isLoggingOutRef vai prevenir o setUser(null)
       await supabase.auth.signOut();
       
-      // 3. Limpar cookies manualmente no cliente para garantir
+      // 3. Limpar localStorage e sessionStorage explicitamente
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL + '-auth-token');
+        window.localStorage.removeItem('supabase.auth.token');
+        // Manter preferências de "Lembrar-me" se necessário, mas limpar tokens
+        // Não limpar tudo para não perder preferências de UI
+      }
+
+      // 4. Limpar cookies manualmente no cliente para garantir
       if (typeof document !== 'undefined') {
         const cookiesToClear = [
           'sb-access-token',
@@ -371,7 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      // 4. Redirecionar via hard refresh com parâmetro de ação
+      // 5. Redirecionar via hard refresh com parâmetro de ação e timestamp para evitar cache
       // Não chamamos setUser(null) aqui propositalmente para manter a UI estável até o refresh
       toast.success('Logout realizado com sucesso!');
       
@@ -379,14 +387,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTimeout(() => {
           // Usar window.location.href para garantir um reset completo do estado
           // Adicionar ?action=logout para que o middleware saiba que é um logout intencional
-          window.location.href = '/login?action=logout';
+          // Adicionar timestamp para evitar cache do navegador/middleware
+          window.location.href = `/login?action=logout&t=${Date.now()}`;
       }, 100);
       
     } catch (error) {
       console.error('Erro no logout:', error);
       toast.error('Erro ao fazer logout');
       // Forçar redirecionamento mesmo com erro
-      window.location.href = '/login?action=logout';
+      window.location.href = `/login?action=logout&t=${Date.now()}`;
     }
   };
 
