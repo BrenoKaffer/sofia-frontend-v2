@@ -70,7 +70,7 @@ function ResetPasswordContent() {
           refreshToken: refreshToken ? 'present' : 'missing',
           type,
           error, 
-          hash: typeof window !== 'undefined' ? window.location.hash : 'N/A' 
+          hashLength: typeof window !== 'undefined' ? window.location.hash.length : 0
         });
 
         // Primeiro, verificar se há erros na URL
@@ -87,11 +87,13 @@ function ResetPasswordContent() {
           return;
         }
 
-        // 1. Caso PKCE (Code Flow) - Menos comum para reset password, mas possível
+        // 1. Caso PKCE (Code Flow)
         if (code) {
-           // ... (mantido simplificado, mas idealmente usaria lógica similar se necessário)
-           // Para PKCE, geralmente exchangeCodeForSession já lida com persistência.
-           // Se der problema aqui, focaremos no Implicit Flow que é o padrão do link de email.
+           const { error } = await globalSupabase.auth.exchangeCodeForSession(code);
+           if (!error) {
+             setIsValidToken(true);
+             return;
+           }
         }
 
         // 2. Caso Implicit Flow (Hash com tokens) - Padrão do Supabase
@@ -106,8 +108,10 @@ function ResetPasswordContent() {
           try {
             console.log('Tentando definir sessão com cliente global...');
             
+            // Garantir estado limpo antes de tentar
+            await globalSupabase.auth.signOut();
+
             // Estabelecer a sessão com os tokens fornecidos
-            // Usamos o cliente global para garantir persistência correta e compatibilidade com RLS
             const { error } = await globalSupabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -118,23 +122,21 @@ function ResetPasswordContent() {
               throw error; 
             } 
             
-            console.log('Sessão definida com sucesso no cliente global');
+            // Verificar se a sessão é realmente válida
+            const { data: { user }, error: userError } = await globalSupabase.auth.getUser();
+            
+            if (userError || !user) {
+               console.error('Sessão definida mas usuário não retornado:', userError);
+               throw new Error('Falha ao confirmar sessão do usuário');
+            }
+
+            console.log('Sessão definida e confirmada com sucesso');
             setIsValidToken(true);
             
           } catch (error: any) {
             console.error('Erro ao processar token (catch):', error);
-            
-            // Fallback: se o token falhar (ex: reload da página onde o token já foi consumido),
-            // verificamos se já temos uma sessão válida persistida.
-            const { data: { user } } = await globalSupabase.auth.getUser();
-            
-            if (user) {
-              console.log('Recuperação via fallback: Usuário autenticado no cliente global');
-              setIsValidToken(true);
-            } else {
-              setIsValidToken(false);
-              toast.error('Link de recuperação inválido ou expirado');
-            }
+            setIsValidToken(false);
+            toast.error('Link de recuperação inválido ou expirado');
           }
           return;
         } 
@@ -160,19 +162,19 @@ function ResetPasswordContent() {
 
     checkTokenValidity();
     
-    // Fallback de segurança global aumentado para 30s
+    // Fallback de segurança global (15s)
     const timeoutId = setTimeout(() => {
       setIsValidToken((current) => {
         if (current === null) {
           console.warn('Timeout global na validação do token');
           if (validatingRef.current) {
-             toast.error('Tempo limite excedido na validação');
+             toast.error('Tempo limite excedido. Tente solicitar um novo link.');
           }
           return false;
         }
         return current;
       });
-    }, 30000); 
+    }, 15000);
 
     return () => clearTimeout(timeoutId);
   }, [searchParams, isMounted]); // Removido supabase.auth das deps
