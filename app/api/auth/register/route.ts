@@ -233,29 +233,25 @@ export async function POST(req: NextRequest) {
 
     const { data: user, error: userError } = await dbClient
       .from('user_profiles')
-      .insert({
+      .upsert({
         user_id: authData.user.id,
         email: email.toLowerCase(),
         full_name: name || email.split('@')[0],
-        role: 'user', // Role padrão
-        email_verified: false, // Email não verificado inicialmente
+        role: 'user',
+        email_verified: false,
         created_at: new Date().toISOString()
-      })
+      }, { onConflict: 'user_id' })
       .select()
       .single();
 
     if (userError) {
-      logger.error(`Erro ao criar registro do usuário: ${userError.message || String(userError)}`, undefined, userError as Error);
-      
-      // Tentar deletar usuário do Auth se falhou na criação do registro
-      try {
-        await supabase.auth.admin.deleteUser(authData.user.id);
-      } catch (deleteError) {
-        logger.error(`Erro ao deletar usuário do Auth após falha: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`, undefined, deleteError as Error);
-      }
+      logger.error(`Erro ao criar/atualizar registro do usuário: ${userError.message || String(userError)}`, undefined, userError as Error);
       
       return NextResponse.json(
-        { error: 'Erro ao criar registro do usuário' },
+        { 
+          error: 'Erro ao criar registro do usuário',
+          details: userError.message || String(userError)
+        },
         { status: 500 }
       );
     }
