@@ -32,10 +32,17 @@ export default function LoginPage() {
   const router = useRouter();
   const welcomeText = 'Bem-vindo de volta...';
 
-  // Redirect if already logged in
+  // Redirect if already logged in or if recovery token is present
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
+    // Check for recovery token in hash (if Supabase redirected to root -> login)
+    if (window.location.hash && (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token'))) {
+      console.log('🔄 Recovery token detected on login page, redirecting to reset-password...');
+      router.replace('/reset-password' + window.location.hash);
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const isLogout = params.get('action') === 'logout';
 
