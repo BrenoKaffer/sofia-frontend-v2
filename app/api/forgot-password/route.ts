@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (userError) {
       console.error('Erro ao verificar usuário:', userError);
       return NextResponse.json(
-        { error: 'Não foi possível verificar seu cadastro. Tente novamente em alguns instantes.' },
+        { error: 'Email não cadastrado ou não verificado.' },
         { status: 500 }
       );
     }
