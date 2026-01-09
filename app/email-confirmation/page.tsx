@@ -187,8 +187,18 @@ function EmailConfirmationContent() {
                   </p>
                   <button
                     onClick={async () => {
+                      // 1. Tentar logout via Supabase
                       await supabase.auth.signOut();
-                      router.push('/login');
+                      
+                      // 2. Limpar cookies manualmente para garantir (Middleware lê estes)
+                      document.cookie = "sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                      document.cookie = "sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                      document.cookie = "sofia_status=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                      document.cookie = "sofia_plan=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                      document.cookie = "sofia_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                      
+                      // 3. Forçar recarregamento completo para /login
+                      window.location.href = '/login';
                     }}
                     className="text-primary hover:underline font-medium inline-flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
                   >
