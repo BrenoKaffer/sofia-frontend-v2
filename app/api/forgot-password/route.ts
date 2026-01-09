@@ -64,15 +64,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${request.nextUrl.origin}/reset-password`,
+    // Usar o backend externo para envio de email, conforme implementação estável da main
+    const backendUrl =
+      process.env.SOFIA_BACKEND_URL ||
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      'https://api.v1sofia.com';
+
+    const normalizedBase = backendUrl.replace(/\/+$/, '');
+    if (!normalizedBase) {
+      console.error('Backend URL não configurada para forgot-password');
+      return NextResponse.json(
+        { error: 'Erro de configuração de backend' },
+        { status: 500 }
+      );
+    }
+
+    const endpoint = normalizedBase.endsWith('/api')
+      ? `${normalizedBase}/auth/forgot-password`
+      : `${normalizedBase}/api/auth/forgot-password`;
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     });
 
-    if (error) {
-      console.error('Erro ao enviar email de recuperação:', error);
+    if (!response.ok) {
+      const rawText = await response.text();
+      console.error('Falha no backend ao processar forgot-password:', {
+        status: response.status,
+        body: rawText,
+      });
       return NextResponse.json(
-        { error: error.message || 'Erro ao enviar email' },
-        { status: 400 }
+        { error: 'Erro ao enviar email pelo servidor' },
+        { status: response.status }
       );
     }
 
