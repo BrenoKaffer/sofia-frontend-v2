@@ -37,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Função para converter usuário do Supabase para o formato local, buscando dados atualizados do perfil
   const fetchAndConvertUser = async (supabaseUser: SupabaseUser): Promise<User> => {
+    // Verificar e atualizar status se o email foi confirmado
+    await checkAndUpdateUserStatus(supabaseUser);
+    
     let profileData = null;
     try {
       profileData = await getUserProfile(supabaseUser.id);
@@ -155,6 +158,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
+
+  // Função para verificar e atualizar status do usuário quando email é confirmado
+  const checkAndUpdateUserStatus = async (supabaseUser: SupabaseUser) => {
+    try {
+      // Verificar se o email foi confirmado e o email_verified ainda é false
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('email_verified, user_id')
+        .eq('user_id', supabaseUser.id)
+        .single();
+
+      if (profile && !profile.email_verified && supabaseUser.email_confirmed_at) {
+        // Atualizar email_verified para true
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ email_verified: true })
+          .eq('user_id', supabaseUser.id);
+
+        if (error) {
+          console.error('Erro ao atualizar email_verified do usuário:', error);
+        } else {
+          console.log('Email do usuário marcado como verificado');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/atualizar email_verified do usuário:', error);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -340,21 +371,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      // 4. Redirecionar via hard refresh
+      // 4. Redirecionar via hard refresh com parâmetro de ação
       // Não chamamos setUser(null) aqui propositalmente para manter a UI estável até o refresh
       toast.success('Logout realizado com sucesso!');
       
       // Pequeno delay para garantir que o navegador processou a limpeza dos cookies
       setTimeout(() => {
           // Usar window.location.href para garantir um reset completo do estado
-          window.location.href = '/login';
+          // Adicionar ?action=logout para que o middleware saiba que é um logout intencional
+          window.location.href = '/login?action=logout';
       }, 100);
       
     } catch (error) {
       console.error('Erro no logout:', error);
       toast.error('Erro ao fazer logout');
       // Forçar redirecionamento mesmo com erro
-      window.location.href = '/login';
+      window.location.href = '/login?action=logout';
     }
   };
 

@@ -207,6 +207,50 @@ export async function sendVerificationEmail(options: {
   await transport.sendMail({ from, to: options.to, subject, html, text });
 }
 
+export async function sendRecoveryEmail(options: {
+  to: string;
+  name?: string | null;
+  recoveryLink: string;
+}) {
+  const transport = createTransport();
+
+  const subject = 'Redefinição de senha - SOFIA';
+  
+  const content = `
+    <h2 style="margin:0;font-size:24px;font-weight:700;color:#081217;">
+      Vamos redefinir sua senha
+    </h2>
+
+    <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+      Tudo bem, acontece com todo mundo. Senhas fogem da memória como números do zero…  
+      Mas relaxa, estou aqui pra isso mesmo.
+    </p>
+
+    <p style="font-size:15px;color:#555;">
+      Clique no botão abaixo para criar uma nova senha:
+    </p>
+
+    ${GreenButton('Criar nova senha', options.recoveryLink)}
+
+    <p style="font-size:13px;color:#777;margin-top:20px;">
+      Esse link expira em <strong>20 minutos</strong>. Nem pense em procrastinar.
+    </p>
+
+    <p style="font-size:13px;color:#999;margin-top:30px;">
+      Se você não pediu isso… estranhíssimo. Apenas ignore.
+    </p>
+  `;
+
+  const html = BaseTemplate(content);
+  const text = `Vamos redefinir sua senha\n\n` +
+    `Tudo bem, acontece com todo mundo. Senhas fogem da memória como números do zero… Mas relaxa, estou aqui pra isso mesmo.\n` +
+    `Acesse o link para redefinir: ${options.recoveryLink}\n\n` +
+    `Esse link expira em 20 minutos.`;
+
+  const from = process.env.SMTP_FROM || 'no-reply@localhost';
+  await transport.sendMail({ from, to: options.to, subject, html, text });
+}
+
 export async function sendFallbackAlertEmail(options: {
   reason: string;
   error?: string | null;

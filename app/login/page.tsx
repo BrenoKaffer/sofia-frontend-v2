@@ -32,8 +32,21 @@ export default function LoginPage() {
   const router = useRouter();
   const welcomeText = 'Bem-vindo de volta...';
 
-  // Redirect if already logged in
+  // Handle logout action and redirect if already logged in
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const isLogout = params.get('action') === 'logout';
+
+    if (isLogout) {
+      if (user) {
+        // Force sign out if still logged in
+        supabase.auth.signOut();
+      }
+      return;
+    }
+
     if (!isAuthLoading && user) {
       router.replace('/dashboard');
     }

@@ -65,6 +65,49 @@ async function isAuthenticated(req: NextRequest): Promise<boolean> {
   }
 }
 
+async function getAuthenticatedUser(req: NextRequest): Promise<any> {
+  if (devBypassEnabled(req)) return null
+  const access = req.cookies.get('sb-access-token')?.value
+  const refresh = req.cookies.get('sb-refresh-token')?.value
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!access || !refresh || !url || !anon) return null
+  try {
+    const res = await fetch(`${url}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${access}`,
+        'apikey': anon,
+      },
+    })
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    return data
+  } catch {
+    return null
+  }
+}
+
+async function getUserProfile(userId: string, req: NextRequest): Promise<any> {
+  if (devBypassEnabled(req)) return null
+  const access = req.cookies.get('sb-access-token')?.value
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!access || !url || !anon) return null
+  try {
+    const res = await fetch(`${url}/rest/v1/user_profiles?user_id=eq.${userId}&select=email_verified`, {
+      headers: {
+        'Authorization': `Bearer ${access}`,
+        'apikey': anon,
+      },
+    })
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    return data && data[0] ? data[0] : null
+  } catch {
+    return null
+  }
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
@@ -75,6 +118,17 @@ export async function middleware(req: NextRequest) {
   if (isAssetOrApi(pathname) || isPublicRoute(pathname)) {
     // Se o usuário estiver autenticado e tentar acessar login ou register, redirecionar para dashboard
     if ((pathname === '/login' || pathname === '/register') && await isAuthenticated(req)) {
+      // Se houver parâmetro action=logout, permitir acesso e limpar cookies
+      if (req.nextUrl.searchParams.get('action') === 'logout') {
+        const response = NextResponse.next();
+        response.cookies.delete('sb-access-token');
+        response.cookies.delete('sb-refresh-token');
+        response.cookies.delete('sofia_status');
+        response.cookies.delete('sofia_plan');
+        response.cookies.delete('sofia_role');
+        return response;
+      }
+
       const url = req.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
@@ -87,6 +141,17 @@ export async function middleware(req: NextRequest) {
     url.pathname = '/login'
     url.search = ''
     return NextResponse.redirect(url)
+  }
+
+  // Verificar se o email foi confirmado
+  const user = await getAuthenticatedUser(req)
+  if (user) {
+    const profile = await getUserProfile(user.id, req)
+    if (profile && !profile.email_verified && pathname !== '/email-confirmation') {
+      const url = req.nextUrl.clone()
+      url.pathname = '/email-confirmation'
+      return NextResponse.redirect(url)
+    }
   }
 
   // Obter cookies de perfil (New Schema)

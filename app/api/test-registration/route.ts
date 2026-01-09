@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 // Inicialização segura (lazy) com fallback para evitar erro no build
 function getAdminClient() {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const envKey = process.env.SUPABASE_SERVICE_ROLE
   const url = envUrl || 'https://placeholder.supabase.co'
   const key = envKey || 'placeholder-key'
   return {
