@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       SMTP_HOST: !!process.env.SMTP_HOST,
       SMTP_USER: !!process.env.SMTP_USER,
       SMTP_PASS: !!process.env.SMTP_PASS ? '******' : 'MISSING',
-      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY ? 'PRESENT' : 'MISSING'
+      SUPABASE_SERVICE_ROLE: !!process.env.SUPABASE_SERVICE_ROLE ? 'PRESENT' : 'MISSING'
     };
 
     logger.info('Environment Check:', { metadata: envCheck });

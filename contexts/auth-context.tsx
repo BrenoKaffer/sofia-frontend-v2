@@ -37,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Função para converter usuário do Supabase para o formato local, buscando dados atualizados do perfil
   const fetchAndConvertUser = async (supabaseUser: SupabaseUser): Promise<User> => {
+    // Verificar e atualizar status se o email foi confirmado
+    await checkAndUpdateUserStatus(supabaseUser);
+    
     let profileData = null;
     try {
       profileData = await getUserProfile(supabaseUser.id);
@@ -155,6 +158,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
+
+  // Função para verificar e atualizar status do usuário quando email é confirmado
+  const checkAndUpdateUserStatus = async (supabaseUser: SupabaseUser) => {
+    try {
+      // Verificar se o email foi confirmado e o status ainda é 'pending'
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('status, user_id')
+        .eq('user_id', supabaseUser.id)
+        .single();
+
+      if (profile && profile.status === 'pending' && supabaseUser.email_confirmed_at) {
+        // Atualizar status para 'active'
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ status: 'active' })
+          .eq('user_id', supabaseUser.id);
+
+        if (error) {
+          console.error('Erro ao atualizar status do usuário:', error);
+        } else {
+          console.log('Status do usuário atualizado para active');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar/atualizar status do usuário:', error);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);

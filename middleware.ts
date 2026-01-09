@@ -65,6 +65,28 @@ async function isAuthenticated(req: NextRequest): Promise<boolean> {
   }
 }
 
+async function getAuthenticatedUser(req: NextRequest): Promise<any> {
+  if (devBypassEnabled(req)) return null
+  const access = req.cookies.get('sb-access-token')?.value
+  const refresh = req.cookies.get('sb-refresh-token')?.value
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!access || !refresh || !url || !anon) return null
+  try {
+    const res = await fetch(`${url}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${access}`,
+        'apikey': anon,
+      },
+    })
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    return data
+  } catch {
+    return null
+  }
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
@@ -86,6 +108,14 @@ export async function middleware(req: NextRequest) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     url.search = ''
+    return NextResponse.redirect(url)
+  }
+
+  // Verificar se o email foi confirmado
+  const user = await getAuthenticatedUser(req)
+  if (user && !user.email_confirmed_at && pathname !== '/email-confirmation') {
+    const url = req.nextUrl.clone()
+    url.pathname = '/email-confirmation'
     return NextResponse.redirect(url)
   }
 
