@@ -40,9 +40,43 @@ export default function LoginPage() {
     const isLogout = params.get('action') === 'logout';
 
     if (isLogout) {
-      // Clear Supabase session from localStorage
-      window.localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL + '-auth-token');
-      window.localStorage.removeItem('supabase.auth.token');
+      console.log('🧹 Executing deep logout cleanup...');
+      
+      // 1. Limpar LocalStorage (Supabase e App)
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && (key.startsWith('sb-') || key.startsWith('supabase') || key.includes('auth-token') || key.startsWith('sofia_'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => window.localStorage.removeItem(key));
+        
+        // Limpeza explícita para garantir
+        window.localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL + '-auth-token');
+        window.localStorage.removeItem('supabase.auth.token');
+      } catch (e) {
+        console.warn('Erro ao limpar localStorage:', e);
+      }
+
+      // 2. Limpar SessionStorage
+      try {
+        window.sessionStorage.clear();
+      } catch (e) { }
+
+      // 3. Limpar Cookies via JS (Fallback)
+      if (typeof document !== 'undefined') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf('=');
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=' + window.location.hostname;
+            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.' + window.location.hostname;
+        }
+      }
       
       if (user) {
         // Force sign out if still logged in

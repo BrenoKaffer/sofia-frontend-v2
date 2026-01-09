@@ -105,18 +105,41 @@ export async function POST(req: NextRequest) {
       message: 'Logout realizado com sucesso'
     });
 
-    response.cookies.delete({ name: 'sb-access-token', path: '/', maxAge: 0 });
-    response.cookies.delete({ name: 'sb-refresh-token', path: '/', maxAge: 0 });
-    response.cookies.delete({ name: 'sofia_status', path: '/', maxAge: 0 });
-    response.cookies.delete({ name: 'sofia_plan', path: '/', maxAge: 0 });
-    response.cookies.delete({ name: 'sofia_role', path: '/', maxAge: 0 });
+    const cookieOptions = {
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      maxAge: 0
+    };
+
+    // Limpar cookies principais com opções padrão
+    response.cookies.delete({ name: 'sb-access-token', ...cookieOptions });
+    response.cookies.delete({ name: 'sb-refresh-token', ...cookieOptions });
+    response.cookies.delete({ name: 'sofia_status', ...cookieOptions });
+    response.cookies.delete({ name: 'sofia_plan', ...cookieOptions });
+    response.cookies.delete({ name: 'sofia_role', ...cookieOptions });
     
+    // Tentar limpar cookies em domínios superiores (wildcard) para garantir
+    // Isso é útil se os cookies foram definidos no domínio raiz (ex: .v1sofia.com)
+    if (process.env.NEXT_PUBLIC_ROOT_DOMAIN) {
+       const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN.startsWith('.') 
+          ? process.env.NEXT_PUBLIC_ROOT_DOMAIN 
+          : '.' + process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+          
+       response.cookies.delete({ name: 'sb-access-token', domain: rootDomain, ...cookieOptions });
+       response.cookies.delete({ name: 'sb-refresh-token', domain: rootDomain, ...cookieOptions });
+    }
+
     // Limpar cookies do Supabase padrão (caso existam com nome diferente)
     const supabaseProjectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (supabaseProjectUrl) {
       const projectRef = supabaseProjectUrl.split('.')[0].split('//')[1];
       if (projectRef) {
-         response.cookies.delete({ name: `sb-${projectRef}-auth-token`, path: '/', maxAge: 0 });
+         const sbCookieName = `sb-${projectRef}-auth-token`;
+         response.cookies.delete({ name: sbCookieName, ...cookieOptions });
+         // Tentar limpar com sufixo de chunk também
+         response.cookies.delete({ name: `${sbCookieName}.0`, ...cookieOptions });
+         response.cookies.delete({ name: `${sbCookieName}.1`, ...cookieOptions });
       }
     }
 
