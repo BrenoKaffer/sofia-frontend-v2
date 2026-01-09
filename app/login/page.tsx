@@ -34,6 +34,25 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const isLogout = params.get('action') === 'logout';
+
+    if (isLogout) {
+      // Clear Supabase session from localStorage
+      window.localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL + '-auth-token');
+      window.localStorage.removeItem('supabase.auth.token');
+      
+      if (user) {
+        // Force sign out if still logged in
+        supabase.auth.signOut().then(() => {
+           // Optional: force reload if still stuck?
+        });
+      }
+      return;
+    }
+
     if (!isAuthLoading && user) {
       router.replace('/dashboard');
     }
@@ -344,4 +363,3 @@ export default function LoginPage() {
     </ClientOnly>
   );
 }
-

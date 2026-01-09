@@ -75,6 +75,21 @@ export async function middleware(req: NextRequest) {
   if (isAssetOrApi(pathname) || isPublicRoute(pathname)) {
     // Se o usuário estiver autenticado e tentar acessar login ou register, redirecionar para dashboard
     if ((pathname === '/login' || pathname === '/register') && await isAuthenticated(req)) {
+      // Se houver parâmetro action=logout, permitir acesso e limpar cookies
+      if (req.nextUrl.searchParams.get('action') === 'logout') {
+        const response = NextResponse.next();
+        // Limpar cookies de autenticação do Supabase
+        response.cookies.delete('sb-access-token');
+        response.cookies.delete('sb-refresh-token');
+        // Limpar cookies da aplicação
+        response.cookies.delete('sofia_status');
+        response.cookies.delete('sofia_plan');
+        response.cookies.delete('sofia_role');
+        // Limpar cookies legados ou alternativos
+        response.cookies.delete('supabase-auth-token');
+        return response;
+      }
+
       const url = req.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
