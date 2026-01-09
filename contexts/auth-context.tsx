@@ -371,21 +371,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      // 4. Redirecionar via hard refresh
+      // 4. Redirecionar via hard refresh com parâmetro de ação
       // Não chamamos setUser(null) aqui propositalmente para manter a UI estável até o refresh
       toast.success('Logout realizado com sucesso!');
       
       // Pequeno delay para garantir que o navegador processou a limpeza dos cookies
       setTimeout(() => {
           // Usar window.location.href para garantir um reset completo do estado
-          window.location.href = '/login';
+          // Adicionar ?action=logout para que o middleware saiba que é um logout intencional
+          window.location.href = '/login?action=logout';
       }, 100);
       
     } catch (error) {
       console.error('Erro no logout:', error);
       toast.error('Erro ao fazer logout');
       // Forçar redirecionamento mesmo com erro
-      window.location.href = '/login';
+      window.location.href = '/login?action=logout';
     }
   };
 
