@@ -43,10 +43,13 @@ export async function POST(request: NextRequest) {
       ? `${normalizedBase}/auth/forgot-password`
       : `${normalizedBase}/api/auth/forgot-password`;
 
+    // Get the frontend base URL from the request
+    const frontendUrl = request.nextUrl.origin;
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, frontendUrl }),
     });
 
     if (!response.ok) {
