@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { AuthService } from '@/lib/auth-service';
 import { logger } from '@/lib/logger';
 import { createClient } from '@supabase/supabase-js';
+import { sendVerificationEmail } from '@/lib/email';
 
 // POST - Registro de novo usuário
 export async function POST(req: NextRequest) {
@@ -58,15 +59,66 @@ export async function POST(req: NextRequest) {
     }
 
     // Criar usuário no Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
-      password,
-      options: {
-        data: {
-          full_name: name || email.split('@')[0]
+    // Se tivermos a chave de serviço, usamos generateLink para enviar nosso próprio email (mais confiável)
+    // Caso contrário, fallback para signUp normal (email enviado pelo Supabase)
+    let authData: any = {};
+    let authError: any = null;
+    let customEmailSent = false;
+
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const adminClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+
+      const { data, error } = await adminClient.auth.admin.generateLink({
+        type: 'signup',
+        email: email.toLowerCase(),
+        password: password,
+        options: {
+          data: {
+            full_name: name || email.split('@')[0]
+          }
+        }
+      });
+
+      authData = data;
+      authError = error;
+
+      if (!error && data.properties?.action_link) {
+        try {
+          await sendVerificationEmail({
+            to: email.toLowerCase(),
+            name: name || email.split('@')[0],
+            confirmationLink: data.properties.action_link
+          });
+          customEmailSent = true;
+          logger.info(`Email de verificação enviado via SMTP para ${email}`);
+        } catch (emailErr) {
+          logger.error(`Erro ao enviar email via SMTP: ${emailErr}`);
+          // Não falhar o registro, o usuário pode pedir reenvio depois
         }
       }
-    });
+    } else {
+      // Fallback para signUp padrão (email do Supabase)
+      const { data, error } = await supabase.auth.signUp({
+        email: email.toLowerCase(),
+        password,
+        options: {
+          data: {
+            full_name: name || email.split('@')[0]
+          }
+        }
+      });
+      authData = data;
+      authError = error;
+    }
 
     if (authError) {
       logger.error(`Erro ao criar usuário no Auth: ${authError.message || String(authError)}`);
@@ -168,7 +220,9 @@ export async function POST(req: NextRequest) {
       },
       message: authData.session 
         ? 'Conta criada e login realizado com sucesso'
-        : 'Conta criada com sucesso. Verifique seu email para confirmar a conta.'
+        : (customEmailSent 
+            ? 'Conta criada com sucesso. Enviamos um email de confirmação.' 
+            : 'Conta criada com sucesso. Verifique seu email para confirmar a conta.')
     };
 
     // Se há sessão (confirmação automática), configurar cookies

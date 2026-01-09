@@ -167,6 +167,46 @@ export async function sendDunningEmail(options: {
   await transport.sendMail({ from, to: options.to, subject, html, text });
 }
 
+export async function sendVerificationEmail(options: {
+  to: string;
+  name?: string | null;
+  confirmationLink: string;
+}) {
+  const transport = createTransport();
+
+  const subject = 'Confirme sua conta na SOFIA';
+  const greetingName = options.name ? `, ${options.name}` : '';
+
+  const content = `
+    <h2 style="margin:0;font-size:24px;font-weight:700;color:#081217;">
+      Bem-vindo(a)${greetingName}!
+    </h2>
+
+    <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+      Sua conta foi criada com sucesso. Para começar a usar a SOFIA, precisamos apenas que você confirme seu email.
+    </p>
+
+    <p style="font-size:15px;color:#555;">
+      Clique no botão abaixo para confirmar:
+    </p>
+
+    ${GreenButton('Confirmar meu email', options.confirmationLink)}
+
+    <p style="font-size:13px;color:#777;margin-top:20px;">
+      Se você não criou esta conta, pode ignorar este email.
+    </p>
+  `;
+
+  const html = BaseTemplate(content);
+
+  const text = `Bem-vindo à SOFIA${greetingName}\n\n` +
+    `Sua conta foi criada. Para confirmar seu email, acesse: ${options.confirmationLink}\n\n` +
+    `Se você não criou esta conta, ignore este email.`;
+
+  const from = process.env.SMTP_FROM || 'no-reply@localhost';
+  await transport.sendMail({ from, to: options.to, subject, html, text });
+}
+
 export async function sendFallbackAlertEmail(options: {
   reason: string;
   error?: string | null;

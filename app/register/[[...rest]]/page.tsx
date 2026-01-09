@@ -541,6 +541,7 @@ export default function RegisterPage() {
                   <div className="relative">
                     <Input
                       id="password"
+                      autoComplete="new-password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Mínimo 6 caracteres"
                       value={password}

@@ -10,7 +10,6 @@ const nextConfig = {
       },
     ],
   },
-  // Ensure trailing slashes are handled consistently
   trailingSlash: false,
 };
 
