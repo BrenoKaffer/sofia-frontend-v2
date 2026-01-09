@@ -36,6 +36,20 @@ function ResetPasswordContent() {
     // Só executa se estiver montado
     if (!isMounted) return;
 
+    // Listener para capturar evento de recuperação vindo do cliente global
+    // Isso é crucial pois o cliente global pode consumir o hash da URL antes do nosso check manual
+    const { data: { subscription } } = globalSupabase.auth.onAuthStateChange((event, session) => {
+      console.log('ResetPasswordPage: Auth Event detectado:', event);
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('Evento PASSWORD_RECOVERY detectado! Validando token.');
+        setIsValidToken(true);
+      }
+      if (event === 'SIGNED_IN' && session) {
+        console.log('Evento SIGNED_IN detectado! Usuário já autenticado.');
+        setIsValidToken(true);
+      }
+    });
+
     // Verificar se há parâmetros de recuperação de senha na URL
     const checkTokenValidity = async () => {
       // Evita validação duplicada em Strict Mode ou re-renders rápidos
@@ -161,21 +175,20 @@ function ResetPasswordContent() {
         // 3. Caso nenhum token encontrado
         console.warn('Nenhum token de recuperação encontrado na URL');
         // Se já estiver logado (clicou no link mas já tinha sessão), permitir
-        const { data: { user } } = await globalSupabase.auth.getUser();
-        if (user) {
-           console.log('Usuário já autenticado, permitindo reset.');
+        // Usar getSession ao invés de getUser para evitar chamadas de rede que podem falhar (401)
+        const { data: { session } } = await globalSupabase.auth.getSession();
+        if (session?.user) {
+           console.log('Usuário já autenticado (sessão ativa), permitindo reset.');
            setIsValidToken(true);
         } else {
-           // Se não tem token e não está logado, então é inválido
-           setIsValidToken(false);
-           setErrorState({ code: 'no_token', description: 'Nenhum token encontrado' });
+           // Se não tem token e não está logado, aguardar um pouco para ver se o listener captura o evento
+           console.warn('Nenhuma sessão encontrada imediatamente. Aguardando listener...');
+           // Não definimos false imediatamente aqui, deixamos o timeout global decidir ou o listener
         }
 
       } catch (err: any) {
         console.error('Erro inesperado na validação do token:', err);
-        setIsValidToken(false);
-        setErrorState({ code: 'unexpected_error', description: err.message });
-        toast.error('Erro inesperado ao validar link');
+        // Não falhar imediatamente, deixar o timeout lidar se for erro transitório
       }
     };
 
@@ -184,6 +197,7 @@ function ResetPasswordContent() {
     // Fallback de segurança global (15s)
     const timeoutId = setTimeout(() => {
       setIsValidToken((current) => {
+        if (current === true) return true; // Se já validou, mantém
         if (current === null) {
           console.warn('Timeout global na validação do token');
           if (validatingRef.current) {
@@ -195,7 +209,10 @@ function ResetPasswordContent() {
       });
     }, 15000); 
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+        clearTimeout(timeoutId);
+        subscription.unsubscribe();
+    };
   }, [searchParams, isMounted]); // Removido supabase.auth das deps
 
   // Evita renderização no servidor ou antes da montagem para prevenir erro #418
