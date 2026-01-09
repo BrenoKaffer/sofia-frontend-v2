@@ -482,10 +482,11 @@ export default function RegisterPage() {
                   </Label>
                   <div className="relative">
                     <Input
-                      id="fullName"
-                      type="text"
-                      placeholder="Seu nome completo"
-                      value={fullName}
+                  id="fullName"
+                  autoComplete="name"
+                  type="text"
+                  placeholder="Seu nome completo"
+                  value={fullName}
                       onChange={(e) => {
                         handleFieldChange('fullName', e.target.value);
                       }}
@@ -511,10 +512,11 @@ export default function RegisterPage() {
                   <Label htmlFor="email" className="font-sans">Email</Label>
                   <div className="relative">
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
+                  id="email"
+                  autoComplete="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
                       onChange={(e) => handleFieldChange('email', e.target.value)}
                       onBlur={(e) => handleFieldBlur('email', e.target.value)}
                       className={`h-11 font-sans ${touched.email && errors.email
@@ -580,10 +582,11 @@ export default function RegisterPage() {
                   <Label htmlFor="confirmPassword" className="font-sans">Confirmar Senha</Label>
                   <div className="relative">
                     <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="Confirme sua senha"
-                      value={confirmPassword}
+                  id="confirmPassword"
+                  autoComplete="new-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirme sua senha"
+                  value={confirmPassword}
                       onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
                       onBlur={(e) => handleFieldBlur('confirmPassword', e.target.value)}
                       className={`h-11 pr-10 font-sans ${touched.confirmPassword && errors.confirmPassword
