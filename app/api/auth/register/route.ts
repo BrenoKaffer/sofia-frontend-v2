@@ -238,8 +238,7 @@ export async function POST(req: NextRequest) {
         email: email.toLowerCase(),
         full_name: name || email.split('@')[0],
         role: 'user',
-        email_verified: false,
-        created_at: new Date().toISOString()
+        email_verified: false
       }, { onConflict: 'user_id' })
       .select()
       .single();
