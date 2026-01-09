@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { supabase as globalSupabase } from '@/lib/supabase';
-import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,8 +21,6 @@ function ResetPasswordContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
   const [isPasswordReset, setIsPasswordReset] = useState(false);
-  // Cliente de autenticação: começa com o global, mas pode mudar para um isolado
-  const [authClient, setAuthClient] = useState(globalSupabase);
   const router = useRouter();
   const searchParams = useSearchParams();
   const validatingRef = useRef(false);
@@ -99,45 +96,32 @@ function ResetPasswordContent() {
           }
 
           try {
-            console.log('Tentando definir sessão com cliente ISOLADO...');
+            console.log('Tentando definir sessão com cliente global...');
             
-            // Criar cliente temporário sem persistência para evitar conflitos de lock/storage
-            const tempClient = createClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL!,
-              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-              {
-                auth: {
-                  persistSession: false, // IMPORTANTE: Não salvar em localStorage
-                  autoRefreshToken: false,
-                  detectSessionInUrl: false
-                }
-              }
-            );
-
-            // Tenta estabelecer a sessão com os tokens fornecidos no cliente isolado
-            const { error } = await tempClient.auth.setSession({
+            // Estabelecer a sessão com os tokens fornecidos
+            // Usamos o cliente global para garantir persistência correta e compatibilidade com RLS
+            const { error } = await globalSupabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
 
             if (error) {
-              console.error('Erro ao validar token no cliente isolado:', error);
+              console.error('Erro ao validar token no cliente global:', error);
               throw error; 
             } 
             
-            console.log('Sessão definida com sucesso no cliente isolado');
-            setAuthClient(tempClient); // Usar este cliente para o update
+            console.log('Sessão definida com sucesso no cliente global');
             setIsValidToken(true);
             
           } catch (error: any) {
             console.error('Erro ao processar token (catch):', error);
             
-            // Tentativa de fallback: verificar se o usuário já está logado no global
+            // Fallback: se o token falhar (ex: reload da página onde o token já foi consumido),
+            // verificamos se já temos uma sessão válida persistida.
             const { data: { user } } = await globalSupabase.auth.getUser();
             
             if (user) {
               console.log('Recuperação via fallback: Usuário autenticado no cliente global');
-              setAuthClient(globalSupabase); // Usar cliente global
               setIsValidToken(true);
             } else {
               setIsValidToken(false);
@@ -153,7 +137,6 @@ function ResetPasswordContent() {
         const { data: { user } } = await globalSupabase.auth.getUser();
         if (user) {
            console.log('Usuário já autenticado, permitindo reset.');
-           setAuthClient(globalSupabase);
            setIsValidToken(true);
         } else {
            setIsValidToken(false);
@@ -230,8 +213,8 @@ function ResetPasswordContent() {
     }
 
     try {
-      // Usar o authClient que foi configurado (isolado ou global)
-      const { error } = await authClient.auth.updateUser({
+      // Usar o cliente global que agora tem a sessão definida
+      const { error } = await globalSupabase.auth.updateUser({
         password: password
       });
 
@@ -242,12 +225,12 @@ function ResetPasswordContent() {
       }
 
       setIsPasswordReset(true);
-      toast.success('Senha redefinida com sucesso! Redirecionando...');
+      toast.success('Senha redefinida com sucesso! Você já está logado.');
       
-      // Redirecionar para login após 3 segundos
+      // Redirecionar para dashboard, pois a sessão é válida
       setTimeout(() => {
-        router.push('/login');
-      }, 3000);
+        router.push('/dashboard');
+      }, 2000);
 
     } catch (error) {
       console.error('Erro ao redefinir senha:', error);
