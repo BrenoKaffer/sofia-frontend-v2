@@ -207,6 +207,47 @@ export async function sendVerificationEmail(options: {
   await transport.sendMail({ from, to: options.to, subject, html, text });
 }
 
+export async function sendRecoveryEmail(options: {
+  to: string;
+  name?: string | null;
+  recoveryLink: string;
+}) {
+  const transport = createTransport();
+
+  const subject = 'Recuperação de Senha - SOFIA';
+  const greetingName = options.name ? `, ${options.name}` : '';
+
+  const content = `
+    <h2 style="margin:0;font-size:24px;font-weight:700;color:#081217;">
+      Recuperação de Senha
+    </h2>
+
+    <p style="font-size:15px;line-height:22px;margin:16px 0;color:#555;">
+      Recebemos uma solicitação para redefinir a senha da sua conta SOFIA${greetingName}.
+    </p>
+
+    <p style="font-size:15px;color:#555;">
+      Se foi você, clique no botão abaixo para criar uma nova senha:
+    </p>
+
+    ${GreenButton('Redefinir minha senha', options.recoveryLink)}
+
+    <p style="font-size:13px;color:#777;margin-top:20px;">
+      Se você não solicitou essa alteração, ignore este email. Sua senha permanecerá a mesma.
+    </p>
+  `;
+
+  const html = BaseTemplate(content);
+
+  const text = `Recuperação de Senha\n\n` +
+    `Recebemos uma solicitação para redefinir sua senha na SOFIA.\n` +
+    `Para redefinir, acesse: ${options.recoveryLink}\n\n` +
+    `Se não foi você, ignore este email.`;
+
+  const from = process.env.SMTP_FROM || 'no-reply@localhost';
+  await transport.sendMail({ from, to: options.to, subject, html, text });
+}
+
 export async function sendFallbackAlertEmail(options: {
   reason: string;
   error?: string | null;
