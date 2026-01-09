@@ -93,13 +93,21 @@ export async function POST(request: NextRequest) {
       } else if (linkData?.properties?.action_link) {
         try {
           console.log('Link de recuperação gerado com sucesso. Enviando email...');
+          
+          // PROTEÇÃO CONTRA EMAIL SCANNERS:
+          // Em vez de enviar o link direto (que queima o token se o scanner acessar),
+          // enviamos um link para uma página intermediária nossa ("security-check").
+          // O usuário clica lá para ser redirecionado para o link real.
+          const realActionLink = linkData.properties.action_link;
+          const safeLink = `${origin}/security-check?target=${encodeURIComponent(realActionLink)}`;
+          
           await sendRecoveryEmail({
             to: email,
             name: user.full_name,
-            recoveryLink: linkData.properties.action_link
+            recoveryLink: safeLink // Envia o link seguro
           });
           
-          console.log('Email enviado com sucesso via Zeptomail.');
+          console.log('Email enviado com sucesso via Zeptomail (com link seguro).');
           return NextResponse.json(
             { 
               message: 'Email de recuperação enviado com sucesso via servidor customizado.',

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import { createClient } from '@supabase/supabase-js';
 import { supabase as globalSupabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,31 +109,44 @@ function ResetPasswordContent() {
           }
 
           try {
-            console.log('Tentando definir sessão com cliente global...');
+            console.log('Tentando definir sessão com cliente ISOLADO...');
             
-            // Garantir estado limpo antes de tentar
-            await globalSupabase.auth.signOut();
+            // CRITICAL FIX: Use an isolated client to avoid conflicts with global/AuthContext clients
+            // and force the session set on this specific instance.
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+            const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+            
+            const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+              auth: {
+                autoRefreshToken: false,
+                persistSession: true, // We want to persist so the global client picks it up later
+                detectSessionInUrl: false
+              }
+            });
 
-            // Estabelecer a sessão com os tokens fornecidos
-            const { error } = await globalSupabase.auth.setSession({
+            // Set session on the temp client
+            const { data: { session }, error } = await tempClient.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
 
             if (error) {
-              console.error('Erro ao validar token no cliente global:', error);
+              console.error('Erro ao validar token no cliente isolado:', error);
               throw error; 
             } 
             
-            // Verificar se a sessão é realmente válida
-            const { data: { user }, error: userError } = await globalSupabase.auth.getUser();
-            
-            if (userError || !user) {
-               console.error('Sessão definida mas usuário não retornado:', userError);
+            if (!session?.user) {
                throw new Error('Falha ao confirmar sessão do usuário');
             }
 
-            console.log('Sessão definida e confirmada com sucesso');
+            console.log('Sessão definida e confirmada com sucesso no cliente isolado');
+            
+            // Now sync with global client manually to ensure UI updates
+            await globalSupabase.auth.setSession({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+            });
+
             setIsValidToken(true);
             
           } catch (error: any) {
