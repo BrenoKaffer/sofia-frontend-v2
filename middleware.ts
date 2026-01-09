@@ -73,8 +73,11 @@ export async function middleware(req: NextRequest) {
   // }
 
   if (isAssetOrApi(pathname) || isPublicRoute(pathname)) {
+    // Permitir acesso a reset-password mesmo autenticado (pode estar trocando senha de outra conta)
+    if (pathname === '/reset-password') return NextResponse.next()
+
     // Se o usuário estiver autenticado e tentar acessar login ou register, redirecionar para dashboard
-    if ((pathname === '/login' || pathname === '/register') && await isAuthenticated(req)) {
+    if ((pathname === '/login' || pathname === '/register') && (await isAuthenticated(req) || req.nextUrl.searchParams.get('action') === 'logout')) {
       // Se houver parâmetro action=logout, permitir acesso e limpar cookies
       if (req.nextUrl.searchParams.get('action') === 'logout') {
         const response = NextResponse.next();
