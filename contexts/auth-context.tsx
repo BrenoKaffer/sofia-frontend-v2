@@ -92,6 +92,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Verificar sessão inicial
     const getInitialSession = async () => {
+      // Se houver action=logout na URL, não restaurar sessão
+      if (typeof window !== 'undefined') {
+         const params = new URLSearchParams(window.location.search);
+         if (params.get('action') === 'logout') {
+            console.log('🛑 [AuthContext] Logout detectado na URL, ignorando restauração de sessão.');
+            setIsLoading(false);
+            setUser(null);
+            return;
+         }
+      }
+
       console.log('🔄 [AuthContext] Iniciando verificação de sessão inicial...');
       try {
         // Se bypass ativo, simula usuário sem consultar Supabase
@@ -130,6 +141,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`🔔 [AuthContext] Evento de Auth: ${event}`);
+        
+        // Bloquear restauração se estivermos em logout
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('action') === 'logout') {
+                return;
+            }
+        }
+
         if (isLoggingOutRef.current) return;
         if (AUTH_DEV_BYPASS) {
           setUser({

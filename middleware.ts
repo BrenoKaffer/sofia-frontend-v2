@@ -84,12 +84,21 @@ export async function middleware(req: NextRequest) {
         // Limpar cookies de autenticação do Supabase
         response.cookies.delete('sb-access-token');
         response.cookies.delete('sb-refresh-token');
+        // Tentar limpar com domínio raiz se possível (embora middleware tenha limitações com domínios)
+        // A melhor aposta é limpar o path e o default
+        
         // Limpar cookies da aplicação
         response.cookies.delete('sofia_status');
         response.cookies.delete('sofia_plan');
         response.cookies.delete('sofia_role');
+        
         // Limpar cookies legados ou alternativos
         response.cookies.delete('supabase-auth-token');
+        
+        // Adicionar header para forçar expiração no navegador
+        response.headers.append('Set-Cookie', 'sb-access-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+        response.headers.append('Set-Cookie', 'sb-refresh-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+        
         return response;
       }
 
