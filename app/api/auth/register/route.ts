@@ -92,6 +92,11 @@ export async function POST(req: NextRequest) {
       authError = error;
 
       if (!error && data.properties?.action_link) {
+        // Verificar se configurações SMTP estão presentes
+        if (!process.env.SMTP_HOST && !process.env.SMTP_USER) {
+          logger.warn('Configurações SMTP ausentes (SMTP_HOST/SMTP_USER). O envio de email falhará.');
+        }
+
         try {
           await sendVerificationEmail({
             to: email.toLowerCase(),
