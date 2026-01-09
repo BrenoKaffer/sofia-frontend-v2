@@ -41,6 +41,29 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Verificar se o usuário existe antes de tentar enviar o email
+    // Isso é menos seguro (permite enumeração de usuários), mas solicitado pelo requisito de UX
+    const { data: user, error: userError } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (userError) {
+      console.error('Erro ao verificar usuário:', userError);
+      return NextResponse.json(
+        { error: 'Erro ao verificar cadastro' },
+        { status: 500 }
+      );
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${request.nextUrl.origin}/reset-password`,
     });
