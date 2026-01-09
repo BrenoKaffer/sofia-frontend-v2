@@ -21,11 +21,19 @@ function ResetPasswordContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
   const [isPasswordReset, setIsPasswordReset] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const validatingRef = useRef(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Só executa se estiver montado
+    if (!isMounted) return;
+
     // Verificar se há parâmetros de recuperação de senha na URL
     const checkTokenValidity = async () => {
       // Evita validação duplicada em Strict Mode ou re-renders rápidos
@@ -43,7 +51,7 @@ function ResetPasswordContent() {
         let type = searchParams.get('type');
 
         // Se não encontrou na query string, tentar pegar do hash (fragmento)
-        if (!code && !accessToken && !error && typeof window !== 'undefined' && window.location.hash) {
+        if (typeof window !== 'undefined' && window.location.hash) {
           const hash = window.location.hash.substring(1); // remove o #
           const params = new URLSearchParams(hash);
           
@@ -139,6 +147,7 @@ function ResetPasswordContent() {
            console.log('Usuário já autenticado, permitindo reset.');
            setIsValidToken(true);
         } else {
+           // Se não tem token e não está logado, então é inválido
            setIsValidToken(false);
         }
 
@@ -166,7 +175,12 @@ function ResetPasswordContent() {
     }, 30000); 
 
     return () => clearTimeout(timeoutId);
-  }, [searchParams]); // Removido supabase.auth das deps
+  }, [searchParams, isMounted]); // Removido supabase.auth das deps
+
+  // Evita renderização no servidor ou antes da montagem para prevenir erro #418
+  if (!isMounted) {
+    return null;
+  }
 
   const validatePassword = (password: string) => {
     const minLength = 6;
