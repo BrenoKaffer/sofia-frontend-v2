@@ -177,19 +177,15 @@ export async function POST(req: NextRequest) {
         logger.warn('Link de ação não retornado pelo Supabase generateLink');
       }
     } else {
-      logger.warn('Usando fallback de registro (Supabase Auth) pois SERVICE_ROLE_KEY está ausente');
-      // Fallback para signUp padrão (email do Supabase)
-      const { data, error } = await supabase.auth.signUp({
-        email: email.toLowerCase(),
-        password,
-        options: {
-          data: {
-            full_name: name || email.split('@')[0]
-          }
-        }
-      });
-      authData = data;
-      authError = error;
+      // Se não tivermos a chave de serviço, não podemos gerar o link manualmente sem disparar o email do Supabase.
+      // Como o requisito é usar o ZeptoMail (nosso backend), devemos falhar se a configuração estiver ausente.
+      const errorMsg = 'SUPABASE_SERVICE_ROLE_KEY não configurada. Impossível registrar usuário com email personalizado.';
+      logger.error(errorMsg);
+      
+      return NextResponse.json(
+        { error: 'Erro de configuração do servidor (Service Role Key ausente). Contate o suporte.' },
+        { status: 500 }
+      );
     }
 
     if (authError) {
