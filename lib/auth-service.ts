@@ -23,6 +23,8 @@ export interface AuthenticatedUser {
   created_at: string;
   last_login: string;
   is_active: boolean;
+  plan?: string;
+  status?: string;
 }
 
 export interface AuthResult {
@@ -230,7 +232,8 @@ export class AuthService {
           full_name,
           role,
           created_at,
-          status
+          status,
+          plan
         `)
         .eq('user_id', userId)
         .single();
@@ -279,7 +282,9 @@ export class AuthService {
         session_id: `session_${Date.now()}`,
         created_at: userData.created_at,
         last_login: new Date().toISOString(), // user_profiles não tem last_login por padrão, usamos current
-        is_active: userData.status === 'active'
+        is_active: userData.status === 'active',
+        plan: userData.plan,
+        status: userData.status
       };
 
     } catch (error) {

@@ -169,16 +169,15 @@ export async function POST(req: NextRequest) {
     response.cookies.set('sb-refresh-token', authData.session.refresh_token, cookieOptions);
 
     // Definir cookies de performance (Edge Middleware)
-    // Buscamos o perfil completo para garantir que os cookies estejam sincronizados
-    const userProfile = await AuthService.getUserProfileFull(user.id, supabase);
-    
-    if (userProfile) {
+    // Usamos os dados já carregados em getUserWithRole para evitar chamada redundante
+    if (user) {
       // Cookies acessíveis via JS para que o MonitoringProvider possa atualizá-los via Realtime
       const publicCookieOptions = { ...cookieOptions, httpOnly: false };
 
-      if (userProfile.status) response.cookies.set('sofia_status', userProfile.status as string, publicCookieOptions);
-      if (userProfile.plan) response.cookies.set('sofia_plan', userProfile.plan as string, publicCookieOptions);
-      if (userProfile.role) response.cookies.set('sofia_role', userProfile.role as string, publicCookieOptions);
+      if (user.status) response.cookies.set('sofia_status', user.status, publicCookieOptions);
+      if (user.plan) response.cookies.set('sofia_plan', user.plan, publicCookieOptions);
+      // user.role.id já está disponível
+      if (user.role?.id) response.cookies.set('sofia_role', user.role.id, publicCookieOptions);
     }
 
     logger.info('Login realizado com sucesso', {
