@@ -99,47 +99,16 @@ export async function POST(request: NextRequest) {
           // enviamos um link para uma página intermediária nossa ("security-check").
           // Codificamos em Base64 para evitar que scanners identifiquem a URL no parâmetro query.
           
-          // EXTRAÍMOS OS PARÂMETROS DO ACTION_LINK PARA CRIAR A URL FINAL CORRETA
+          // O action_link gerado pelo Supabase é o link de verificação.
+          // Devemos usar este link exatamente como ele é, pois ele contém o token de verificação (que é diferente do access_token).
+          // Quando o usuário acessar este link, o Supabase irá verificar o token e redirecionar para o redirectTo (/reset-password)
+          // com os tokens de sessão (access_token, refresh_token) no fragmento de hash.
+          
           const actionUrlStr = linkData.properties.action_link;
-          const actionUrl = new URL(actionUrlStr);
-          
-          console.log('Action Link Original (Parcial):', actionUrlStr.substring(0, 50) + '...');
+          console.log('Action Link Original:', actionUrlStr);
 
-          let code = actionUrl.searchParams.get('code');
-          let accessToken = actionUrl.searchParams.get('access_token');
-          let refreshToken = actionUrl.searchParams.get('refresh_token');
-          let type = actionUrl.searchParams.get('type');
-
-          // Se não encontrou na query string, tentar extrair do hash
-          if (!code && !accessToken && actionUrl.hash) {
-            console.log('Parâmetros não encontrados na query, tentando extrair do hash...');
-            const hashParams = new URLSearchParams(actionUrl.hash.substring(1)); // Remove o #
-            code = hashParams.get('code');
-            accessToken = hashParams.get('access_token');
-            refreshToken = hashParams.get('refresh_token');
-            type = hashParams.get('type');
-          }
-
-          // Fallback para type
-          type = type || 'recovery';
-          
-          console.log('Parâmetros Extraídos:', { 
-            hasCode: !!code, 
-            hasAccessToken: !!accessToken, 
-            hasRefreshToken: !!refreshToken, 
-            type 
-          });
-
-          // CRIAMOS A URL FINAL PARA A PÁGINA RESET-PASSWORD COM OS PARÂMETROS NECESSÁRIOS
-          const finalResetUrl = new URL(`${origin}/reset-password`);
-          if (code) finalResetUrl.searchParams.set('code', code);
-          if (accessToken) finalResetUrl.searchParams.set('access_token', accessToken);
-          if (refreshToken) finalResetUrl.searchParams.set('refresh_token', refreshToken);
-          if (type) finalResetUrl.searchParams.set('type', type);
-          
-          // CODIFICAMOS A URL FINAL PARA O SECURITY-CHECK
-          // IMPORTANT: Usamos encodeURIComponent para garantir que caracteres como '+' não quebrem na URL.
-          const encodedLink = Buffer.from(finalResetUrl.toString()).toString('base64');
+          // Codificamos o link original do Supabase
+          const encodedLink = Buffer.from(actionUrlStr).toString('base64');
           const safeLink = `${origin}/security-check?target=${encodeURIComponent(encodedLink)}`;
           
           await sendRecoveryEmail({
