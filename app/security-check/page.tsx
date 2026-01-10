@@ -12,10 +12,21 @@ function SecurityCheckContent() {
   const searchParams = useSearchParams();
   const encodedTarget = searchParams.get('target');
   
+  console.log('=== SECURITY CHECK DEBUG ===');
+  console.log('encodedTarget recebido:', encodedTarget);
+  console.log('URL atual:', window.location.href);
+  console.log('Query params:', Object.fromEntries(searchParams.entries()));
+  
   let target = '';
   try {
     if (encodedTarget) {
       target = atob(encodedTarget);
+      console.log('Target decodificado:', target);
+      
+      // Verificar se é uma URL válida
+      const targetUrl = new URL(target);
+      console.log('Target URL válida:', targetUrl.toString());
+      console.log('Target params:', Object.fromEntries(targetUrl.searchParams.entries()));
     }
   } catch (e) {
     console.error('Erro ao decodificar link alvo:', e);
