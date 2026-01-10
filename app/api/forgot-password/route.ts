@@ -100,12 +100,36 @@ export async function POST(request: NextRequest) {
           // Codificamos em Base64 para evitar que scanners identifiquem a URL no parâmetro query.
           
           // EXTRAÍMOS OS PARÂMETROS DO ACTION_LINK PARA CRIAR A URL FINAL CORRETA
-          const actionUrl = new URL(linkData.properties.action_link);
-          const code = actionUrl.searchParams.get('code');
-          const accessToken = actionUrl.searchParams.get('access_token');
-          const refreshToken = actionUrl.searchParams.get('refresh_token');
-          const type = actionUrl.searchParams.get('type') || 'recovery';
+          const actionUrlStr = linkData.properties.action_link;
+          const actionUrl = new URL(actionUrlStr);
           
+          console.log('Action Link Original (Parcial):', actionUrlStr.substring(0, 50) + '...');
+
+          let code = actionUrl.searchParams.get('code');
+          let accessToken = actionUrl.searchParams.get('access_token');
+          let refreshToken = actionUrl.searchParams.get('refresh_token');
+          let type = actionUrl.searchParams.get('type');
+
+          // Se não encontrou na query string, tentar extrair do hash
+          if (!code && !accessToken && actionUrl.hash) {
+            console.log('Parâmetros não encontrados na query, tentando extrair do hash...');
+            const hashParams = new URLSearchParams(actionUrl.hash.substring(1)); // Remove o #
+            code = hashParams.get('code');
+            accessToken = hashParams.get('access_token');
+            refreshToken = hashParams.get('refresh_token');
+            type = hashParams.get('type');
+          }
+
+          // Fallback para type
+          type = type || 'recovery';
+          
+          console.log('Parâmetros Extraídos:', { 
+            hasCode: !!code, 
+            hasAccessToken: !!accessToken, 
+            hasRefreshToken: !!refreshToken, 
+            type 
+          });
+
           // CRIAMOS A URL FINAL PARA A PÁGINA RESET-PASSWORD COM OS PARÂMETROS NECESSÁRIOS
           const finalResetUrl = new URL(`${origin}/reset-password`);
           if (code) finalResetUrl.searchParams.set('code', code);
