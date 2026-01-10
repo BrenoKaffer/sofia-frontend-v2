@@ -98,9 +98,25 @@ export async function POST(request: NextRequest) {
           // Em vez de enviar o link direto (que queima o token se o scanner acessar),
           // enviamos um link para uma página intermediária nossa ("security-check").
           // Codificamos em Base64 para evitar que scanners identifiquem a URL no parâmetro query.
-          const realActionLink = linkData.properties.action_link;
-          const encodedLink = Buffer.from(realActionLink).toString('base64');
-          const safeLink = `${origin}/security-check?target=${encodedLink}`;
+          
+          // EXTRAÍMOS OS PARÂMETROS DO ACTION_LINK PARA CRIAR A URL FINAL CORRETA
+          const actionUrl = new URL(linkData.properties.action_link);
+          const code = actionUrl.searchParams.get('code');
+          const accessToken = actionUrl.searchParams.get('access_token');
+          const refreshToken = actionUrl.searchParams.get('refresh_token');
+          const type = actionUrl.searchParams.get('type') || 'recovery';
+          
+          // CRIAMOS A URL FINAL PARA A PÁGINA RESET-PASSWORD COM OS PARÂMETROS NECESSÁRIOS
+          const finalResetUrl = new URL(`${origin}/reset-password`);
+          if (code) finalResetUrl.searchParams.set('code', code);
+          if (accessToken) finalResetUrl.searchParams.set('access_token', accessToken);
+          if (refreshToken) finalResetUrl.searchParams.set('refresh_token', refreshToken);
+          if (type) finalResetUrl.searchParams.set('type', type);
+          
+          // CODIFICAMOS A URL FINAL PARA O SECURITY-CHECK
+          // IMPORTANT: Usamos encodeURIComponent para garantir que caracteres como '+' não quebrem na URL.
+          const encodedLink = Buffer.from(finalResetUrl.toString()).toString('base64');
+          const safeLink = `${origin}/security-check?target=${encodeURIComponent(encodedLink)}`;
           
           await sendRecoveryEmail({
             to: email,
