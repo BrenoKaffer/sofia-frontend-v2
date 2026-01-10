@@ -97,9 +97,10 @@ export async function POST(request: NextRequest) {
           // PROTEÇÃO CONTRA EMAIL SCANNERS:
           // Em vez de enviar o link direto (que queima o token se o scanner acessar),
           // enviamos um link para uma página intermediária nossa ("security-check").
-          // O usuário clica lá para ser redirecionado para o link real.
+          // Codificamos em Base64 para evitar que scanners identifiquem a URL no parâmetro query.
           const realActionLink = linkData.properties.action_link;
-          const safeLink = `${origin}/security-check?target=${encodeURIComponent(realActionLink)}`;
+          const encodedLink = Buffer.from(realActionLink).toString('base64');
+          const safeLink = `${origin}/security-check?target=${encodedLink}`;
           
           await sendRecoveryEmail({
             to: email,

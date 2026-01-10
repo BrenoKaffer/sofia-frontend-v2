@@ -10,9 +10,18 @@ import { motion } from 'framer-motion';
 
 function SecurityCheckContent() {
   const searchParams = useSearchParams();
-  const target = searchParams.get('target');
+  const encodedTarget = searchParams.get('target');
+  
+  let target = '';
+  try {
+    if (encodedTarget) {
+      target = atob(encodedTarget);
+    }
+  } catch (e) {
+    console.error('Erro ao decodificar link alvo:', e);
+  }
 
-  if (!target) {
+  if (!target || !target.startsWith('http')) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">

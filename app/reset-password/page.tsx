@@ -133,7 +133,7 @@ function ResetPasswordContent() {
             const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
               auth: {
                 autoRefreshToken: false,
-                persistSession: true, // We want to persist so the global client picks it up later
+                persistSession: false, // Cliente temporário apenas para validação, sem persistência
                 detectSessionInUrl: false
               }
             });
