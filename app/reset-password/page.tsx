@@ -124,29 +124,29 @@ function ResetPasswordContent() {
           }
 
           try {
-            console.log('Tentando definir sessão com cliente ISOLADO...');
+            console.log('Tentando definir sessão com cliente GLOBAL...');
             
-            // CRITICAL FIX: Use an isolated client to avoid conflicts with global/AuthContext clients
-            // and force the session set on this specific instance.
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-            const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+            // Usar o cliente global diretamente.
+            // O uso de clientes isolados estava causando conflitos "Multiple GoTrueClient" e timeouts.
             
-            const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
-              auth: {
-                autoRefreshToken: false,
-                persistSession: false, // Cliente temporário apenas para validação, sem persistência
-                detectSessionInUrl: false
-              }
-            });
+            // Promise wrapper para timeout na definição de sessão
+            const setSessionWithTimeout = async (tokens: { access_token: string, refresh_token: string }) => {
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout ao definir sessão')), 10000)
+                );
+                
+                const sessionPromise = globalSupabase.auth.setSession(tokens);
+                
+                return Promise.race([sessionPromise, timeout]) as Promise<{ data: { session: any }, error: any }>;
+            };
 
-            // Set session on the temp client
-            const { data: { session }, error } = await tempClient.auth.setSession({
+            const { data: { session }, error } = await setSessionWithTimeout({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
 
             if (error) {
-              console.error('Erro ao validar token no cliente isolado:', error);
+              console.error('Erro ao validar token no cliente global:', error);
               throw error; 
             } 
             
@@ -154,15 +154,9 @@ function ResetPasswordContent() {
                throw new Error('Falha ao confirmar sessão do usuário');
             }
 
-            console.log('Sessão definida e confirmada com sucesso no cliente isolado');
+            console.log('Sessão definida e confirmada com sucesso no cliente global');
             
             setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
-
-            // Now sync with global client manually to ensure UI updates
-            await globalSupabase.auth.setSession({
-              access_token: session.access_token,
-              refresh_token: session.refresh_token,
-            });
 
             setIsValidToken(true);
             
