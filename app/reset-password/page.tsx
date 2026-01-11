@@ -28,6 +28,7 @@ function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const validatingRef = useRef(false);
+  const isTokenValidatedRef = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -43,10 +44,12 @@ function ResetPasswordContent() {
       console.log('ResetPasswordPage: Auth Event detectado:', event);
       if (event === 'PASSWORD_RECOVERY') {
         console.log('Evento PASSWORD_RECOVERY detectado! Validando token.');
+        isTokenValidatedRef.current = true;
         setIsValidToken(true);
       }
       if (event === 'SIGNED_IN' && session) {
         console.log('Evento SIGNED_IN detectado! Usuário já autenticado.');
+        isTokenValidatedRef.current = true;
         setIsValidToken(true);
       }
     });
@@ -125,6 +128,23 @@ function ResetPasswordContent() {
 
           try {
             console.log('Tentando definir sessão com cliente GLOBAL...');
+
+            // Verificar se JÁ existe sessão antes de tentar setar (evita conflito com Auto-Refresh do Supabase)
+            const { data: { session: existingSession } } = await globalSupabase.auth.getSession();
+            if (existingSession) {
+                console.log('Sessão já existente detectada. Ignorando setSession manual.');
+                isTokenValidatedRef.current = true;
+                setIsValidToken(true);
+                return;
+            }
+
+            // Pequeno delay para dar chance ao listener de capturar o evento automático primeiro
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            if (isTokenValidatedRef.current) {
+                console.log('Token já validado pelo listener durante o delay. Abortando manual.');
+                return;
+            }
             
             // Usar o cliente global diretamente.
             // O uso de clientes isolados estava causando conflitos "Multiple GoTrueClient" e timeouts.
@@ -158,10 +178,19 @@ function ResetPasswordContent() {
             
             setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
 
+            isTokenValidatedRef.current = true;
             setIsValidToken(true);
             
           } catch (error: any) {
             console.error('Erro ao processar token (catch):', error);
+            
+            // Se o token JÁ foi validado (pelo listener ou outro fluxo), IGNORAR este erro.
+            // Isso evita que um timeout na tentativa manual derrube o sucesso do listener automático.
+            if (isTokenValidatedRef.current) {
+                console.log('Erro ignorado pois o token já foi validado com sucesso por outro meio.');
+                return;
+            }
+
             setIsValidToken(false);
             setErrorState({ code: 'validation_error', description: error.message });
             toast.error('Link de recuperação inválido ou expirado');
