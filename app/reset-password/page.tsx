@@ -315,24 +315,6 @@ function ResetPasswordContent() {
     }
 
     try {
-      let { data: { session } } = await globalSupabase.auth.getSession();
-      console.log('Sessão atual antes do update:', session ? 'Ativa' : 'Nenhuma');
-
-      if (!session && sessionTokens) {
-        console.log('Tentando restaurar sessão com tokens salvos...');
-        const { data, error: restoreError } = await globalSupabase.auth.setSession(sessionTokens);
-        if (restoreError) {
-             console.error('Falha ao restaurar sessão:', restoreError);
-        } else {
-             session = data.session;
-             console.log('Sessão restaurada com sucesso.');
-        }
-      }
-
-      if (!session) {
-          throw new Error('Sessão expirada ou inválida. Por favor, solicite um novo link.');
-      }
-
       console.log('Chamando updateUser...');
       const { data: updateData, error } = await globalSupabase.auth.updateUser({
         password: password
