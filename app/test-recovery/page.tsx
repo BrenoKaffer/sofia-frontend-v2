@@ -52,8 +52,8 @@ export default function TestRecoveryPage() {
         }
       });
       
-    } catch (error) {
-      setResults({ error: error.message });
+    } catch (error: any) {
+      setResults({ error: error.message || 'Unknown error occurred' });
     } finally {
       setLoading(false);
     }
