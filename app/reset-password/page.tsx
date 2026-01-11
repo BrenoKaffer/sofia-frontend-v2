@@ -29,6 +29,7 @@ function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const validatingRef = useRef(false);
   const isTokenValidatedRef = useRef(false);
+  const hasRecoveryTokensRef = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -125,6 +126,8 @@ function ResetPasswordContent() {
              toast.error('Link de recuperação incompleto (refresh token ausente)');
              return;
           }
+
+          hasRecoveryTokensRef.current = true;
 
           try {
             console.log('Tentando definir sessão com cliente GLOBAL...');
@@ -229,14 +232,17 @@ function ResetPasswordContent() {
 
     checkTokenValidity();
     
-    // Fallback de segurança global (15s)
     const timeoutId = setTimeout(() => {
       setIsValidToken((current) => {
-        if (current === true) return true; // Se já validou, mantém
+        if (current === true) return true;
         if (current === null) {
           console.warn('Timeout global na validação do token');
+          if (hasRecoveryTokensRef.current) {
+            console.log('Timeout global com tokens de recuperação presentes. Mantendo token como potencialmente válido.');
+            return true;
+          }
           if (validatingRef.current) {
-             toast.error('Tempo limite excedido. Tente solicitar um novo link.');
+            toast.error('Tempo limite excedido. Tente solicitar um novo link.');
           }
           return false;
         }
