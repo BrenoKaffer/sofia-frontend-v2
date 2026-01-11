@@ -315,9 +315,25 @@ function ResetPasswordContent() {
     }
 
     try {
-      console.log('Chamando updateUser...');
-      const { data: updateData, error } = await globalSupabase.auth.updateUser({
+      const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      console.log('Chamando updateUser (início)...', {
+        passwordLength: password.length,
+        hasSessionTokens: !!sessionTokens
+      });
+
+      const updatePromise = globalSupabase.auth.updateUser({
         password: password
+      });
+
+      console.log('updateUser promise criada:', !!updatePromise);
+
+      const { data: updateData, error } = await updatePromise;
+
+      const finishedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      console.log('updateUser concluído', {
+        elapsedMs: finishedAt - startedAt,
+        hasData: !!updateData,
+        hasError: !!error
       });
 
       if (error) {
@@ -325,7 +341,7 @@ function ResetPasswordContent() {
         throw error;
       }
 
-      console.log('Senha atualizada com sucesso:', updateData);
+      console.log('Senha atualizada com sucesso (dados brutos):', updateData);
 
       setIsPasswordReset(true);
       toast.success('Senha redefinida com sucesso! Você já está logado.');
@@ -336,6 +352,9 @@ function ResetPasswordContent() {
 
     } catch (error: any) {
       console.error('Erro no fluxo de redefinição:', error);
+      if (error?.stack) {
+        console.error('Stack do erro de redefinição:', error.stack);
+      }
       toast.error(error.message || 'Erro ao redefinir senha');
     } finally {
       setIsLoading(false);
