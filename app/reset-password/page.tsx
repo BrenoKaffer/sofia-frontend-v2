@@ -184,11 +184,20 @@ function ResetPasswordContent() {
           } catch (error: any) {
             console.error('Erro ao processar token (catch):', error);
             
-            // Se o token JÁ foi validado (pelo listener ou outro fluxo), IGNORAR este erro.
-            // Isso evita que um timeout na tentativa manual derrube o sucesso do listener automático.
             if (isTokenValidatedRef.current) {
                 console.log('Erro ignorado pois o token já foi validado com sucesso por outro meio.');
                 return;
+            }
+
+            if (error?.message === 'Timeout ao definir sessão') {
+              console.warn('Timeout ao definir sessão. Verificando sessão atual...');
+              const { data: { session: sessionAfterTimeout } } = await globalSupabase.auth.getSession();
+              if (sessionAfterTimeout?.user) {
+                console.log('Sessão ativa detectada após timeout. Tratando token como válido.');
+                isTokenValidatedRef.current = true;
+                setIsValidToken(true);
+                return;
+              }
             }
 
             setIsValidToken(false);
