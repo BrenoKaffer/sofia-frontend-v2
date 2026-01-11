@@ -470,6 +470,7 @@ function ResetPasswordContent() {
                         onChange={(e) => setPassword(e.target.value)}
                         className="h-11 pl-10 pr-10"
                         required
+                        autoComplete="new-password"
                       />
                       <Button
                         type="button"
@@ -502,6 +503,7 @@ function ResetPasswordContent() {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="h-11 pl-10 pr-10"
                         required
+                        autoComplete="new-password"
                       />
                       <Button
                         type="button"
