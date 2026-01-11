@@ -54,16 +54,16 @@ export async function POST(request: NextRequest) {
             hasHash: data.properties?.action_link?.includes('#')
           });
         }
-      } catch (err) {
+      } catch (err: any) {
         console.log(`Exception ${config.name}:`, err);
-        results.push({ config: config.name, error: err.message });
+        results.push({ config: config.name, error: err.message || 'Unknown error' });
       }
     }
     
     return NextResponse.json({ results, timestamp: new Date().toISOString() });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro no debug:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 });
   }
 }
