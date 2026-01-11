@@ -22,6 +22,7 @@ function ResetPasswordContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
   const [errorState, setErrorState] = useState<{ code: string | null; description: string | null }>({ code: null, description: null });
+  const [sessionTokens, setSessionTokens] = useState<{ access_token: string; refresh_token: string } | null>(null);
   const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
@@ -155,6 +156,8 @@ function ResetPasswordContent() {
 
             console.log('Sessão definida e confirmada com sucesso no cliente isolado');
             
+            setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
+
             // Now sync with global client manually to ensure UI updates
             await globalSupabase.auth.setSession({
               access_token: session.access_token,
@@ -252,6 +255,7 @@ function ResetPasswordContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log('Iniciando redefinição de senha...');
 
     if (!password || !confirmPassword) {
       toast.error('Por favor, preencha todos os campos');
@@ -273,28 +277,49 @@ function ResetPasswordContent() {
     }
 
     try {
-      // Usar o cliente global que agora tem a sessão definida
-      const { error } = await globalSupabase.auth.updateUser({
+      // 1. Verificar sessão atual
+      let { data: { session } } = await globalSupabase.auth.getSession();
+      console.log('Sessão atual antes do update:', session ? 'Ativa' : 'Nenhuma');
+
+      // 2. Se não tiver sessão, tentar restaurar com tokens salvos
+      if (!session && sessionTokens) {
+        console.log('Tentando restaurar sessão com tokens salvos...');
+        const { data, error: restoreError } = await globalSupabase.auth.setSession(sessionTokens);
+        if (restoreError) {
+             console.error('Falha ao restaurar sessão:', restoreError);
+        } else {
+             session = data.session;
+             console.log('Sessão restaurada com sucesso.');
+        }
+      }
+
+      if (!session) {
+          throw new Error('Sessão expirada ou inválida. Por favor, solicite um novo link.');
+      }
+
+      // 3. Atualizar usuário
+      console.log('Chamando updateUser...');
+      const { data: updateData, error } = await globalSupabase.auth.updateUser({
         password: password
       });
 
       if (error) {
-        console.error('Erro ao redefinir senha:', error);
-        toast.error(error.message || 'Erro ao redefinir senha');
-        return;
+        console.error('Erro ao redefinir senha (Supabase):', error);
+        throw error;
       }
+
+      console.log('Senha atualizada com sucesso:', updateData);
 
       setIsPasswordReset(true);
       toast.success('Senha redefinida com sucesso! Você já está logado.');
       
-      // Redirecionar para dashboard, pois a sessão é válida
       setTimeout(() => {
         router.push('/dashboard');
       }, 2000);
 
-    } catch (error) {
-      console.error('Erro ao redefinir senha:', error);
-      toast.error('Erro interno do servidor');
+    } catch (error: any) {
+      console.error('Erro no fluxo de redefinição:', error);
+      toast.error(error.message || 'Erro ao redefinir senha');
     } finally {
       setIsLoading(false);
     }
