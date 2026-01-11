@@ -81,14 +81,14 @@ function ResetPasswordContent() {
           type = params.get('type') || type;
         }
 
-        console.log('Debug Reset Password:', { 
+        console.log('Debug Reset Password:', JSON.stringify({ 
           code: code ? 'present' : 'missing', 
           accessToken: accessToken ? 'present' : 'missing', 
           refreshToken: refreshToken ? 'present' : 'missing',
           type,
           error, 
           hashLength: typeof window !== 'undefined' ? window.location.hash.length : 0
-        });
+        }, null, 2));
 
         // Primeiro, verificar se há erros na URL
         if (error) {
