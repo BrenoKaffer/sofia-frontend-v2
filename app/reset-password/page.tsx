@@ -269,6 +269,13 @@ function ResetPasswordContent() {
     );
   }
 
+  const runWithTimeout = async <T,>(promise: Promise<T>, ms: number, context: string): Promise<T> => {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout em ${context}`)), ms)
+    );
+    return Promise.race([promise, timeout]) as Promise<T>;
+  };
+
   const validatePassword = (password: string) => {
     const minLength = 6;
     const hasUpperCase = /[A-Z]/.test(password);
@@ -315,14 +322,20 @@ function ResetPasswordContent() {
     }
 
     try {
-      // 1. Verificar sessão atual
-      let { data: { session } } = await globalSupabase.auth.getSession();
+      let { data: { session } } = await runWithTimeout(
+        globalSupabase.auth.getSession(),
+        10000,
+        'getSession antes do update'
+      );
       console.log('Sessão atual antes do update:', session ? 'Ativa' : 'Nenhuma');
 
-      // 2. Se não tiver sessão, tentar restaurar com tokens salvos
       if (!session && sessionTokens) {
         console.log('Tentando restaurar sessão com tokens salvos...');
-        const { data, error: restoreError } = await globalSupabase.auth.setSession(sessionTokens);
+        const { data, error: restoreError } = await runWithTimeout(
+          globalSupabase.auth.setSession(sessionTokens),
+          10000,
+          'restaurar sessão com tokens salvos'
+        );
         if (restoreError) {
              console.error('Falha ao restaurar sessão:', restoreError);
         } else {
@@ -335,11 +348,14 @@ function ResetPasswordContent() {
           throw new Error('Sessão expirada ou inválida. Por favor, solicite um novo link.');
       }
 
-      // 3. Atualizar usuário
       console.log('Chamando updateUser...');
-      const { data: updateData, error } = await globalSupabase.auth.updateUser({
-        password: password
-      });
+      const { data: updateData, error } = await runWithTimeout(
+        globalSupabase.auth.updateUser({
+          password: password
+        }),
+        10000,
+        'updateUser redefinir senha'
+      );
 
       if (error) {
         console.error('Erro ao redefinir senha (Supabase):', error);
