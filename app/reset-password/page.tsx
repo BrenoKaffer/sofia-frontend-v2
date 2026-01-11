@@ -269,13 +269,6 @@ function ResetPasswordContent() {
     );
   }
 
-  const runWithTimeout = async <T,>(promise: Promise<T>, ms: number, context: string): Promise<T> => {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Timeout em ${context}`)), ms)
-    );
-    return Promise.race([promise, timeout]) as Promise<T>;
-  };
-
   const validatePassword = (password: string) => {
     const minLength = 6;
     const hasUpperCase = /[A-Z]/.test(password);
@@ -322,20 +315,12 @@ function ResetPasswordContent() {
     }
 
     try {
-      let { data: { session } } = await runWithTimeout(
-        globalSupabase.auth.getSession(),
-        10000,
-        'getSession antes do update'
-      );
+      let { data: { session } } = await globalSupabase.auth.getSession();
       console.log('Sessão atual antes do update:', session ? 'Ativa' : 'Nenhuma');
 
       if (!session && sessionTokens) {
         console.log('Tentando restaurar sessão com tokens salvos...');
-        const { data, error: restoreError } = await runWithTimeout(
-          globalSupabase.auth.setSession(sessionTokens),
-          10000,
-          'restaurar sessão com tokens salvos'
-        );
+        const { data, error: restoreError } = await globalSupabase.auth.setSession(sessionTokens);
         if (restoreError) {
              console.error('Falha ao restaurar sessão:', restoreError);
         } else {
@@ -349,13 +334,9 @@ function ResetPasswordContent() {
       }
 
       console.log('Chamando updateUser...');
-      const { data: updateData, error } = await runWithTimeout(
-        globalSupabase.auth.updateUser({
-          password: password
-        }),
-        10000,
-        'updateUser redefinir senha'
-      );
+      const { data: updateData, error } = await globalSupabase.auth.updateUser({
+        password: password
+      });
 
       if (error) {
         console.error('Erro ao redefinir senha (Supabase):', error);
