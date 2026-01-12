@@ -124,97 +124,41 @@ function ResetPasswordContent() {
            }
         }
 
-        // 2. Caso Implicit Flow (Hash com tokens) - Padrão do Supabase
-        if (type === 'recovery' && accessToken) {
-          if (!refreshToken) {
-             console.error('Refresh token ausente no link de recuperação');
-             setIsValidToken(false);
-             toast.error('Link de recuperação incompleto (refresh token ausente)');
-             return;
-          }
-
-          hasRecoveryTokensRef.current = true;
-
+        // 3. Se temos tokens de acesso direto (Implicit Flow)
+        if (accessToken && refreshToken && (type === 'recovery' || type === 'magiclink' || type === 'invite')) {
+          console.log('Tentando definir sessão com cliente GLOBAL...');
+          
           try {
-            console.log('Tentando definir sessão com cliente GLOBAL...');
-
-            // Verificar se JÁ existe sessão antes de tentar setar (evita conflito com Auto-Refresh do Supabase)
-            const { data: { session: existingSession } } = await globalSupabase.auth.getSession();
-            if (existingSession) {
-                console.log('Sessão já existente detectada. Ignorando setSession manual.');
-                isTokenValidatedRef.current = true;
-                setIsValidToken(true);
-                return;
-            }
-
-            // Pequeno delay para dar chance ao listener de capturar o evento automático primeiro
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            if (isTokenValidatedRef.current) {
-                console.log('Token já validado pelo listener durante o delay. Abortando manual.');
-                return;
-            }
-            
-            // Usar o cliente global diretamente.
-            // O uso de clientes isolados estava causando conflitos "Multiple GoTrueClient" e timeouts.
-            
-            // Promise wrapper para timeout na definição de sessão
-            const setSessionWithTimeout = async (tokens: { access_token: string, refresh_token: string }) => {
-                const timeout = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Timeout ao definir sessão')), 10000)
-                );
-                
-                const sessionPromise = globalSupabase.auth.setSession(tokens);
-                
-                return Promise.race([sessionPromise, timeout]) as Promise<{ data: { session: any }, error: any }>;
-            };
-
-            const { data: { session }, error } = await setSessionWithTimeout({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
+            // IMPORTANTE: setSession retorna uma promise que resolve com { data, error }
+            // Adicionamos um timeout de segurança para evitar travamentos infinitos
+            const { data, error } = await runWithTimeout(
+              globalSupabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              }),
+              10000, // 10s timeout
+              'setSession'
+            );
 
             if (error) {
-              console.error('Erro ao validar token no cliente global:', error);
-              throw error; 
-            } 
-            
-            if (!session?.user) {
-               throw new Error('Falha ao confirmar sessão do usuário');
+              console.error('Erro ao definir sessão:', error);
+              throw error;
             }
 
-            console.log('Sessão definida e confirmada com sucesso no cliente global');
-            
-            setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
-
-            isTokenValidatedRef.current = true;
-            setIsValidToken(true);
-            
-          } catch (error: any) {
-            console.error('Erro ao processar token (catch):', error);
-            
-            if (isTokenValidatedRef.current) {
-                console.log('Erro ignorado pois o token já foi validado com sucesso por outro meio.');
-                return;
+            if (data?.session) {
+              console.log('Sessão definida com sucesso via setSession!');
+              setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
+              hasRecoveryTokensRef.current = true;
+              setIsValidToken(true);
+              isTokenValidatedRef.current = true;
+              return;
             }
-
-            if (error?.message === 'Timeout ao definir sessão') {
-              console.warn('Timeout ao definir sessão. Verificando sessão atual...');
-              const { data: { session: sessionAfterTimeout } } = await globalSupabase.auth.getSession();
-              if (sessionAfterTimeout?.user) {
-                console.log('Sessão ativa detectada após timeout. Tratando token como válido.');
-                isTokenValidatedRef.current = true;
-                setIsValidToken(true);
-                return;
-              }
-            }
-
-            setIsValidToken(false);
-            setErrorState({ code: 'validation_error', description: error.message });
-            toast.error('Link de recuperação inválido ou expirado');
+          } catch (sessError) {
+            console.error('Erro ao processar token (catch):', sessError);
+            // Mesmo com erro no setSession, vamos tentar validar via getUser se o token for válido
+            // Às vezes o setSession falha mas o cliente já tem o token internamente
           }
-          return;
-        } 
+        }
 
         // 3. Caso nenhum token encontrado
         console.warn('Nenhum token de recuperação encontrado na URL');
@@ -298,73 +242,91 @@ function ResetPasswordContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
     setIsLoading(true);
     console.log('Iniciando redefinição de senha...');
 
-    if (!password || !confirmPassword) {
-      toast.error('Por favor, preencha todos os campos');
-      setIsLoading(false);
-      return;
-    }
-
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      toast.error(passwordError);
-      setIsLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast.error('As senhas não coincidem');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      console.log('Chamando updateUser (início)...', {
-        passwordLength: password.length,
-        hasSessionTokens: !!sessionTokens
+      // 1. Verificar se a sessão está ativa ANTES de chamar updateUser
+      const { data: sessionData } = await globalSupabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        console.warn('Sessão perdida no momento do submit. Tentando recuperar via tokens salvos...');
+        
+        if (sessionTokens?.access_token && sessionTokens?.refresh_token) {
+           console.log('Recuperando sessão com tokens salvos...');
+           const { error: refreshError } = await globalSupabase.auth.setSession({
+             access_token: sessionTokens.access_token,
+             refresh_token: sessionTokens.refresh_token
+           });
+           
+           if (refreshError) {
+             console.error('Falha ao recuperar sessão:', refreshError);
+             throw new Error('Sessão expirada. Por favor, solicite um novo link.');
+           }
+           console.log('Sessão recuperada com sucesso!');
+        } else {
+           console.error('Sem tokens salvos para recuperação.');
+           throw new Error('Sessão inválida. Por favor, recarregue a página e tente novamente.');
+        }
+      }
+
+      console.log('Chamando updateUser (início)...');
+      
+      const updateUserPromise = globalSupabase.auth.updateUser({ 
+        password: password 
       });
 
-      const updatePromise = globalSupabase.auth.updateUser({
-        password
-      });
-
-      console.log('updateUser promise criada:', !!updatePromise);
-
-      const { data: updateData, error } = await runWithTimeout(
-        updatePromise,
-        15000,
+      // Usando runWithTimeout para evitar travamento eterno se o Supabase não responder
+      const { data, error } = await runWithTimeout(
+        updateUserPromise,
+        15000, // 15 segundos timeout
         'updateUser'
       );
 
-      const finishedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      console.log('updateUser concluído', {
-        elapsedMs: finishedAt - startedAt,
-        hasData: !!updateData,
-        hasError: !!error
-      });
+      console.log('updateUser promise criada:', !!updateUserPromise);
+      console.log('updateUser concluído', data);
 
       if (error) {
         console.error('Erro ao redefinir senha (Supabase):', error);
         throw error;
       }
 
-      console.log('Senha atualizada com sucesso (dados brutos):', updateData);
+      if (!data.user) {
+         console.error('updateUser retornou sucesso mas sem usuário:', data);
+         throw new Error('Erro inesperado: Usuário não retornado após atualização.');
+      }
 
-      setIsPasswordReset(true);
-      toast.success('Senha redefinida com sucesso! Você já está logado.');
-
+      toast.success('Senha redefinida com sucesso!');
+      
+      // Limpar tokens da URL
+      if (typeof window !== 'undefined') {
+          window.history.replaceState(null, '', '/login');
+      }
+      
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push('/login');
       }, 2000);
+
     } catch (error: any) {
       console.error('Erro no fluxo de redefinição:', error);
-      if (error?.stack) {
-        console.error('Stack do erro de redefinição:', error.stack);
+      console.error('Stack do erro de redefinição:', error.stack);
+      
+      let errorMessage = 'Erro ao redefinir senha. Tente novamente.';
+      
+      if (error.message === 'Auth session missing!') {
+          errorMessage = 'Sessão expirada. O link pode ter perdido a validade. Solicite um novo.';
+      } else if (error.message.includes('Timeout')) {
+          errorMessage = 'O servidor demorou para responder. Verifique sua conexão e tente novamente.';
+      } else if (error.message) {
+          errorMessage = error.message;
       }
-      toast.error(error.message || 'Erro ao redefinir senha');
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

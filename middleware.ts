@@ -117,6 +117,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Criar resposta base
+  const response = NextResponse.next();
+
+  // Adicionar headers anti-cache para rotas protegidas
+  if (!isPublicRoute(pathname) && !isAssetOrApi(pathname)) {
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      response.headers.set('Surrogate-Control', 'no-store');
+  }
+
   // Obter cookies de perfil (New Schema)
   const profile = {
     status: req.cookies.get('sofia_status')?.value,
@@ -163,7 +174,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  return response;
 }
 
 export const config = {
