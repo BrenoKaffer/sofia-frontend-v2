@@ -3,7 +3,6 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
 import { supabase as globalSupabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +29,13 @@ function ResetPasswordContent() {
   const validatingRef = useRef(false);
   const isTokenValidatedRef = useRef(false);
   const hasRecoveryTokensRef = useRef(false);
+
+  const runWithTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout em ${label} após ${ms}ms`)), ms)
+    );
+    return Promise.race([promise, timeout]);
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -322,12 +328,16 @@ function ResetPasswordContent() {
       });
 
       const updatePromise = globalSupabase.auth.updateUser({
-        password: password
+        password
       });
 
       console.log('updateUser promise criada:', !!updatePromise);
 
-      const { data: updateData, error } = await updatePromise;
+      const { data: updateData, error } = await runWithTimeout(
+        updatePromise,
+        15000,
+        'updateUser'
+      );
 
       const finishedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
       console.log('updateUser concluído', {
@@ -345,11 +355,10 @@ function ResetPasswordContent() {
 
       setIsPasswordReset(true);
       toast.success('Senha redefinida com sucesso! Você já está logado.');
-      
+
       setTimeout(() => {
         router.push('/dashboard');
       }, 2000);
-
     } catch (error: any) {
       console.error('Erro no fluxo de redefinição:', error);
       if (error?.stack) {
