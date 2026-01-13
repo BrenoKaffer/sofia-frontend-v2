@@ -232,17 +232,28 @@ function ResetPasswordContent() {
         console.warn('Sessão perdida no momento do submit. Tentando recuperar via tokens salvos...');
         
         if (sessionTokens?.access_token && sessionTokens?.refresh_token) {
-           console.log('Recuperando sessão com tokens salvos...');
-           const { error: refreshError } = await globalSupabase.auth.setSession({
-             access_token: sessionTokens.access_token,
-             refresh_token: sessionTokens.refresh_token
-           });
+           console.log('Recuperando sessão com tokens salvos (submit)...');
+
+           const { data, error: refreshError } = await runWithTimeout(
+             globalSupabase.auth.setSession({
+               access_token: sessionTokens.access_token,
+               refresh_token: sessionTokens.refresh_token
+             }),
+             10000,
+             'setSession (submit)'
+           );
            
            if (refreshError) {
-             console.error('Falha ao recuperar sessão:', refreshError);
-             throw new Error('Sessão expirada. Por favor, solicite um novo link.');
+             console.error('Falha ao recuperar sessão (submit):', refreshError);
+             throw new Error('Sessão expirada. Por favor, solicite um novo link de recuperação.');
            }
-           console.log('Sessão recuperada com sucesso!');
+
+           if (!data?.session) {
+             console.error('setSession (submit) não retornou sessão válida:', data);
+             throw new Error('Sessão inválida. Solicite um novo link de recuperação.');
+           }
+
+           console.log('Sessão recuperada com sucesso no submit!');
         } else {
            console.error('Sem tokens salvos para recuperação.');
            throw new Error('Sessão inválida. Por favor, recarregue a página e tente novamente.');
