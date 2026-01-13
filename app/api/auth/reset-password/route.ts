@@ -71,27 +71,47 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const { data, error } = await adminClient.auth.admin.updateUserById(userId, {
-      password,
-    });
-
-    if (error) {
-      return NextResponse.json(
-        { error: 'Falha ao atualizar senha', details: error.message },
-        { status: 500 }
-      );
+    let passwordUpdated = false;
+    {
+      const authClient = createClient(supabaseUrl, anonKey, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+      const { data: updData, error: updErr } = await authClient.auth.updateUser({ password });
+      if (!updErr && updData?.user?.id === userId) {
+        passwordUpdated = true;
+      }
     }
 
-    if (!data.user) {
-      return NextResponse.json(
-        { error: 'Resposta inválida ao atualizar senha' },
-        { status: 500 }
-      );
+    if (!passwordUpdated) {
+      const { data, error } = await adminClient.auth.admin.updateUserById(userId, {
+        password,
+      });
+      if (error) {
+        return NextResponse.json(
+          { error: 'Falha ao atualizar senha', details: error.message },
+          { status: 500 }
+        );
+      }
+      if (!data.user) {
+        return NextResponse.json(
+          { error: 'Resposta inválida ao atualizar senha' },
+          { status: 500 }
+        );
+      }
+      passwordUpdated = true;
     }
 
     if (!userEmail) {
       const { data: adminUser } = await adminClient.auth.admin.getUserById(userId);
-      userEmail = adminUser?.user?.email || undefined;
+      userEmail = adminUser?.user?.email?.toLowerCase() || undefined;
     }
 
     if (!userEmail) {
