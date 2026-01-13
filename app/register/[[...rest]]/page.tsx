@@ -634,7 +634,7 @@ export default function RegisterPage() {
                       termos de uso
                     </Link>
                     {' '}e{' '}
-                    <Link href="/privacy" className="text-primary hover:underline">
+                    <Link href="/privacy-policy" className="text-primary hover:underline">
                       política de privacidade
                     </Link>
                   </Label>

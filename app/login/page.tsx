@@ -339,12 +339,6 @@ export default function LoginPage() {
                     Cadastre-se
                   </Link>
                 </div>
-
-                <div className="text-center text-xs font-sans text-muted-foreground">
-                  <Link href="/privacy-policy" className="text-primary hover:underline">
-                    Política de Privacidade
-                  </Link>
-                </div>
               </form>
             </CardContent>
           </Card>
