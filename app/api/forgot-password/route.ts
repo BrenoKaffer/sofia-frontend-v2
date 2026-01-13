@@ -2,6 +2,21 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendRecoveryEmail } from '@/lib/email';
 
+function canonicalizeEmail(email: string): string {
+  const trimmed = String(email || '').trim().toLowerCase();
+  const atIndex = trimmed.indexOf('@');
+  if (atIndex === -1) return trimmed;
+  const local = trimmed.slice(0, atIndex);
+  const domain = trimmed.slice(atIndex + 1);
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const plusIndex = local.indexOf('+');
+    const baseLocal = plusIndex !== -1 ? local.slice(0, plusIndex) : local;
+    const noDotsLocal = baseLocal.replace(/\./g, '');
+    return `${noDotsLocal}@gmail.com`;
+  }
+  return `${local}@${domain}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
@@ -15,12 +30,14 @@ export async function POST(request: NextRequest) {
 
     // Validação básica de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const normalizedEmail = String(email).trim().toLowerCase();
+    if (!emailRegex.test(normalizedEmail)) {
       return NextResponse.json(
         { error: 'Email inválido' },
         { status: 400 }
       );
     }
+    const canonicalEmail = canonicalizeEmail(normalizedEmail);
 
     // Inicializar Supabase Client
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -51,7 +68,7 @@ export async function POST(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from('user_profiles')
       .select('user_id, full_name')
-      .eq('email', email)
+      .eq('email', canonicalEmail)
       .maybeSingle();
 
     if (userError) {
@@ -78,7 +95,7 @@ export async function POST(request: NextRequest) {
 
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: 'recovery',
-        email: email,
+        email: canonicalEmail,
         options: {
           redirectTo
         }
@@ -143,7 +160,7 @@ export async function POST(request: NextRequest) {
     // CORREÇÃO: Usar a rota correta /reset-password (não /update-password)
     const redirectTo = `${origin}/reset-password`;
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(canonicalEmail, {
       redirectTo,
     });
 

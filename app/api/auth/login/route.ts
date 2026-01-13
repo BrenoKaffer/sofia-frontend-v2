@@ -3,6 +3,21 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { AuthService } from '@/lib/auth-service';
 import { logger } from '@/lib/logger';
 
+function canonicalizeEmail(email: string): string {
+  const trimmed = String(email || '').trim().toLowerCase();
+  const atIndex = trimmed.indexOf('@');
+  if (atIndex === -1) return trimmed;
+  const local = trimmed.slice(0, atIndex);
+  const domain = trimmed.slice(atIndex + 1);
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const plusIndex = local.indexOf('+');
+    const baseLocal = plusIndex !== -1 ? local.slice(0, plusIndex) : local;
+    const noDotsLocal = baseLocal.replace(/\./g, '');
+    return `${noDotsLocal}@gmail.com`;
+  }
+  return `${local}@${domain}`;
+}
+
 // POST - Login do usuário
 export async function POST(req: NextRequest) {
   try {
@@ -19,12 +34,14 @@ export async function POST(req: NextRequest) {
 
     // Validar formato do email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const normalizedEmail = String(email).trim().toLowerCase();
+    if (!emailRegex.test(normalizedEmail)) {
       return NextResponse.json(
         { error: 'Formato de email inválido' },
         { status: 400 }
       );
     }
+    const canonicalEmail = canonicalizeEmail(normalizedEmail);
 
     // Preparar cliente Supabase com SSR
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -51,7 +68,7 @@ export async function POST(req: NextRequest) {
     // Tentar fazer login
     console.log('[Login API] Tentando autenticar com Supabase...');
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
+      email: canonicalEmail,
       password
     });
 
@@ -59,7 +76,8 @@ export async function POST(req: NextRequest) {
       console.error('[Login API] Erro no signInWithPassword:', authError.message);
       logger.warn('Tentativa de login falhada', {
         metadata: {
-          email,
+          email_input: email,
+          email_canonical: canonicalEmail,
           error: authError.message,
           ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
         }
