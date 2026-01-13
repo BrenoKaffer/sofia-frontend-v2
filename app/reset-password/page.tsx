@@ -3,7 +3,6 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { supabase as globalSupabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,14 +20,12 @@ function ResetPasswordContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
   const [errorState, setErrorState] = useState<{ code: string | null; description: string | null }>({ code: null, description: null });
-  const [sessionTokens, setSessionTokens] = useState<{ access_token: string; refresh_token: string } | null>(null);
+  const [recoveryToken, setRecoveryToken] = useState<string | null>(null);
   const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const validatingRef = useRef(false);
-  const isTokenValidatedRef = useRef(false);
-  const hasRecoveryTokensRef = useRef(false);
 
   const runWithTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
     const timeout = new Promise<never>((_, reject) =>
@@ -42,33 +39,13 @@ function ResetPasswordContent() {
   }, []);
 
   useEffect(() => {
-    // Só executa se estiver montado
     if (!isMounted) return;
 
-    // Listener para capturar evento de recuperação vindo do cliente global
-    // Isso é crucial pois o cliente global pode consumir o hash da URL antes do nosso check manual
-    const { data: { subscription } } = globalSupabase.auth.onAuthStateChange((event, session) => {
-      console.log('ResetPasswordPage: Auth Event detectado:', event);
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('Evento PASSWORD_RECOVERY detectado! Validando token.');
-        isTokenValidatedRef.current = true;
-        setIsValidToken(true);
-      }
-      if (event === 'SIGNED_IN' && session) {
-        console.log('Evento SIGNED_IN detectado! Usuário já autenticado.');
-        isTokenValidatedRef.current = true;
-        setIsValidToken(true);
-      }
-    });
-
-    // Verificar se há parâmetros de recuperação de senha na URL
     const checkTokenValidity = async () => {
-      // Evita validação duplicada em Strict Mode ou re-renders rápidos
       if (validatingRef.current) return;
       validatingRef.current = true;
 
       try {
-        // Tentar pegar parâmetros da URL (query string)
         let error = searchParams.get('error');
         let errorCode = searchParams.get('error_code');
         let errorDescription = searchParams.get('error_description');
@@ -77,7 +54,6 @@ function ResetPasswordContent() {
         let refreshToken = searchParams.get('refresh_token');
         let type = searchParams.get('type');
 
-        // Se não encontrou na query string, tentar pegar do hash (fragmento)
         if (typeof window !== 'undefined' && window.location.hash) {
           const hash = window.location.hash.substring(1); // remove o #
           const params = new URLSearchParams(hash);
@@ -100,13 +76,11 @@ function ResetPasswordContent() {
           hashLength: typeof window !== 'undefined' ? window.location.hash.length : 0
         }, null, 2));
 
-        // Primeiro, verificar se há erros na URL
         if (error) {
           console.error('Erro na URL:', { error, errorCode, errorDescription });
           setIsValidToken(false);
           setErrorState({ code: errorCode, description: errorDescription });
           
-          // Mostrar mensagem específica baseada no tipo de erro
           if (errorCode === 'otp_expired' || error === 'access_denied') {
             toast.error('Link de recuperação expirado (uso único)');
           } else {
@@ -115,42 +89,24 @@ function ResetPasswordContent() {
           return;
         }
 
-        // 1. Caso PKCE (Code Flow)
         if (code) {
-           const { error } = await globalSupabase.auth.exchangeCodeForSession(code);
-           if (!error) {
-             setIsValidToken(true);
-             return;
-           }
-        }
-
-        // 3. Se temos tokens de acesso direto (Implicit Flow)
-        if (accessToken && refreshToken && (type === 'recovery' || type === 'magiclink' || type === 'invite')) {
-          console.log('Tokens de recuperação encontrados na URL. Marcando link como potencialmente válido.');
-
-          setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
-          hasRecoveryTokensRef.current = true;
           setIsValidToken(true);
           return;
         }
 
-        // 3. Caso nenhum token encontrado
-        console.warn('Nenhum token de recuperação encontrado na URL');
-        // Se já estiver logado (clicou no link mas já tinha sessão), permitir
-        // Usar getSession ao invés de getUser para evitar chamadas de rede que podem falhar (401)
-        const { data: { session } } = await globalSupabase.auth.getSession();
-        if (session?.user) {
-           console.log('Usuário já autenticado (sessão ativa), permitindo reset.');
-           setIsValidToken(true);
-        } else {
-           // Se não tem token e não está logado, aguardar um pouco para ver se o listener captura o evento
-           console.warn('Nenhuma sessão encontrada imediatamente. Aguardando listener...');
-           // Não definimos false imediatamente aqui, deixamos o timeout global decidir ou o listener
+        if (accessToken && (type === 'recovery' || type === 'magiclink' || type === 'invite')) {
+          console.log('Tokens de recuperação encontrados na URL. Marcando link como potencialmente válido.');
+          setRecoveryToken(accessToken);
+          setIsValidToken(true);
+          return;
         }
+
+        console.warn('Nenhum token de recuperação encontrado na URL');
+        setIsValidToken(false);
 
       } catch (err: any) {
         console.error('Erro inesperado na validação do token:', err);
-        // Não falhar imediatamente, deixar o timeout lidar se for erro transitório
+        setIsValidToken(false);
       }
     };
 
@@ -161,10 +117,6 @@ function ResetPasswordContent() {
         if (current === true) return true;
         if (current === null) {
           console.warn('Timeout global na validação do token');
-          if (hasRecoveryTokensRef.current) {
-            console.log('Timeout global com tokens de recuperação presentes. Mantendo token como potencialmente válido.');
-            return true;
-          }
           if (validatingRef.current) {
             toast.error('Tempo limite excedido. Tente solicitar um novo link.');
           }
@@ -176,12 +128,9 @@ function ResetPasswordContent() {
 
     return () => {
         clearTimeout(timeoutId);
-        subscription.unsubscribe();
     };
   }, [searchParams, isMounted]); // Removido supabase.auth das deps
 
-  // Evita renderização no servidor ou antes da montagem para prevenir erro #418
-  // Retorna o mesmo loader para evitar hydration mismatch com o Suspense fallback
   if (!isMounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -225,70 +174,43 @@ function ResetPasswordContent() {
     console.log('Iniciando redefinição de senha...');
 
     try {
-      // 1. Verificar se a sessão está ativa ANTES de chamar updateUser
-      const { data: sessionData } = await globalSupabase.auth.getSession();
-      
-      if (!sessionData.session) {
-        console.warn('Sessão perdida no momento do submit. Tentando recuperar via tokens salvos...');
-        
-        if (sessionTokens?.access_token && sessionTokens?.refresh_token) {
-           console.log('Recuperando sessão com tokens salvos (submit)...');
-
-           const { data, error: refreshError } = await runWithTimeout(
-             globalSupabase.auth.setSession({
-               access_token: sessionTokens.access_token,
-               refresh_token: sessionTokens.refresh_token
-             }),
-             10000,
-             'setSession (submit)'
-           );
-           
-           if (refreshError) {
-             console.error('Falha ao recuperar sessão (submit):', refreshError);
-             throw new Error('Sessão expirada. Por favor, solicite um novo link de recuperação.');
-           }
-
-           if (!data?.session) {
-             console.error('setSession (submit) não retornou sessão válida:', data);
-             throw new Error('Sessão inválida. Solicite um novo link de recuperação.');
-           }
-
-           console.log('Sessão recuperada com sucesso no submit!');
-        } else {
-           console.error('Sem tokens salvos para recuperação.');
-           throw new Error('Sessão inválida. Por favor, recarregue a página e tente novamente.');
-        }
+      if (!recoveryToken) {
+        throw new Error('Link de recuperação inválido ou expirado. Solicite um novo.');
       }
 
-      console.log('Chamando updateUser (início)...');
-      
-      const updateUserPromise = globalSupabase.auth.updateUser({ 
-        password: password 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: recoveryToken,
+          password,
+        }),
+        signal: controller.signal,
+      }).catch((err) => {
+        if (err.name === 'AbortError') {
+          throw new Error('O servidor demorou para responder. Verifique sua conexão e tente novamente.');
+        }
+        throw err;
       });
 
-      // Usando runWithTimeout para evitar travamento eterno se o Supabase não responder
-      const { data, error } = await runWithTimeout(
-        updateUserPromise,
-        15000, // 15 segundos timeout
-        'updateUser'
-      );
+      clearTimeout(timeout);
 
-      console.log('updateUser promise criada:', !!updateUserPromise);
-      console.log('updateUser concluído', data);
-
-      if (error) {
-        console.error('Erro ao redefinir senha (Supabase):', error);
-        throw error;
-      }
-
-      if (!data.user) {
-         console.error('updateUser retornou sucesso mas sem usuário:', data);
-         throw new Error('Erro inesperado: Usuário não retornado após atualização.');
+      if (!response.ok) {
+        let payload: any = null;
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
+        const message = payload?.error || 'Erro ao redefinir senha. Tente novamente.';
+        throw new Error(message);
       }
 
       toast.success('Senha redefinida com sucesso!');
       
-      // Limpar tokens da URL
       if (typeof window !== 'undefined') {
           window.history.replaceState(null, '', '/login');
       }
@@ -302,12 +224,8 @@ function ResetPasswordContent() {
       console.error('Stack do erro de redefinição:', error.stack);
       
       let errorMessage = 'Erro ao redefinir senha. Tente novamente.';
-      
-      if (error.message === 'Auth session missing!') {
-          errorMessage = 'Sessão expirada. O link pode ter perdido a validade. Solicite um novo.';
-      } else if (error.message.includes('Timeout')) {
-          errorMessage = 'O servidor demorou para responder. Verifique sua conexão e tente novamente.';
-      } else if (error.message) {
+
+      if (error.message) {
           errorMessage = error.message;
       }
       
