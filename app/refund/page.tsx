@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface Transaction {
   id: string;
@@ -40,41 +40,55 @@ export default function RefundPage() {
     audit: false,
   });
 
-  const supabase = createClientComponentClient();
   const router = useRouter();
 
   useEffect(() => {
     async function loadData() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const runWithTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+          const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout em ${label} após ${ms}ms`)), ms)
+          );
+          return Promise.race([promise, timeout]);
+        };
+
+        const { data: { session }, error: sessionError } = await runWithTimeout(
+          supabase.auth.getSession(),
+          10_000,
+          'obter sessão (refund)'
+        );
+        if (sessionError) throw sessionError;
         if (!session) {
-          router.push('/auth/login');
+          router.push('/login');
           return;
         }
 
         // Buscar perfil
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('full_name, cpf')
           .eq('user_id', session.user.id)
           .single();
+        if (profileError) throw profileError;
 
         // Buscar última transação paga
-        const { data: transactions } = await supabase
+        const { data: transactions, error: transactionsError } = await supabase
           .from('transactions')
           .select('*')
           .eq('user_id', session.user.id)
           .eq('status', 'paid')
           .order('created_at', { ascending: false })
           .limit(1);
+        if (transactionsError) throw transactionsError;
 
         // Buscar assinatura
-        const { data: subscription } = await supabase
+        const { data: subscription, error: subscriptionError } = await supabase
           .from('subscriptions')
           .select('plan_name')
           .eq('user_id', session.user.id)
           .in('status', ['active', 'trialing'])
           .single();
+        if (subscriptionError) throw subscriptionError;
 
         setUser({
           full_name: profile?.full_name || session.user.user_metadata?.full_name || 'N/A',
@@ -96,7 +110,7 @@ export default function RefundPage() {
     }
 
     loadData();
-  }, [supabase, router]);
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
