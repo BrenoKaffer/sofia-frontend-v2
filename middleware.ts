@@ -5,6 +5,7 @@ const publicPaths = [
   '/login',
   '/register',
   '/terms',
+  '/privacy-policy',
   '/email-confirmation',
   '/verify-email',
   '/forgot-password',
