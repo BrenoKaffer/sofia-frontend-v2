@@ -126,38 +126,41 @@ function ResetPasswordContent() {
 
         // 3. Se temos tokens de acesso direto (Implicit Flow)
         if (accessToken && refreshToken && (type === 'recovery' || type === 'magiclink' || type === 'invite')) {
-          console.log('Tentando definir sessão com cliente GLOBAL...');
-          
-          try {
-            // IMPORTANTE: setSession retorna uma promise que resolve com { data, error }
-            // Adicionamos um timeout de segurança para evitar travamentos infinitos
-            const { data, error } = await runWithTimeout(
-              globalSupabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              }),
-              10000, // 10s timeout
-              'setSession'
-            );
+          console.log('Tokens de recuperação encontrados na URL. Marcando link como potencialmente válido.');
 
-            if (error) {
-              console.error('Erro ao definir sessão:', error);
-              throw error;
-            }
+          // Marcar imediatamente o link como potencialmente válido e guardar tokens
+          setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
+          hasRecoveryTokensRef.current = true;
+          setIsValidToken(true);
 
-            if (data?.session) {
-              console.log('Sessão definida com sucesso via setSession!');
-              setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
-              hasRecoveryTokensRef.current = true;
-              setIsValidToken(true);
-              isTokenValidatedRef.current = true;
-              return;
+          // Tentar definir a sessão em segundo plano, sem derrubar o estado em caso de falha/timeout
+          void (async () => {
+            console.log('Tentando definir sessão com cliente GLOBAL em segundo plano...');
+            try {
+              const { data, error } = await runWithTimeout(
+                globalSupabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken,
+                }),
+                10000,
+                'setSession'
+              );
+
+              if (error) {
+                console.error('Erro ao definir sessão (background):', error);
+                return;
+              }
+
+              if (data?.session) {
+                console.log('Sessão definida com sucesso via setSession (background)!');
+                isTokenValidatedRef.current = true;
+              }
+            } catch (sessError) {
+              console.error('Erro ao processar token em background:', sessError);
             }
-          } catch (sessError) {
-            console.error('Erro ao processar token (catch):', sessError);
-            // Mesmo com erro no setSession, vamos tentar validar via getUser se o token for válido
-            // Às vezes o setSession falha mas o cliente já tem o token internamente
-          }
+          })();
+
+          return;
         }
 
         // 3. Caso nenhum token encontrado
