@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 type ResetBody = {
   access_token?: string;
@@ -29,9 +28,8 @@ export async function POST(req: NextRequest) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json(
         { error: 'Configuração do Supabase ausente no servidor' },
         { status: 500 }
@@ -41,7 +39,7 @@ export async function POST(req: NextRequest) {
     const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        apikey: anonKey,
+        apikey: serviceRoleKey,
       },
     });
 
@@ -53,9 +51,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const userData = (await userResponse.json()) as any;
+    const userData = (await userResponse.json()) as { id?: string } | null;
     const userId = userData?.id;
-    let userEmail: string | undefined = userData?.email;
 
     if (!userId) {
       return NextResponse.json(
@@ -89,83 +86,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!userEmail) {
-      const { data: adminUser } = await adminClient.auth.admin.getUserById(userId);
-      userEmail = adminUser?.user?.email || undefined;
-    }
-
-    if (!userEmail) {
-      return NextResponse.json(
-        { success: true, message: 'Senha atualizada com sucesso. Faça login novamente.' },
-        { status: 200 }
-      );
-    }
-
-    let responseCookiesToSet: { name: string; value: string; options: CookieOptions }[] = [];
-
-    const supabase = createServerClient(
-      supabaseUrl,
-      anonKey,
-      {
-        cookies: {
-          getAll() {
-            return req.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            responseCookiesToSet = cookiesToSet;
-          },
-        },
-      }
+    return NextResponse.json(
+      { success: true, message: 'Senha atualizada com sucesso' },
+      { status: 200 }
     );
-
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: userEmail,
-      password
-    });
-
-    if (authError) {
-      return NextResponse.json(
-        { success: true, message: 'Senha atualizada com sucesso. Não foi possível criar sessão automaticamente.', details: authError.message },
-        { status: 200 }
-      );
-    }
-
-    if (!authData.session) {
-      return NextResponse.json(
-        { success: true, message: 'Senha atualizada com sucesso. Sessão não criada.' },
-        { status: 200 }
-      );
-    }
-
-    const response = NextResponse.json({
-      success: true,
-      message: 'Senha atualizada e sessão criada com sucesso',
-      data: {
-        session: {
-          access_token: authData.session.access_token,
-          refresh_token: authData.session.refresh_token,
-          expires_at: authData.session.expires_at,
-          expires_in: authData.session.expires_in
-        }
-      }
-    });
-
-    responseCookiesToSet.forEach(({ name, value, options }) => {
-      response.cookies.set(name, value, options);
-    });
-
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      maxAge: 24 * 60 * 60,
-      path: '/'
-    };
-
-    response.cookies.set('sb-access-token', authData.session.access_token, cookieOptions);
-    response.cookies.set('sb-refresh-token', authData.session.refresh_token, cookieOptions);
-
-    return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
