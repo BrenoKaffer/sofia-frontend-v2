@@ -22,7 +22,7 @@ export default function TermsPage() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6 text-zinc-200 leading-relaxed [&_strong]:text-emerald-300">
+          <CardContent className="space-y-6 text-zinc-200 leading-relaxed [&_strong]:text-primary">
             <p>
               Ao acessar, cadastrar-se ou utilizar a plataforma <strong>SOFIA</strong>, o usuário declara que leu,
               compreendeu e concorda integralmente com os presentes <strong>Termos de Uso</strong>, bem como com as
