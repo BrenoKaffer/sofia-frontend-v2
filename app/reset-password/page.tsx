@@ -128,38 +128,9 @@ function ResetPasswordContent() {
         if (accessToken && refreshToken && (type === 'recovery' || type === 'magiclink' || type === 'invite')) {
           console.log('Tokens de recuperação encontrados na URL. Marcando link como potencialmente válido.');
 
-          // Marcar imediatamente o link como potencialmente válido e guardar tokens
           setSessionTokens({ access_token: accessToken, refresh_token: refreshToken });
           hasRecoveryTokensRef.current = true;
           setIsValidToken(true);
-
-          // Tentar definir a sessão em segundo plano, sem derrubar o estado em caso de falha/timeout
-          void (async () => {
-            console.log('Tentando definir sessão com cliente GLOBAL em segundo plano...');
-            try {
-              const { data, error } = await runWithTimeout(
-                globalSupabase.auth.setSession({
-                  access_token: accessToken,
-                  refresh_token: refreshToken,
-                }),
-                10000,
-                'setSession'
-              );
-
-              if (error) {
-                console.error('Erro ao definir sessão (background):', error);
-                return;
-              }
-
-              if (data?.session) {
-                console.log('Sessão definida com sucesso via setSession (background)!');
-                isTokenValidatedRef.current = true;
-              }
-            } catch (sessError) {
-              console.error('Erro ao processar token em background:', sessError);
-            }
-          })();
-
           return;
         }
 
