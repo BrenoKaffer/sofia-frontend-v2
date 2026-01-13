@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,23 +12,17 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-neutral-50 py-10 px-4">
+    <main className="min-h-screen bg-black py-10 px-4 text-white">
       <div className="mx-auto w-full max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/register" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
-            Voltar ao cadastro
-          </Link>
-        </div>
-
-        <Card className="border-gray-200">
+        <Card className="border-zinc-800 bg-zinc-950/60">
           <CardHeader>
-            <CardTitle className="text-gray-900">TERMOS DE USO – PLATAFORMA SOFIA</CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardTitle className="text-white">TERMOS DE USO – PLATAFORMA SOFIA</CardTitle>
+            <CardDescription className="text-zinc-400">
               Ao acessar, cadastrar-se ou utilizar a plataforma, você concorda com estes termos.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6 text-gray-700 leading-relaxed">
+          <CardContent className="space-y-6 text-zinc-200 leading-relaxed [&_strong]:text-emerald-300">
             <p>
               Ao acessar, cadastrar-se ou utilizar a plataforma <strong>SOFIA</strong>, o usuário declara que leu,
               compreendeu e concorda integralmente com os presentes <strong>Termos de Uso</strong>, bem como com as
@@ -37,10 +30,10 @@ export default function TermsPage() {
             </p>
             <p>Caso não concorde com qualquer cláusula, o usuário não deverá utilizar a plataforma.</p>
 
-            <hr className="border-gray-200" />
+            <hr className="border-zinc-800" />
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">1. TERMOS GERAIS</h2>
+              <h2 className="text-lg font-semibold text-white">1. TERMOS GERAIS</h2>
               <p>
                 A SOFIA é uma plataforma digital que oferece conteúdos educacionais, metodologias, ferramentas,
                 análises, templates e sistemas de apoio à tomada de decisão, incluindo leitura de contexto, gestão e
@@ -56,10 +49,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <hr className="border-gray-200" />
+            <hr className="border-zinc-800" />
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">2. SLA – ACORDO DE NÍVEL DE SERVIÇO</h2>
+              <h2 className="text-lg font-semibold text-white">2. SLA – ACORDO DE NÍVEL DE SERVIÇO</h2>
               <p>
                 A SOFIA se compromete a envidar seus melhores esforços para manter a plataforma disponível, funcional
                 e segura, observando os seguintes parâmetros:
@@ -82,10 +75,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <hr className="border-gray-200" />
+            <hr className="border-zinc-800" />
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">3. USO DE LICENÇA</h2>
+              <h2 className="text-lg font-semibold text-white">3. USO DE LICENÇA</h2>
               <p>
                 O usuário recebe uma <strong>licença limitada, não exclusiva, intransferível e revogável</strong> para
                 acessar e utilizar a plataforma SOFIA conforme o plano contratado.
@@ -103,10 +96,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <hr className="border-gray-200" />
+            <hr className="border-zinc-800" />
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">4. ISENÇÃO DE RESPONSABILIDADE</h2>
+              <h2 className="text-lg font-semibold text-white">4. ISENÇÃO DE RESPONSABILIDADE</h2>
               <p>
                 A SOFIA <strong>não presta consultoria financeira, jurídica ou de investimentos</strong>.
               </p>
@@ -127,10 +120,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <hr className="border-gray-200" />
+            <hr className="border-zinc-800" />
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">5. LIMITAÇÕES DE RESPONSABILIDADE</h2>
+              <h2 className="text-lg font-semibold text-white">5. LIMITAÇÕES DE RESPONSABILIDADE</h2>
               <p>Em nenhuma hipótese a SOFIA, seus sócios, colaboradores ou parceiros serão responsáveis por:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>Perda de lucros</li>
@@ -144,10 +137,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <hr className="border-gray-200" />
+            <hr className="border-zinc-800" />
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">6. PRECISÃO DOS MATERIAIS</h2>
+              <h2 className="text-lg font-semibold text-white">6. PRECISÃO DOS MATERIAIS</h2>
               <p>
                 Os materiais disponibilizados na plataforma podem conter erros técnicos, tipográficos ou conceituais.
               </p>
@@ -163,12 +156,12 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <hr className="border-gray-200" />
+            <hr className="border-zinc-800" />
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">7. LINKS, MODIFICAÇÕES E LEI APLICÁVEL</h2>
+              <h2 className="text-lg font-semibold text-white">7. LINKS, MODIFICAÇÕES E LEI APLICÁVEL</h2>
 
-              <h3 className="text-base font-semibold text-gray-900">Links</h3>
+              <h3 className="text-base font-semibold text-white">Links</h3>
               <p>A SOFIA pode conter links para sites de terceiros. Não nos responsabilizamos por:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>Conteúdos externos</li>
@@ -177,9 +170,9 @@ export default function TermsPage() {
               </ul>
               <p>O acesso a links externos ocorre por conta e risco do usuário.</p>
 
-              <hr className="border-gray-200" />
+              <hr className="border-zinc-800" />
 
-              <h3 className="text-base font-semibold text-gray-900">Modificações</h3>
+              <h3 className="text-base font-semibold text-white">Modificações</h3>
               <p>
                 A SOFIA poderá alterar estes Termos de Uso a qualquer momento. As alterações passam a valer a partir de
                 sua publicação.
@@ -188,9 +181,9 @@ export default function TermsPage() {
                 O uso continuado da plataforma após alterações implica <strong>aceite automático</strong>.
               </p>
 
-              <hr className="border-gray-200" />
+              <hr className="border-zinc-800" />
 
-              <h3 className="text-base font-semibold text-gray-900">Lei Aplicável</h3>
+              <h3 className="text-base font-semibold text-white">Lei Aplicável</h3>
               <p>Estes Termos são regidos pelas leis da <strong>República Federativa do Brasil</strong>.</p>
               <p>
                 Fica eleito o foro da comarca do <strong>domicílio da empresa responsável pela SOFIA</strong>, com
@@ -198,10 +191,10 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <hr className="border-gray-200" />
+            <hr className="border-zinc-800" />
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">DISPOSIÇÕES FINAIS</h2>
+              <h2 className="text-lg font-semibold text-white">DISPOSIÇÕES FINAIS</h2>
               <p>
                 Caso qualquer cláusula seja considerada inválida ou inexequível, as demais permanecerão em pleno vigor.
               </p>
@@ -213,4 +206,3 @@ export default function TermsPage() {
     </main>
   );
 }
-
