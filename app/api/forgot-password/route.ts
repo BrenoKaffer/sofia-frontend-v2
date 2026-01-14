@@ -65,10 +65,11 @@ export async function POST(request: NextRequest) {
 
     // Verificar se o usuário existe antes de tentar enviar o email
     // Isso é menos seguro (permite enumeração de usuários), mas solicitado pelo requisito de UX
-    const { data: user, error: userError } = await supabase
+    const emailCandidates = Array.from(new Set([normalizedEmail, canonicalEmail]));
+    const { data: userCandidate, error: userError } = await supabase
       .from('user_profiles')
       .select('user_id, full_name')
-      .eq('email', canonicalEmail)
+      .in('email', emailCandidates)
       .maybeSingle();
 
     if (userError) {
@@ -79,12 +80,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const user = userCandidate || null;
 
     // Se tivermos a Service Role Key, podemos gerar o link e enviar via Zeptomail (custom)
     if (serviceRoleKey) {
@@ -93,13 +89,13 @@ export async function POST(request: NextRequest) {
       // CORREÇÃO: Usar a rota correta /reset-password (não /update-password)
       const redirectTo = `${origin}/reset-password`;
 
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email: canonicalEmail,
-        options: {
-          redirectTo
-        }
-      });
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: normalizedEmail,
+      options: {
+        redirectTo
+      }
+    });
 
       if (linkError) {
         console.error('Erro ao gerar link de recuperação (admin.generateLink):', linkError);
@@ -130,8 +126,8 @@ export async function POST(request: NextRequest) {
           
           await sendRecoveryEmail({
             to: email,
-            name: user.full_name,
-            recoveryLink: safeLink // Envia o link seguro
+            name: user?.full_name ?? 'Cliente SOFIA',
+            recoveryLink: safeLink
           });
           
           console.log('Email enviado com sucesso via Zeptomail (com link seguro).');
@@ -149,9 +145,9 @@ export async function POST(request: NextRequest) {
       } else {
         console.warn('Link de recuperação gerado, mas action_link está vazio.');
       }
-    } else {
-      console.warn('Service Role Key NÃO encontrada. Pulando envio customizado via Zeptomail.');
-    }
+      } else {
+        console.warn('Service Role Key NÃO encontrada. Pulando envio customizado via Zeptomail.');
+      }
 
     // Fallback: Usar o envio de email padrão do Supabase (resetPasswordForEmail)
     // Isso acontece se não tivermos Service Role Key OU se o envio via Zeptomail falhar
@@ -160,7 +156,7 @@ export async function POST(request: NextRequest) {
     // CORREÇÃO: Usar a rota correta /reset-password (não /update-password)
     const redirectTo = `${origin}/reset-password`;
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(canonicalEmail, {
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo,
     });
 
@@ -168,10 +164,10 @@ export async function POST(request: NextRequest) {
       console.error('Erro ao solicitar reset de senha no Supabase (fallback):', resetError);
       return NextResponse.json(
         { 
-          error: 'Erro ao processar recuperação de senha. Contate o suporte.',
-          details: resetError.message 
+          message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação (via Supabase).',
+          success: true 
         },
-        { status: 500 }
+        { status: 200 }
       );
     }
 

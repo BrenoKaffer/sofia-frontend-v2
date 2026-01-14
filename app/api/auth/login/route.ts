@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     // Tentar fazer login
     console.log('[Login API] Tentando autenticar com Supabase...');
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: canonicalEmail,
+      email: normalizedEmail,
       password
     });
 
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       logger.warn('Tentativa de login falhada', {
         metadata: {
           email_input: email,
-          email_canonical: canonicalEmail,
+          email_normalized: normalizedEmail,
           error: authError.message,
           ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
         }
