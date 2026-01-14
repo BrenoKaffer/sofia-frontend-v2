@@ -8,6 +8,7 @@ const publicPaths = [
   '/privacy-policy',
   '/refund-policy',
   '/email-confirmation',
+  '/auth/callback',
   '/verify-email',
   '/forgot-password',
   '/reset-password',

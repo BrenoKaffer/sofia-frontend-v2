@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
             logger.info(`Usuário ${email} existe mas não está confirmado. Reenviando email.`);
             
             const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
-            const redirectTo = `${origin}/auth/callback`;
+            const redirectTo = `${origin}/auth/callback?email=${encodeURIComponent(email.toLowerCase())}`;
             
             // Gerar link de magiclink para verificar/logar
             const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       );
 
       const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://app.v1sofia.com';
-      const redirectTo = `${origin}/auth/callback`;
+      const redirectTo = `${origin}/auth/callback?email=${encodeURIComponent(email.toLowerCase())}`;
       
       logger.info(`Gerando link de confirmação. RedirectTo: ${redirectTo}`);
 
