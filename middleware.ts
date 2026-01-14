@@ -72,6 +72,31 @@ async function isAuthenticated(req: NextRequest): Promise<boolean> {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+  if (pathname.startsWith('/checkout')) {
+    const parts = pathname.split('/').filter(Boolean)
+    const search = req.nextUrl.searchParams
+    const plan = search.get('plan')?.trim() || ''
+    const aff = search.get('aff')?.trim() || ''
+    const legacyPlanMap: Record<string, string> = { pro_anual: 'P1', pro_mensal: 'P2' }
+    if (parts.length === 1 && plan && aff) {
+      const planCode = legacyPlanMap[plan] || plan
+      const url = req.nextUrl.clone()
+      url.pathname = `/checkout/${planCode}/${aff}`
+      url.search = ''
+      return NextResponse.redirect(url, 301)
+    }
+    if (parts.length === 3) {
+      const p = parts[1]
+      const a = parts[2]
+      const mapped = legacyPlanMap[p] || p
+      if (mapped !== p) {
+        const url = req.nextUrl.clone()
+        url.pathname = `/checkout/${mapped}/${a}`
+        url.search = ''
+        return NextResponse.redirect(url, 301)
+      }
+    }
+  }
 
   // if (pathname.startsWith('/checkout')) {
   //   return NextResponse.redirect(`https://pay.v1sofia.com${pathname}${search}`)
