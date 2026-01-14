@@ -114,9 +114,11 @@ export async function middleware(req: NextRequest) {
         // Limpar cookies de autenticação do Supabase
         response.cookies.delete('sb-access-token');
         response.cookies.delete('sb-refresh-token');
-        // Tentar limpar com domínio raiz se possível (embora middleware tenha limitações com domínios)
-        // A melhor aposta é limpar o path e o default
         
+        // Limpar explicitamente com path / para garantir
+        response.cookies.set('sb-access-token', '', { maxAge: 0, path: '/' });
+        response.cookies.set('sb-refresh-token', '', { maxAge: 0, path: '/' });
+
         // Limpar cookies da aplicação
         response.cookies.delete('sofia_status');
         response.cookies.delete('sofia_plan');

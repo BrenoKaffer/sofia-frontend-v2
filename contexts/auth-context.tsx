@@ -321,16 +321,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoggingOutRef.current = true;
     
     try {
+      const logoutTimeout = 2000; // 2 segundos de timeout para operações de rede
+
       // 1. Chamar rota de logout do servidor para limpar cookies
       try {
-        await fetch('/api/auth/logout', { method: 'POST' });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), logoutTimeout);
+        
+        await fetch('/api/auth/logout', { 
+          method: 'POST',
+          signal: controller.signal 
+        });
+        
+        clearTimeout(timeoutId);
       } catch (e) {
         console.warn('Erro ao chamar API de logout:', e);
       }
 
       // 2. Logout no cliente Supabase
       // Isso dispararia onAuthStateChange, mas o ref isLoggingOutRef vai prevenir o setUser(null)
-      await supabase.auth.signOut();
+      try {
+        await Promise.race([
+          supabase.auth.signOut(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), logoutTimeout))
+        ]);
+      } catch (e) {
+        console.warn('Erro ou timeout no supabase.auth.signOut:', e);
+      }
       
       // 3. Limpar localStorage e sessionStorage explicitamente
       if (typeof window !== 'undefined') {
@@ -368,23 +385,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      // 5. Redirecionar via hard refresh com parâmetro de ação e timestamp para evitar cache
-      // Não chamamos setUser(null) aqui propositalmente para manter a UI estável até o refresh
       toast.success('Logout realizado com sucesso!');
       
-      // Pequeno delay para garantir que o navegador processou a limpeza dos cookies
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      toast.error('Erro ao fazer logout');
+    } finally {
+      // 5. Redirecionar via hard refresh com parâmetro de ação e timestamp para evitar cache
+      // Sempre executar o redirecionamento, independente de erros
       setTimeout(() => {
           // Usar window.location.href para garantir um reset completo do estado
           // Adicionar ?action=logout para que o middleware saiba que é um logout intencional
           // Adicionar timestamp para evitar cache do navegador/middleware
           window.location.href = `/login?action=logout&t=${Date.now()}`;
       }, 100);
-      
-    } catch (error) {
-      console.error('Erro no logout:', error);
-      toast.error('Erro ao fazer logout');
-      // Forçar redirecionamento mesmo com erro
-      window.location.href = `/login?action=logout&t=${Date.now()}`;
     }
   };
 
