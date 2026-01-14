@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('Processando verificação...');
@@ -127,3 +127,19 @@ export default function AuthCallbackPage() {
   );
 }
 
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center space-y-2">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          </div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
+  );
+}

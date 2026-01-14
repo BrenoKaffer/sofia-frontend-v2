@@ -80,6 +80,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     };
 
+    try {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE;
+      if (url && key) {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+        const level = overallStatus === 'unhealthy' ? 'error' : overallStatus === 'degraded' ? 'warn' : 'info';
+        await supabase.from('system_logs').insert([{
+          level,
+          message: 'system_health',
+          context: 'health_check',
+          source: 'frontend',
+          metadata: {
+            status: overallStatus,
+            services,
+            metrics: healthResult.metrics
+          }
+        }]);
+      }
+    } catch {}
+
     // Retornar status HTTP apropriado
     const statusCode = overallStatus === 'healthy' ? 200 : 
                       overallStatus === 'degraded' ? 200 : 503;

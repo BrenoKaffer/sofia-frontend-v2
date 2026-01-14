@@ -307,11 +307,13 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error('Erro ao enviar email de recuperação:', data.error);
-        if (data.error && data.error.includes('User not found')) {
-          toast.error('Email não encontrado em nossa base de dados');
+        const errMsg = String(data?.error || '');
+        const patterns = [/User not found/i, /não cadastrado/i, /email não encontrado/i];
+        if (patterns.some((p) => p.test(errMsg))) {
+          setIsEmailSent(true);
+          toast.success('Se o email estiver cadastrado, você receberá as instruções.');
         } else {
-          toast.error(data.error || 'Erro ao enviar email de recuperação');
+          toast.error(errMsg || 'Erro ao enviar email de recuperação');
         }
         return;
       }
@@ -338,7 +340,20 @@ export default function ForgotPasswordPage() {
       });
 
       if (!response.ok) {
-        toast.error('Erro ao reenviar email');
+        let message = 'Erro ao reenviar email';
+        try {
+          const data = await response.json();
+          const errMsg = String(data?.error || '');
+          const patterns = [/User not found/i, /não cadastrado/i, /email não encontrado/i];
+          if (patterns.some((p) => p.test(errMsg))) {
+            toast.success('Se o email estiver cadastrado, você receberá as instruções.');
+            setIsEmailSent(true);
+            return;
+          }
+          message = errMsg || message;
+        } catch {
+        }
+        toast.error(message);
         return;
       }
 
