@@ -314,35 +314,39 @@ export class AuthService {
         user = data.user;
       }
 
-      // Inserir usuário na tabela user_profiles com role padrão
-      const { data: newUser, error: insertError } = await supabase
+      const fullName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário';
+      const cpf = user.user_metadata?.cpf || '';
+      const email = user.email || '';
+      const { error: rpcError } = await supabase.rpc('insert_user_profile_on_registration', {
+        p_user_id: userId,
+        p_full_name: fullName,
+        p_cpf: cpf,
+        p_email: email
+      });
+      if (rpcError) {
+        logger.error('Erro ao criar usuário padrão via RPC:', undefined, rpcError as Error);
+        return null;
+      }
+      const { data: createdProfile, error: fetchError } = await supabase
         .from('user_profiles')
-        .insert({
-          user_id: userId,
-          email: user.email,
-          full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-          role: 'user',
-          created_at: new Date().toISOString(),
-          status: 'active'
-        })
-        .select()
+        .select('*')
+        .eq('user_id', userId)
         .single();
-
-      if (insertError) {
-        logger.error('Erro ao criar usuário padrão:', undefined, insertError as Error);
+      if (fetchError || !createdProfile) {
+        logger.error('Erro ao buscar perfil recém-criado:', undefined, fetchError as Error);
         return null;
       }
 
       return {
-        id: newUser.user_id,
-        email: newUser.email,
-        name: newUser.full_name,
+        id: createdProfile.user_id,
+        email: createdProfile.email,
+        name: createdProfile.full_name,
         role: DEFAULT_ROLES.user,
         permissions: DEFAULT_ROLES.user.permissions,
         session_id: `session_${Date.now()}`,
-        created_at: newUser.created_at,
+        created_at: createdProfile.created_at,
         last_login: new Date().toISOString(),
-        is_active: newUser.status === 'active' // Usuários novos são ativos por padrão
+        is_active: createdProfile.status === 'active'
       };
 
     } catch (error) {

@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const shouldStart = process.env.PLAYWRIGHT_WEB_SERVER !== 'false';
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -79,12 +81,12 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: {
+  webServer: shouldStart ? {
     command: 'npm run dev',
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3002',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
-  },
+  } : undefined as any,
 
   /* Test timeout */
   timeout: 30000,
