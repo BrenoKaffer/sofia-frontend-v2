@@ -1,74 +1,37 @@
--- Função corrigida para resolver o erro "AuthApiError: Database error saving new user"
--- Esta versão alinha com a estrutura real das tabelas user_profiles e user_preferences
-
--- Remove a função existente se ela existir
-DROP FUNCTION IF EXISTS insert_user_profile_on_registration(UUID, TEXT, TEXT, TEXT);
-
--- Cria a função corrigida
-CREATE OR REPLACE FUNCTION insert_user_profile_on_registration(
-    p_user_id UUID,
-    p_full_name TEXT,
-    p_cpf TEXT,
-    p_email TEXT
+DROP FUNCTION IF EXISTS public.insert_user_profile_on_registration(uuid, text, text, text);
+CREATE OR REPLACE FUNCTION public.insert_user_profile_on_registration(
+  p_user_id uuid,
+  p_full_name text,
+  p_cpf text,
+  p_email text
 )
-RETURNS VOID
+RETURNS public.user_profiles
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_catalog
 AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_profile public.user_profiles;
 BEGIN
-    -- Log de início da execução
-    RAISE NOTICE 'Iniciando insert_user_profile_on_registration para user_id: %', p_user_id;
-    
-    -- Inserir nas preferências do usuário (apenas campos que existem na tabela)
-    INSERT INTO user_preferences (
-        id,
-        theme,
-        notifications
-    ) VALUES (
-        p_user_id,
-        'light',  -- valor padrão para theme
-        true      -- valor padrão para notifications
-    )
-    ON CONFLICT (id) DO UPDATE SET
-        theme = EXCLUDED.theme,
-        notifications = EXCLUDED.notifications;
-    
-    -- Inserir no perfil do usuário (apenas campos que existem na tabela)
-    INSERT INTO user_profiles (
-        user_id,
-        preferences,
-        email,
-        cpf
-    ) VALUES (
-        p_user_id,
-        p_user_id,  -- referência para user_preferences
-        p_email,
-        p_cpf
-    )
-    ON CONFLICT (user_id) DO UPDATE SET
-        preferences = EXCLUDED.preferences,
-        email = EXCLUDED.email,
-        cpf = EXCLUDED.cpf;
-    
-    -- Log de sucesso
-    RAISE NOTICE 'Perfil do usuário criado com sucesso para user_id: %', p_user_id;
-    
-EXCEPTION
-    WHEN OTHERS THEN
-        -- Log do erro
-        RAISE LOG 'Erro ao criar perfil do usuário para user_id %: % %', p_user_id, SQLERRM, SQLSTATE;
-        -- Re-raise o erro para que seja capturado pela aplicação
-        RAISE;
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'unauthenticated';
+  END IF;
+  IF p_user_id IS DISTINCT FROM v_uid THEN
+    RAISE EXCEPTION 'forbidden';
+  END IF;
+  INSERT INTO public.user_profiles (user_id, email, full_name, cpf)
+  VALUES (p_user_id, p_email, COALESCE(p_full_name, split_part(p_email, '@', 1)), NULLIF(p_cpf, ''))
+  ON CONFLICT (user_id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = EXCLUDED.full_name,
+    cpf = EXCLUDED.cpf
+  RETURNING * INTO v_profile;
+  RETURN v_profile;
 END;
 $$;
-
--- Conceder permissões necessárias
-GRANT EXECUTE ON FUNCTION insert_user_profile_on_registration(UUID, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION insert_user_profile_on_registration(UUID, TEXT, TEXT, TEXT) TO service_role;
-
--- Comentário explicativo
-COMMENT ON FUNCTION insert_user_profile_on_registration(UUID, TEXT, TEXT, TEXT) IS 
-'Função corrigida para inserir dados do usuário nas tabelas user_profiles e user_preferences após registro via Supabase Auth. Alinhada com a estrutura real das tabelas.';
+GRANT EXECUTE ON FUNCTION public.insert_user_profile_on_registration(uuid, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.insert_user_profile_on_registration(uuid, text, text, text) TO service_role;
 
 -- Instruções de uso:
 -- 1. Execute este script no seu banco de dados Supabase

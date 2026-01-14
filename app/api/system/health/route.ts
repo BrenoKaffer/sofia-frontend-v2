@@ -151,19 +151,28 @@ async function checkDatabase({ isAuthBypassEnabled, hasSupabaseEnv }: { isAuthBy
       };
     }
 
-    const { supabase } = await import('@/lib/supabase');
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE || '';
+    let client: any;
+    if (url && serviceKey) {
+      const { createClient } = await import('@supabase/supabase-js');
+      client = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    } else {
+      const { supabase } = await import('@/lib/supabase');
+      client = supabase;
+    }
     
     // Teste simples de conectividade
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('count')
+    const { data, error } = await client
+      .from('user_profiles')
+      .select('id')
       .limit(1);
 
     const responseTime = Date.now() - startTime;
 
     if (error) {
       // Tratar erro como degradado em desenvolvimento para evitar 503
-      if (isAuthBypassEnabled) {
+      if (isAuthBypassEnabled || !serviceKey) {
         return {
           status: 'degraded',
           responseTime,
