@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const canonicalEmail = canonicalizeEmail(normalizedEmail);
 
     // Inicializar Supabase Client
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -63,18 +62,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Verificar se o usuário existe antes de tentar enviar o email
-    // Isso é menos seguro (permite enumeração de usuários), mas solicitado pelo requisito de UX
-    const emailCandidates = Array.from(new Set([normalizedEmail, canonicalEmail]));
     const { data: userCandidate, error: userError } = await supabase
       .from('user_profiles')
       .select('user_id, full_name')
-      .in('email', emailCandidates)
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
     if (userError) {
-      console.warn('Erro ao verificar usuário em user_profiles. Prosseguindo com envio genérico.', userError);
-      // Não interromper o fluxo: seguimos com geração de link/envio genérico
+      return NextResponse.json(
+        { error: 'Erro ao verificar usuário' },
+        { status: 500 }
+      );
+    }
+
+    if (!userCandidate) {
+      return NextResponse.json(
+        { error: 'Email não cadastrado', success: false },
+        { status: 404 }
+      );
     }
 
     const userName = (userCandidate && typeof (userCandidate as any).full_name === 'string')
