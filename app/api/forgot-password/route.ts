@@ -73,14 +73,13 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (userError) {
-      console.error('Erro ao verificar usuário:', userError);
-      return NextResponse.json(
-        { error: 'Email não cadastrado ou não verificado.' },
-        { status: 500 }
-      );
+      console.warn('Erro ao verificar usuário em user_profiles. Prosseguindo com envio genérico.', userError);
+      // Não interromper o fluxo: seguimos com geração de link/envio genérico
     }
 
-    const user = userCandidate || null;
+    const userName = (userCandidate && typeof (userCandidate as any).full_name === 'string')
+      ? (userCandidate as any).full_name
+      : 'Cliente SOFIA';
 
     // Se tivermos a Service Role Key, podemos gerar o link e enviar via Zeptomail (custom)
     if (serviceRoleKey) {
@@ -126,7 +125,7 @@ export async function POST(request: NextRequest) {
           
           await sendRecoveryEmail({
             to: email,
-            name: user?.full_name ?? 'Cliente SOFIA',
+            name: userName,
             recoveryLink: safeLink
           });
           

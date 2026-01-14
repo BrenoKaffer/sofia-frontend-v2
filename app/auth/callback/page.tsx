@@ -14,15 +14,35 @@ function AuthCallbackContent() {
   useEffect(() => {
     const processCallback = async () => {
       try {
-        const code = searchParams.get('code');
-        const token = searchParams.get('token');
-        const type = searchParams.get('type');
-        const emailParam = searchParams.get('email') || undefined;
+        let code = searchParams.get('code');
+        let token = searchParams.get('token');
+        let type = searchParams.get('type');
+        const emailParam = searchParams.get('email');
         const emailLS =
           typeof window !== 'undefined'
             ? window.localStorage.getItem('pending_signup_email') || undefined
             : undefined;
         const email = emailParam || emailLS;
+
+        let hashAccessToken: string | null = null;
+        let hashRefreshToken: string | null = null;
+        let hashError: string | null = null;
+        let hashErrorCode: string | null = null;
+        let hashType: string | null = null;
+
+        if (typeof window !== 'undefined' && window.location.hash) {
+          const hash = window.location.hash.substring(1);
+          const hashParams = new URLSearchParams(hash);
+          hashAccessToken = hashParams.get('access_token') || null;
+          hashRefreshToken = hashParams.get('refresh_token') || null;
+          hashError = hashParams.get('error') || null;
+          hashErrorCode = hashParams.get('error_code') || null;
+          hashType = hashParams.get('type') || null;
+          // Se o hash tem "code" (PKCE), também capturar
+          code = code || hashParams.get('code');
+          token = token || hashParams.get('token');
+          type = type || hashType || type;
+        }
 
         if (code) {
           setStatus('Trocando código por sessão...');
@@ -33,6 +53,27 @@ function AuthCallbackContent() {
             // Assegurar compatibilidade com o middleware (cookies de tokens)
             if (typeof document !== 'undefined') {
               const maxAge = 60 * 60 * 24 * 7; // 7 dias
+              document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${maxAge}; samesite=lax`;
+              document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
+            }
+            toast.success('Login realizado com sucesso!');
+            router.replace('/dashboard');
+            return;
+          }
+        }
+
+        // Sessão no fragmento (#access_token) — fluxo implícito/magic
+        if (hashAccessToken && hashRefreshToken) {
+          setStatus('Configurando sessão...');
+          const { data, error } = await supabase.auth.setSession({
+            access_token: hashAccessToken,
+            refresh_token: hashRefreshToken,
+          });
+          if (error) throw error;
+
+          if (data?.session) {
+            if (typeof document !== 'undefined') {
+              const maxAge = 60 * 60 * 24 * 7;
               document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${maxAge}; samesite=lax`;
               document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
             }
@@ -101,7 +142,14 @@ function AuthCallbackContent() {
           }
         }
 
-        // Nenhum parâmetro reconhecido, enviar para login
+        // Erros vindos via hash
+        if (hashError) {
+          setError(hashErrorCode || hashError);
+          toast.error('Falha ao processar autenticação.');
+          router.replace('/login');
+          return;
+        }
+
         setStatus('Parâmetros ausentes. Redirecionando para login...');
         router.replace('/login');
       } catch (e: any) {

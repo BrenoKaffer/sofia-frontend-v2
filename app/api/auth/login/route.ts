@@ -107,17 +107,45 @@ export async function POST(req: NextRequest) {
     }
 
     // Buscar dados do usuário com role
-    const user = await AuthService.getUserWithRole(authData.user.id, authData.user, supabase);
+    let user = await AuthService.getUserWithRole(authData.user.id, authData.user, supabase);
 
     if (!user) {
-      logger.error('Usuário autenticado não encontrado no banco', {
-        metadata: { userId: authData.user.id }
-      });
-      
-      return NextResponse.json(
-        { error: 'Usuário não encontrado' },
-        { status: 404 }
-      );
+      // Tentar criar perfil via RPC e reconsultar
+      try {
+        const fullName =
+          authData.user.user_metadata?.full_name ||
+          authData.user.user_metadata?.name ||
+          authData.user.email?.split('@')[0] ||
+          'Usuário';
+        const cpf = authData.user.user_metadata?.cpf || '';
+        const email = authData.user.email || '';
+
+        const { error: rpcErr } = await supabase.rpc('insert_user_profile_on_registration', {
+          p_user_id: authData.user.id,
+          p_full_name: fullName,
+          p_cpf: cpf,
+          p_email: email
+        });
+
+        if (rpcErr) {
+          logger.error('Falha ao criar perfil via RPC após login', { metadata: { userId: authData.user.id, error: rpcErr.message } });
+        } else {
+          user = await AuthService.getUserWithRole(authData.user.id, authData.user, supabase);
+        }
+      } catch (e: any) {
+        logger.error('Exceção ao criar perfil via RPC', { metadata: { userId: authData.user.id, error: e?.message } });
+      }
+
+      if (!user) {
+        logger.error('Usuário autenticado não encontrado no banco', {
+          metadata: { userId: authData.user.id }
+        });
+        
+        return NextResponse.json(
+          { error: 'Usuário não encontrado' },
+          { status: 404 }
+        );
+      }
     }
 
     // Verificar se usuário está ativo
