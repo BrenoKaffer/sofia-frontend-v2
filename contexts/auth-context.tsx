@@ -191,32 +191,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      let data;
+      let data: any;
       try {
         data = await response.json();
       } catch (e) {
         console.warn('Falha ao analisar resposta JSON da API de login:', e);
-        data = { message: 'Erro de comunicação com o servidor' };
+        data = { error: 'Erro de comunicação com o servidor' };
       }
 
       if (!response.ok) {
-        console.warn(`API de login retornou erro ${response.status}:`, data.message);
-        throw new Error(data.message || `Erro ${response.status}`);
+        const message = data?.error || data?.message || `Erro ${response.status}`;
+        console.warn(`API de login retornou erro ${response.status}:`, message);
+        throw new Error(message);
       }
 
-      if (data.session) {
-        const { error: sessionError } = await supabase.auth.setSession(data.session);
+      const apiSession = data?.session || data?.data?.session;
+
+      if (apiSession?.access_token && apiSession?.refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: apiSession.access_token,
+          refresh_token: apiSession.refresh_token
+        });
         
         if (sessionError) {
           console.error('Erro ao definir sessão no cliente:', sessionError);
           throw sessionError;
         }
 
-        if (data.user) {
-          const userWithProfile = await fetchAndConvertUser(data.user);
-          setUser(userWithProfile);
-        }
-        
         toast.success('Login realizado com sucesso! Bem-vindo de volta ao SOFIA!');
         setIsLoading(false);
         return true;
