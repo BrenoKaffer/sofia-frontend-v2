@@ -5,15 +5,41 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
+import { Button } from '@/components/ui/button';
+
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('Processando verificação...');
   const [error, setError] = useState<string | null>(null);
+  const [showManualAction, setShowManualAction] = useState(false);
+
+  useEffect(() => {
+    // Timeout de segurança para mostrar opção manual se demorar
+    const timer = setTimeout(() => {
+      setShowManualAction(true);
+      if (status === 'Processando verificação...') {
+        setStatus('A verificação está demorando mais que o esperado...');
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [status]);
 
   useEffect(() => {
     const processCallback = async () => {
       try {
+        console.log('Iniciando processamento do callback...');
+        
+        // Verificar se já existe uma sessão válida antes de processar
+        const { data: existingSession } = await supabase.auth.getSession();
+        if (existingSession?.session) {
+          console.log('Sessão existente encontrada, redirecionando...');
+          toast.success('Sessão ativa recuperada!');
+          router.replace('/dashboard');
+          return;
+        }
+
         let code = searchParams.get('code');
         let token = searchParams.get('token');
         let type = searchParams.get('type');
@@ -166,10 +192,25 @@ function AuthCallbackContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-4">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
         <p className="text-sm text-muted-foreground">{status}</p>
         {error && <p className="text-xs text-destructive">{error}</p>}
+        
+        {showManualAction && (
+          <div className="pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <p className="text-xs text-muted-foreground mb-2">
+              Se não for redirecionado automaticamente:
+            </p>
+            <Button 
+              onClick={() => router.push('/dashboard')}
+              variant="outline"
+              size="sm"
+            >
+              Ir para o Dashboard
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -154,13 +154,13 @@ export function Header({ onMenuClick }: HeaderProps) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/profile">
+                <Link href="/profile">
                   <User className="mr-2 h-4 w-4" />
                   <span className="font-sans">Perfil</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings">
+                <Link href="/settings">
                   <span className="font-sans">Configurações</span>
                 </Link>
               </DropdownMenuItem>
