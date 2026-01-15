@@ -44,8 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e: any) {
       // Tentar recuperar criando o perfil automaticamente
       // Suprimir toast de erro de permissão pois o sistema tentará corrigir
+      const isProfileNotFound =
+        e?.code === 'PROFILE_NOT_FOUND' || e?.message === 'PROFILE_NOT_FOUND';
       const isPermissionError = e.message && (e.message.includes('permission') || e.message.includes('policy'));
-      if (!isPermissionError) {
+      if (!isPermissionError && !isProfileNotFound) {
         // Logar outros erros que não sejam de permissão/RLS
         console.error('Error fetching user profile:', e);
       } else {

@@ -88,6 +88,19 @@ export async function getUserProfile(userId: string) {
     .single();
 
   if (error) {
+    const code = (error as any).code || '';
+    const message = (error as any).message || '';
+    const isNoRows =
+      code === 'PGRST116' ||
+      message.includes('Results contain 0 rows') ||
+      message.includes('0 rows');
+
+    if (isNoRows) {
+      const noProfileError: any = new Error('PROFILE_NOT_FOUND');
+      noProfileError.code = 'PROFILE_NOT_FOUND';
+      throw noProfileError;
+    }
+
     console.error('Erro ao buscar perfil do usuário:', error);
     throw new Error(`Falha ao buscar perfil: ${error.message}`);
   }
