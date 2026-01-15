@@ -164,14 +164,7 @@ export default function LoginPage() {
 
     try {
       console.warn('Tentando fazer login com:', { email, password: password.length + ' caracteres' });
-      
-      // Timeout de 15 segundos para evitar travamento infinito
-      const loginPromise = login(email, password);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Tempo limite excedido')), 15000)
-      );
-
-      const success = await Promise.race([loginPromise, timeoutPromise]) as boolean;
+      const success = await login(email, password);
       
       console.warn('Resultado do login:', success);
       if (success) {
@@ -199,7 +192,20 @@ export default function LoginPage() {
         toast.success('Login realizado com sucesso!');
         router.push('/dashboard');
       } else {
-        toast.error('Credenciais inválidas. Verifique se a senha tem pelo menos 6 caracteres.');
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const maxAge = 60 * 60 * 24 * 7;
+            document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${maxAge}; samesite=lax`;
+            if (session?.refresh_token) {
+              document.cookie = `sb-refresh-token=${session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
+            }
+            toast.success('Login realizado com sucesso!');
+            router.push('/dashboard');
+            return;
+          }
+        } catch {}
+        toast.error('Credenciais inválidas. Verifique seu email e senha.');
       }
     } catch (error) {
       console.error('Erro no login:', error);
