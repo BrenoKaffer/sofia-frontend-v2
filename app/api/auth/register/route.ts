@@ -80,10 +80,13 @@ export async function POST(req: NextRequest) {
             });
 
             if (!linkError && linkData.properties?.action_link) {
+              const actionLink = linkData.properties.action_link;
+              const encoded = Buffer.from(actionLink).toString('base64');
+              const safeLink = `${origin}/security-check?target=${encodeURIComponent(encoded)}`;
               await sendVerificationEmail({
                 to: email.toLowerCase(),
                 name: name || email.split('@')[0],
-                confirmationLink: linkData.properties.action_link
+                confirmationLink: safeLink
               });
               
               return NextResponse.json({
@@ -162,10 +165,13 @@ export async function POST(req: NextRequest) {
         }
 
         try {
+          const actionLink = data.properties.action_link;
+          const encoded = Buffer.from(actionLink).toString('base64');
+          const safeLink = `${origin}/security-check?target=${encodeURIComponent(encoded)}`;
           await sendVerificationEmail({
             to: email.toLowerCase(),
             name: name || email.split('@')[0],
-            confirmationLink: data.properties.action_link
+            confirmationLink: safeLink
           });
           customEmailSent = true;
           logger.info(`Email de verificação enviado via SMTP para ${email}`);
