@@ -13,6 +13,7 @@ function AuthCallbackContent() {
   const [status, setStatus] = useState('Processando verificação...');
   const [error, setError] = useState<string | null>(null);
   const [showManualAction, setShowManualAction] = useState(false);
+  const [targetRoute, setTargetRoute] = useState('/dashboard');
 
   useEffect(() => {
     // Timeout de segurança para mostrar opção manual se demorar
@@ -31,15 +32,7 @@ function AuthCallbackContent() {
       try {
         console.log('Iniciando processamento do callback...');
         
-        // Verificar se já existe uma sessão válida antes de processar
-        const { data: existingSession } = await supabase.auth.getSession();
-        if (existingSession?.session) {
-          console.log('Sessão existente encontrada, redirecionando...');
-          toast.success('Sessão ativa recuperada!');
-          router.replace('/dashboard');
-          return;
-        }
-
+        // Extrair parâmetros primeiro para identificar o tipo de fluxo
         let code = searchParams.get('code');
         let token = searchParams.get('token');
         let type = searchParams.get('type');
@@ -70,6 +63,24 @@ function AuthCallbackContent() {
           type = type || hashType || type;
         }
 
+        console.log('Tipo de fluxo identificado:', type);
+
+        // Verificar se já existe uma sessão válida antes de processar
+        // MAS ignorar se for fluxo de recuperação de senha (precisa ir para reset-password)
+        if (type !== 'recovery') {
+          const { data: existingSession } = await supabase.auth.getSession();
+          if (existingSession?.session) {
+            console.log('Sessão existente encontrada, redirecionando...');
+            toast.success('Sessão ativa recuperada!');
+            router.replace('/dashboard');
+            return;
+          }
+        }
+
+        // Definir destino com base no tipo
+        const finalTargetRoute = type === 'recovery' ? '/reset-password' : '/dashboard';
+        setTargetRoute(finalTargetRoute);
+
         if (code) {
           setStatus('Trocando código por sessão...');
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -83,7 +94,7 @@ function AuthCallbackContent() {
               document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
             }
             toast.success('Login realizado com sucesso!');
-            router.replace('/dashboard');
+            router.replace(finalTargetRoute);
             return;
           }
         }
@@ -104,9 +115,27 @@ function AuthCallbackContent() {
               document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
             }
             toast.success('Login realizado com sucesso!');
-            router.replace('/dashboard');
+            router.replace(finalTargetRoute);
             return;
           }
+
+          // Fallback: tentar recuperar sessão se setSession não retornou imediatamente
+          const { data: recovered } = await supabase.auth.getSession();
+          if (recovered?.session) {
+            if (typeof document !== 'undefined') {
+              const maxAge = 60 * 60 * 24 * 7;
+              document.cookie = `sb-access-token=${recovered.session.access_token}; path=/; max-age=${maxAge}; samesite=lax`;
+              document.cookie = `sb-refresh-token=${recovered.session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
+            }
+            toast.success('Sessão criada com sucesso!');
+            router.replace(finalTargetRoute);
+            return;
+          }
+
+          setError('Não foi possível criar sessão automaticamente.');
+          toast.error('Falha ao configurar sessão. Faça login novamente.');
+          router.replace('/login');
+          return;
         }
 
         if (token) {
@@ -133,7 +162,7 @@ function AuthCallbackContent() {
                 document.cookie = `sb-refresh-token=${sessionData.session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
               }
               toast.success('Email confirmado e login realizado!');
-              router.replace('/dashboard');
+              router.replace(finalTargetRoute);
             } else {
               toast.success('Email confirmado! Faça login para continuar.');
               router.replace('/login?verified=1');
@@ -162,7 +191,7 @@ function AuthCallbackContent() {
                 document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
               }
               toast.success('Login realizado com sucesso!');
-              router.replace('/dashboard');
+              router.replace(finalTargetRoute);
               return;
             }
           }
@@ -203,11 +232,11 @@ function AuthCallbackContent() {
               Se não for redirecionado automaticamente:
             </p>
             <Button 
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push(targetRoute)}
               variant="outline"
               size="sm"
             >
-              Ir para o Dashboard
+              {targetRoute === '/reset-password' ? 'Redefinir Senha' : 'Ir para o Dashboard'}
             </Button>
           </div>
         )}
