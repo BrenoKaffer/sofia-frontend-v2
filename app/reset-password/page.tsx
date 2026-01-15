@@ -210,6 +210,7 @@ function ResetPasswordContent() {
       }
 
       toast.success('Senha redefinida com sucesso!');
+      setIsPasswordReset(true);
       
       if (typeof window !== 'undefined') {
           window.history.replaceState(null, '', '/login');
