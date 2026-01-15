@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowRight, ArrowUpRight, Clock, Activity, TrendingUp, BarChart3, Target, AlertTriangle, CheckCircle, ChevronRight, Play, Zap, History, Settings, ExternalLink } from 'lucide-react';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { useDashboardPreferences } from '@/hooks/use-dashboard-preferences';
 import { withLazyLoading } from '@/components/lazy/lazy-component';
@@ -80,6 +80,7 @@ interface KpiData {
 
 export default function DashboardPage() {
   const { user, isLoading, getToken } = useAuth();
+  const router = useRouter();
   const { preferences: dashboardPreferences, loading: preferencesLoading } = useDashboardPreferences();
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
@@ -87,6 +88,7 @@ export default function DashboardPage() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const lastActivityRef = useRef<number>(Date.now());
   const loadedUserRef = useRef<string | null>(null);
+  const redirectingRef = useRef<boolean>(false);
   // Assinar sinais em tempo real e filtrar por mesa ativa (se houver)
   const { signals: realtimeSignals, status: realtimeStatus } = useRealtimeSignals({ 
     limit: 50,
@@ -880,9 +882,24 @@ export default function DashboardPage() {
     );
   }
 
+  useEffect(() => {
+    const checkAndRedirect = async () => {
+      if (!isLoading && !user && !redirectingRef.current) {
+        const token = await getToken();
+        if (token) return;
+        redirectingRef.current = true;
+        router.replace('/login');
+      }
+    };
+    checkAndRedirect();
+  }, [isLoading, user, getToken, router]);
+
   if (!user) {
-    console.log('🚫 Usuário não autenticado, redirecionando...');
-    redirect('/login');
+    return (
+      <DashboardLayout>
+        <DashboardSkeleton />
+      </DashboardLayout>
+    );
   }
 
   return (
