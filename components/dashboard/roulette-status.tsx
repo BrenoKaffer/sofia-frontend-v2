@@ -24,16 +24,18 @@ interface RouletteDataDisplay {
 interface RouletteStatusProps {
   latestSpin: RouletteSpin | null;
   rouletteHistoryData: RouletteSpin[];
+  activeTableId?: string | null;
 }
 
 // Dados das roletas serão carregados dinamicamente da API
 
-export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStatusProps) {
+export function RouletteStatus({ latestSpin, rouletteHistoryData, activeTableId }: RouletteStatusProps) {
   const { getToken } = useAuth();
   const [selectedRouletteIndex, setSelectedRouletteIndex] = useState(0);
   const [rouletteTables, setRouletteTables] = useState<RouletteDataDisplay[]>([]);
   const [currentRouletteDisplay, setCurrentRouletteDisplay] = useState<RouletteDataDisplay | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showIframe, setShowIframe] = useState(false);
 
   // Buscar roletas monitoradas da API (já filtradas no backend)
   useEffect(() => {
@@ -81,6 +83,16 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
     
     fetchRouletteTables();
   }, [getToken]);
+
+  useEffect(() => {
+    if (activeTableId && rouletteTables.length > 0) {
+      const index = rouletteTables.findIndex(t => t.id === activeTableId);
+      if (index !== -1) {
+        setSelectedRouletteIndex(index);
+        setShowIframe(true); // Auto-open iframe on active signal
+      }
+    }
+  }, [activeTableId, rouletteTables]);
 
   useEffect(() => {
     if (selectedRouletteIndex < rouletteTables.length) {
@@ -215,7 +227,32 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
           )}
             </div>
 
-        {/* Selected roulette details */}
+        {/* Iframe View or Details */}
+        {showIframe && currentRouletteDisplay ? (
+          <div className="relative aspect-video w-full border border-border bg-black rounded-lg overflow-hidden shadow-2xl" id="game">
+              {/* Loading Spinner */}
+              <div className="absolute z-10 inset-0 flex items-center justify-center bg-black/50">
+                <Activity className="w-10 h-10 text-primary animate-spin" />
+              </div>
+              
+              {/* Game Iframe */}
+              <iframe 
+                src="https://n1oyhyi5i6.rziikhgudx.net/gs2c/playGame.do?key=token%3DcugdACaloYKFy5DU%60%7C%60symbol%3D237%60%7C%60technology%3DH5%60%7C%60platform%3DWEB%60%7C%60language%3Dpt%60%7C%60cashierUrl%3Dhttps%3A%2F%2Fgoldebet.bet.br%2Fuser%2Fwallet%2Fdeposit%60%7C%60lobbyUrl%3Dhttps%3A%2F%2Fgoldebet.bet.br%2Fcasino%2Flive&amp;ppkv=2&amp;stylename=cstb_goldebet&amp;rcCloseUrl=https://goldebet.bet.br&amp;isGameUrlApiCalled=true" 
+                className="relative z-20 h-full w-full"
+                allowFullScreen
+                allow="autoplay; fullscreen"
+              />
+
+              <button 
+                className="absolute top-3 right-3 text-white/50 hover:text-white hover:bg-black/50 p-2 rounded-full transition-all z-30"
+                onClick={() => setShowIframe(false)}
+              >
+                <span className="sr-only">Fechar</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>
+              </button>
+          </div>
+        ) : (
+        /* Selected roulette details */
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-medium font-heading">{currentRouletteDisplay?.name || 'Carregando...'}</h4>
@@ -242,6 +279,15 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
                 </Badge>
               )}
             </div>
+            {/* Botão para abrir Iframe manualmente */}
+            {currentRouletteDisplay && (
+               <button 
+                 onClick={() => setShowIframe(true)}
+                 className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded transition-colors"
+               >
+                 Abrir Mesa
+               </button>
+            )}
           </div>
 
           {/* Current spin (if available via Realtime) */}
@@ -337,6 +383,7 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData }: RouletteStat
             <Progress value={currentRouletteDisplay?.status === 'online' ? 100 : 0} className="h-2" />
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   );

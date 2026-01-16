@@ -11,6 +11,8 @@ const connections = new Map<string, {
   lastPing: number;
 }>();
 
+const isProd = process.env.NODE_ENV === 'production';
+
 // Tipos de eventos WebSocket
 export interface WebSocketMessage {
   type: 'subscribe' | 'unsubscribe' | 'ping' | 'pong' | 'data' | 'error' | 'auth';
@@ -284,14 +286,20 @@ class WebSocketManager {
   }
 }
 
-// Instância global do gerenciador
-const wsManager = new WebSocketManager();
-wsManager.startCleanup();
+// Instância global do gerenciador (desabilitada em produção para evitar timers em Vercel)
+const wsManager = !isProd ? new WebSocketManager() : null;
+if (wsManager) {
+  wsManager.startCleanup();
+}
 
 // GET - Informações sobre WebSocket
 export async function GET() {
   try {
-    const stats = wsManager.getStats();
+    const stats = wsManager ? wsManager.getStats() : {
+      totalConnections: 0,
+      authenticatedConnections: 0,
+      channelSubscriptions: {}
+    };
     
     return NextResponse.json({
       success: true,
@@ -320,6 +328,13 @@ export async function GET() {
 // POST - Enviar mensagem para canal específico (admin only)
 export async function POST(req: NextRequest) {
   try {
+    if (!wsManager) {
+      return NextResponse.json(
+        { error: 'WebSocket manager desabilitado em produção' },
+        { status: 503 }
+      );
+    }
+
     const body = await req.json();
     const { channel, data, target_user } = body;
 
