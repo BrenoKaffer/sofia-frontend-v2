@@ -219,6 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         toast.success('Login realizado com sucesso! Bem-vindo de volta ao SOFIA!');
+        router.prefetch('/dashboard');
         setIsLoading(false);
         return true;
       }
@@ -259,6 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             
             toast.success('Login realizado com sucesso! (Modo Fallback)');
+            router.prefetch('/dashboard');
             router.push('/dashboard');
             setIsLoading(false);
             return true;

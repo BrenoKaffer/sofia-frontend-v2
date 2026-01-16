@@ -52,22 +52,7 @@ async function isAuthenticated(req: NextRequest): Promise<boolean> {
   if (devBypassEnabled(req)) return true
   const access = req.cookies.get('sb-access-token')?.value
   const refresh = req.cookies.get('sb-refresh-token')?.value
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!access || !refresh || !url || !anon) return false
-  try {
-    const res = await fetch(`${url}/auth/v1/user`, {
-      headers: {
-        'Authorization': `Bearer ${access}`,
-        'apikey': anon,
-      },
-    })
-    if (!res.ok) return false
-    const data = await res.json().catch(() => null)
-    return Boolean(data && data.id)
-  } catch {
-    return false
-  }
+  return Boolean(access && refresh)
 }
 
 export async function middleware(req: NextRequest) {
