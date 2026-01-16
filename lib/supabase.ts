@@ -27,26 +27,27 @@ const defaultKey = supabaseAnonKey || 'placeholder-key'
 
 // Singleton getter for browser client
 export const getSupabaseClient = (): SupabaseClient => {
-  const globalAny = globalThis as unknown as { __sofiaSupabaseClient?: SupabaseClient }
-
-  if (globalAny.__sofiaSupabaseClient) {
-    return globalAny.__sofiaSupabaseClient
+  if (typeof window === 'undefined') {
+    return createClient(defaultUrl, defaultKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    })
   }
 
-  globalAny.__sofiaSupabaseClient = isBrowser
-    ? createBrowserClient(defaultUrl, defaultKey, {
-        auth: {
-          detectSessionInUrl: false, // Desabilitado para evitar conflito com processamento manual em /auth/callback
-          persistSession: true,
-        },
-      })
-    : createClient(defaultUrl, defaultKey, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-          detectSessionInUrl: false,
-        },
-      })
+  const globalAny = globalThis as unknown as { __sofiaSupabaseClient?: SupabaseClient }
+
+  if (!globalAny.__sofiaSupabaseClient) {
+    globalAny.__sofiaSupabaseClient = createBrowserClient(defaultUrl, defaultKey, {
+      auth: {
+        detectSessionInUrl: false, // Desabilitado para evitar conflito com processamento manual em /auth/callback
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    })
+  }
 
   return globalAny.__sofiaSupabaseClient
 }

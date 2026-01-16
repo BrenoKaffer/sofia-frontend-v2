@@ -121,16 +121,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ [AuthContext] Erro ao obter sessão inicial:', error);
+          throw error;
+        }
+
         console.log('🔄 [AuthContext] Sessão obtida:', session ? 'Sessão ativa' : 'Nenhuma sessão');
         
         if (session?.user) {
-          const userWithProfile = await fetchAndConvertUser(session.user);
-          setUser(userWithProfile);
-          console.log('✅ [AuthContext] Usuário definido:', userWithProfile.email);
+          // Otimização: Define usuário básico imediatamente para liberar UI
+          // enquanto carrega perfil completo em background
+          const basicUser: User = {
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
+            email: session.user.email || '',
+            avatar: session.user.user_metadata?.avatar_url,
+            cpf: session.user.user_metadata?.cpf,
+            fullName: session.user.user_metadata?.full_name
+          };
+          
+          setUser(basicUser); // Libera o loading imediatamente com dados básicos
+          
+          // Carrega perfil completo em background
+          fetchAndConvertUser(session.user).then(fullProfile => {
+            setUser(prev => {
+              // Só atualiza se o ID for o mesmo (evita race condition se usuário mudou)
+              if (prev?.id === fullProfile.id) {
+                return fullProfile;
+              }
+              return prev;
+            });
+          }).catch(err => console.error('Erro ao carregar perfil completo em background:', err));
+          
         }
       } catch (error) {
-        console.error('❌ [AuthContext] Erro ao obter sessão inicial:', error);
+        console.error('❌ [AuthContext] Erro fatal na sessão inicial:', error);
+        setUser(null);
       } finally {
         console.log('🏁 [AuthContext] Finalizando carregamento inicial (setIsLoading false)');
         setIsLoading(false);
@@ -138,6 +166,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     getInitialSession();
+
+    // Timeout de segurança para garantir que isLoading não fique travado eternamente
+    const safetyTimeout = setTimeout(() => {
+      setIsLoading(prev => {
+        if (prev) {
+          console.warn('⚠️ [AuthContext] Timeout de segurança atingido. Forçando isLoading = false.');
+          return false;
+        }
+        return prev;
+      });
+    }, 5000); // 5 segundos máximo de loading
 
     // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -153,30 +192,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (isLoggingOutRef.current) return;
-        if (AUTH_DEV_BYPASS) {
-          setUser({
-            id: 'dev-bypass-user',
-            name: 'Dev Bypass',
-            email: 'dev@local',
-            avatar: undefined,
-            cpf: undefined,
-            fullName: 'Dev Bypass'
-          });
-          setIsLoading(false);
-          return;
-        }
+        
+        if (AUTH_DEV_BYPASS) return;
+
         if (session?.user) {
-          const userWithProfile = await fetchAndConvertUser(session.user);
-          setUser(userWithProfile);
-        } else {
+          // Mesma estratégia: dados básicos primeiro
+           const basicUser: User = {
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuário',
+            email: session.user.email || '',
+            avatar: session.user.user_metadata?.avatar_url,
+            cpf: session.user.user_metadata?.cpf,
+            fullName: session.user.user_metadata?.full_name
+          };
+          
+          // Só atualiza se realmente mudou o usuário para evitar re-renders
+          setUser(prev => {
+             if (prev?.id !== basicUser.id) {
+                // Se mudou usuário, dispara busca de perfil
+                fetchAndConvertUser(session.user).then(fullProfile => {
+                  setUser(current => current?.id === fullProfile.id ? fullProfile : current);
+                });
+                return basicUser;
+             }
+             return prev;
+          });
+          
+        } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
+        
         setIsLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+    return () => {
+      clearTimeout(safetyTimeout);
+      subscription.unsubscribe();
+    };
+  }, []); // Dependência vazia para garantir execução única (Singleton Supabase é estável)
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
