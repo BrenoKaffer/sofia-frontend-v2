@@ -873,15 +873,6 @@ export default function DashboardPage() {
     }
   }, [user, getToken]); // Removida fetchRouletteStatus das dependências
 
-  if (isLoading) {
-    console.log('⏳ Dashboard em estado de carregamento...');
-    return (
-      <DashboardLayout>
-        <DashboardSkeleton />
-      </DashboardLayout>
-    );
-  }
-
   useEffect(() => {
     const checkAndRedirect = async () => {
       if (!isLoading && !user && !redirectingRef.current) {
@@ -893,6 +884,15 @@ export default function DashboardPage() {
     };
     checkAndRedirect();
   }, [isLoading, user, getToken, router]);
+
+  if (isLoading) {
+    console.log('⏳ Dashboard em estado de carregamento...');
+    return (
+      <DashboardLayout>
+        <DashboardSkeleton />
+      </DashboardLayout>
+    );
+  }
 
   if (!user) {
     return (

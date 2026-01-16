@@ -44,6 +44,12 @@ export class WebSocketService {
     this.isConnecting = true;
 
     try {
+      if (!this.config.url || this.config.url.trim() === '') {
+        console.warn('WebSocket URL não configurada. Pulando conexão.');
+        this.isConnecting = false;
+        this.emit('error', new Error('WEBSOCKET_URL_MISSING'));
+        return;
+      }
       // Obter token de autenticação
       const authToken = await this.getAuthToken();
       const wsUrl = authToken 
