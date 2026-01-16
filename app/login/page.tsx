@@ -168,43 +168,28 @@ export default function LoginPage() {
       
       console.warn('Resultado do login:', success);
       if (success) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token && session?.refresh_token) {
-            const maxAge = 60 * 60 * 24 * 7;
-            document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${maxAge}; samesite=lax`;
-            document.cookie = `sb-refresh-token=${session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
-          }
-        } catch { }
-        try {
-          if (rememberMe) {
-            if (typeof window !== 'undefined') {
-              window.localStorage.setItem('sofia_remember_me', 'true');
-              window.localStorage.setItem('sofia_remember_email', email);
-            }
-          } else {
-            if (typeof window !== 'undefined') {
-              window.localStorage.removeItem('sofia_remember_me');
-              window.localStorage.removeItem('sofia_remember_email');
-            }
-          }
-        } catch { }
+        // Navegar imediatamente para evitar travar o botão em casos de chamadas demoradas
         toast.success('Login realizado com sucesso!');
-        router.push('/dashboard');
-      } else {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            const maxAge = 60 * 60 * 24 * 7;
-            document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${maxAge}; samesite=lax`;
-            if (session?.refresh_token) {
-              document.cookie = `sb-refresh-token=${session.refresh_token}; path=/; max-age=${maxAge}; samesite=lax`;
+        router.replace('/dashboard');
+        // Persistir preferências de "Lembrar-me" de forma não bloqueante
+        setTimeout(() => {
+          try {
+            if (rememberMe) {
+              if (typeof window !== 'undefined') {
+                window.localStorage.setItem('sofia_remember_me', 'true');
+                window.localStorage.setItem('sofia_remember_email', email);
+              }
+            } else {
+              if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('sofia_remember_me');
+                window.localStorage.removeItem('sofia_remember_email');
+              }
             }
-            toast.success('Login realizado com sucesso!');
-            router.push('/dashboard');
-            return;
-          }
-        } catch {}
+          } catch { }
+          // Cookies já são definidos pela resposta do servidor (/api/auth/login)
+          // Evitar chamadas bloqueantes como supabase.auth.getSession aqui
+        }, 0);
+      } else {
         toast.error('Credenciais inválidas. Verifique seu email e senha.');
       }
     } catch (error) {
