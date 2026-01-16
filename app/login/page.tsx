@@ -168,9 +168,17 @@ export default function LoginPage() {
       
       console.warn('Resultado do login:', success);
       if (success) {
-        // Navegar imediatamente para evitar travar o botão em casos de chamadas demoradas
         toast.success('Login realizado com sucesso!');
+        router.prefetch('/dashboard');
         router.replace('/dashboard');
+        setTimeout(() => {
+          try {
+            router.refresh();
+          } catch {}
+          if (typeof window !== 'undefined' && window.location.pathname !== '/dashboard') {
+            window.location.href = '/dashboard';
+          }
+        }, 200);
         // Persistir preferências de "Lembrar-me" de forma não bloqueante
         setTimeout(() => {
           try {
