@@ -1228,7 +1228,7 @@ function DashboardPage() {
                 </div>
 
                 {/* Boté£o Aplicar Aposta - Skeleton */}
-                <div className="flex flex-col justify-center">
+                <div className="flex flex-col items-center justify-center h-full">
                   <Button 
                     size="lg" 
                     disabled
@@ -1453,7 +1453,7 @@ function DashboardPage() {
                       }}
                     >
                       <Target className="w-5 h-5 mr-2" />
-                      {countdown <= 0 ? 'Sinal Expirado' : 'Aplicar Aposta'}
+                      {countdown <= 0 ? 'Sinal Expirado' : 'Entrar'}
                     </Button>
                     
                     <div className="mt-2 text-center">
