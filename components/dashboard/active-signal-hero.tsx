@@ -25,10 +25,9 @@ interface GeneratedSignal {
 interface ActiveSignalHeroProps {
   signal: GeneratedSignal | null;
   onEnterTable?: (tableId: string) => void;
-  onSkipPattern?: () => void;
 }
 
-export function ActiveSignalHero({ signal, onEnterTable, onSkipPattern }: ActiveSignalHeroProps) {
+export function ActiveSignalHero({ signal, onEnterTable }: ActiveSignalHeroProps) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [progress, setProgress] = useState(100);
   const [isUrgent, setIsUrgent] = useState(false);
@@ -178,15 +177,6 @@ export function ActiveSignalHero({ signal, onEnterTable, onSkipPattern }: Active
                 <ArrowRight className="w-6 h-6" />
               </div>
             </Button>
-            {onSkipPattern && (
-              <Button
-                variant="link"
-                className="w-full mt-2 text-xs font-medium text-muted-foreground hover:text-primary"
-                onClick={onSkipPattern}
-              >
-                Pular Padrão
-              </Button>
-            )}
             <p className="text-xs text-center text-muted-foreground mt-3 font-sans">
               <AlertTriangle className="w-3 h-3 inline mr-1 mb-0.5" />
               Clique para abrir a roleta automaticamente
