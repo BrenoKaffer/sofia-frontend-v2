@@ -1432,37 +1432,60 @@ function DashboardPage() {
                    </div>
                 </div>
 
-                {/* Boté£o Ir para a Mesa */}
                 <div className="flex flex-col justify-center">
                   <div className="relative group">
                     <Button 
-                    size="lg" 
-                    disabled={countdown <= 0}
-                    className={`font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform ${
-                      countdown <= 0 
-                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50' 
-                        : 'bg-green-600 hover:bg-green-500 text-white hover:scale-105'
-                    }`}
-                    onClick={() => {
-                      if (countdown > 0) {
-                        setSelectedActiveTable({
-                          tableId: activeSignal.table_id || 'pragmatic-mega-roulette',
-                          strategyName: activeSignal.strategy_name || activeSignal.strategy_id,
-                          suggestedBets: activeSignal.bet_numbers || []
-                        });
-                      }
-                    }}
-                  >
-                    <Target className="w-5 h-5 mr-2" />
-                    {countdown <= 0 ? 'Sinal Expirado' : 'Aplicar Aposta'}
-                  </Button>
+                      size="lg" 
+                      disabled={countdown <= 0}
+                      className={`font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform ${
+                        countdown <= 0 
+                          ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50' 
+                          : 'bg-green-600 hover:bg-green-500 text-white hover:scale-105'
+                      }`}
+                      onClick={() => {
+                        if (countdown > 0) {
+                          setSelectedActiveTable({
+                            tableId: activeSignal.table_id || 'pragmatic-mega-roulette',
+                            strategyName: activeSignal.strategy_name || activeSignal.strategy_id,
+                            suggestedBets: activeSignal.bet_numbers || []
+                          });
+                        }
+                      }}
+                    >
+                      <Target className="w-5 h-5 mr-2" />
+                      {countdown <= 0 ? 'Sinal Expirado' : 'Aplicar Aposta'}
+                    </Button>
                     
-                    {/* Tooltip com néºmeros de aposta */}
+                    <div className="mt-2 text-center">
+                      <button
+                        type="button"
+                        className="text-xs text-gray-300 underline underline-offset-4 hover:text-white transition-colors"
+                        onClick={() => {
+                          if (!activeSignal || !liveSignalsData.length) return;
+                          const currentIndex = liveSignalsData.findIndex(
+                            signal => signal.id === activeSignal.id
+                          );
+                          if (currentIndex === -1) return;
+                          const nextIndex = currentIndex + 1;
+                          const nextSignal =
+                            nextIndex < liveSignalsData.length
+                              ? liveSignalsData[nextIndex]
+                              : null;
+                          if (nextSignal) {
+                            setActiveSignal(nextSignal);
+                          } else {
+                            setActiveSignal(null);
+                          }
+                        }}
+                      >
+                        Pular Padrão
+                      </button>
+                    </div>
+                    
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                       <div className="text-xs text-gray-300 mb-1">Apostas Sugeridas:</div>
                       <div className="flex gap-1">
                         {(() => {
-                          // Filtrar apenas néºmeros vé¡lidos (0-36)
                           const validNumbers: number[] = [];
                           
                           const betsArray = activeSignal.bet_numbers || activeSignal.suggested_bets;
@@ -1470,7 +1493,6 @@ function DashboardPage() {
                           betsArray?.forEach(bet => {
                             if (typeof bet === 'string') {
                               if (bet.includes(',')) {
-                                // String com néºmeros separados por vé­rgula
                                 const nums = bet.split(',').map(n => n.trim());
                                 nums.forEach(num => {
                                   const parsedNum = Number(num);
@@ -1479,21 +1501,18 @@ function DashboardPage() {
                                   }
                                 });
                               } else {
-                                // Verificar se é© um néºmero vé¡lido
                                 const parsedNum = Number(bet);
                                 if (!isNaN(parsedNum) && parsedNum >= 0 && parsedNum <= 36) {
                                   validNumbers.push(parsedNum);
                                 }
                               }
                             } else if (typeof bet === 'number') {
-                              // Se é© néºmero, verificar se esté¡ no range vé¡lido
                               if (bet >= 0 && bet <= 36) {
                                 validNumbers.push(bet);
                               }
                             }
                           });
                           
-                          // Remover duplicatas e limitar a 5
                           const uniqueNumbers = Array.from(new Set(validNumbers)).slice(0, 5);
                           
                           return (
@@ -1510,7 +1529,6 @@ function DashboardPage() {
                           );
                         })()}
                       </div>
-                      {/* Seta do tooltip */}
                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                     </div>
                   </div>
@@ -1617,4 +1635,3 @@ function DashboardPage() {
 
 // Memoizaé§é£o do componente principal para otimizaé§é£o de performance
 export default memo(DashboardPage);
-
