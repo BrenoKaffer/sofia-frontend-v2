@@ -141,31 +141,6 @@ function getConditionValidationMessages(n: StrategyNode): string[] {
 }
 
 export default function BuilderPage() {
-  const isMvpMode = useFeatureFlag(FEATURE_FLAGS.MVP_MODE)
-  if (isMvpMode) {
-    return (
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Builder de Estratégias – Em breve</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Para o MVP, o foco está em autenticação, checkout e dashboard. O builder completo será liberado após o lançamento inicial.
-            </p>
-            <div className="flex gap-2">
-              <Button asChild>
-                <a href="/dashboard">Ir para Dashboard</a>
-              </Button>
-              <Button variant="outline" asChild>
-                <a href="/strategies">Ver Estratégias</a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
   const { user } = useAuth()
   const { userProfile, loading } = useUserStatus(user?.id)
   const { openUpgradeModal } = useUpgrade()

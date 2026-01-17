@@ -571,7 +571,7 @@ export default function BuilderPage() {
               </TabsList>
               <TabsContent value="estratégias">
                 {strategies.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">Nenhuma estratégia salva ainda. Clique em "Nova Estratégia".</div>
+                  <div className="text-sm text-muted-foreground">Nenhuma estratégia salva ainda. Clique em &quot;Nova Estratégia&quot;.</div>
                 ) : (
                   <div className="space-y-2">
                     {strategies.map(s => (

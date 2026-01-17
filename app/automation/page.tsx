@@ -75,34 +75,6 @@ export default function AutomationPage() {
     }
   }, [loading, userProfile, openUpgradeModal])
 
-  // Gate: mostrar aviso simples em modo MVP
-  if (isMvpMode) {
-    return (
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Automação – Em breve</CardTitle>
-            <CardDescription>
-              Para o MVP estamos priorizando Login, Cadastro, Checkout e Dashboard básico. A automação ficará disponível após a liberação inicial.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="text-sm text-muted-foreground">
-              Você ainda pode configurar estratégias em "Estrategias" e acompanhar status em "Roulette Status".
-            </div>
-            <div className="flex gap-2">
-              <Button asChild>
-                <a href="/dashboard">Ir para Dashboard</a>
-              </Button>
-              <Button variant="outline" asChild>
-                <a href="/strategies">Abrir Estratégias</a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
   // WebSocket connection
   const {
     connectionState,
@@ -114,7 +86,7 @@ export default function AutomationPage() {
     lastMessage,
     channelData
   } = useWebSocket({
-    autoConnect: true,
+    autoConnect: !isMvpMode,
     channels: [
       WEBSOCKET_CHANNELS.AUTOMATION_NOTIFICATIONS,
       WEBSOCKET_CHANNELS.BETTING_UPDATES,
@@ -149,6 +121,35 @@ export default function AutomationPage() {
       handleWebSocketMessage(channel, data);
     }
   }, [lastMessage, handleWebSocketMessage]);
+
+  // Gate: mostrar aviso simples em modo MVP
+  if (isMvpMode) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Automação – Em breve</CardTitle>
+            <CardDescription>
+              Para o MVP estamos priorizando Login, Cadastro, Checkout e Dashboard básico. A automação ficará disponível após a liberação inicial.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="text-sm text-muted-foreground">
+              Você ainda pode configurar estratégias em &quot;Estrategias&quot; e acompanhar status em &quot;Roulette Status&quot;.
+            </div>
+            <div className="flex gap-2">
+              <Button asChild>
+                <a href="/dashboard">Ir para Dashboard</a>
+              </Button>
+              <Button variant="outline" asChild>
+                <a href="/strategies">Abrir Estratégias</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // System control functions using unified hook
   const handleSystemInitialize = () => {

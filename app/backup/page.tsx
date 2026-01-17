@@ -219,7 +219,7 @@ export default function BackupPage() {
 
   useEffect(() => {
     loadBackups();
-  }, []);
+  }, [loadBackups]);
 
   return (
     <DashboardLayout>

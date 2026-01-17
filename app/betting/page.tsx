@@ -70,9 +70,9 @@ export default function BettingPage() {
   // Inicializar sessão automaticamente
   useEffect(() => {
     if (!currentSession && !isLoading) {
-      handleCreateSession();
+      createSession(config).catch(error => console.error('Erro ao criar sessão:', error));
     }
-  }, []);
+  }, [currentSession, isLoading, createSession, config]);
 
   /**
    * Criar nova sessão

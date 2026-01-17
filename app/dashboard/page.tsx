@@ -516,11 +516,10 @@ export default function DashboardPage() {
             {/* Sinais em Tempo Real */}
             <LiveSignals 
               signals={liveSignalsData} 
-              isLoading={loadingSignals}
-              activeSignal={activeSignal}
-              onSelectSignal={setActiveSignal}
-              countdown={countdown}
-              progressValue={progressValue}
+              loading={loadingSignals} 
+              activeSignal={activeSignal} 
+              countdown={countdown} 
+              progressValue={progressValue} 
             />
 
           </div>
@@ -530,17 +529,25 @@ export default function DashboardPage() {
              
              {/* KPIs Cards */}
              <StatsCards 
-                kpis={kpisData} 
-                isLoading={loadingStats} 
+                kpisData={kpisData} 
+                loading={loadingStats} 
+                activeSignal={activeSignal}
+                countdown={countdown}
              />
 
-             {/* Gráfico de Performance (Simplificado por enquanto) */}
-             <PerformanceChart data={kpisData} isLoading={loadingStats} />
-
-             {/* Histórico Recente */}
+             {/* Performance Chart */}
+             <div className="mb-6 h-[400px]">
+               <PerformanceChart 
+                 kpisData={kpisData} 
+                 loading={loadingStats} 
+               />
+             </div>
+            
+             {/* Recent Activity */}
              <RecentActivity 
-               history={rouletteHistoryData} 
-               isLoading={loadingStats} 
+               signals={liveSignalsData}
+               spins={rouletteHistoryData}
+               loading={loadingSignals}
              />
 
           </div>
