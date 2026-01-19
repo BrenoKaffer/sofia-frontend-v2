@@ -78,9 +78,8 @@ function generateMockRouletteStatus() {
 
 export async function GET(request: NextRequest) {
   try {
-    const authContext = await auth();
-    const isAuthenticated = (authContext as any)?.isAuthenticated === true;
-    if (!isAuthenticated) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

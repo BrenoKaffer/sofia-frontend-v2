@@ -1,0 +1,9 @@
+node_modules/
+.next/
+dist/
+out/
+coverage/
+*.log
+lint-report.json
+.DS_Store
+.env

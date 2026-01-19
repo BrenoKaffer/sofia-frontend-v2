@@ -73,10 +73,7 @@ function generateMockKPIs(tableId?: string | null) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Obter informações de autenticação do middleware
-    const userId = request.headers.get('x-user-id');
-    const authType = request.headers.get('x-auth-type');
-    
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
