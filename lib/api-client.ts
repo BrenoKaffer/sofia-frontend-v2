@@ -28,13 +28,15 @@ class ApiClient {
   private defaultRetries = 3;
 
   constructor() {
-    // Configuração: preferir URLs definidas via env, com fallback para rotas internas /api
-    const explicitApiBase = process.env.NEXT_PUBLIC_API_BASE_URL; // e.g., http://localhost:3002/api
-    const sofiaBackendUrl = process.env.SOFIA_BACKEND_URL; // e.g., http://localhost:3001
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const explicitApiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const sofiaBackendUrl = process.env.SOFIA_BACKEND_URL;
 
-    if (explicitApiBase) {
+    if (apiUrl) {
+      this.baseUrl = `${apiUrl}/api`;
+      this.publicBaseUrl = `${apiUrl}/api/public`;
+    } else if (explicitApiBase) {
       this.baseUrl = explicitApiBase;
-      // Se terminar com /api, usar /api/public; caso contrário, anexar /public
       this.publicBaseUrl = explicitApiBase.endsWith('/api')
         ? `${explicitApiBase}/public`
         : `${explicitApiBase}/public`;
@@ -42,7 +44,6 @@ class ApiClient {
       this.baseUrl = `${sofiaBackendUrl}/api`;
       this.publicBaseUrl = `${sofiaBackendUrl}/api/public`;
     } else {
-      // Fallback para roteamento interno do Next.js em desenvolvimento
       this.baseUrl = `/api`;
       this.publicBaseUrl = `/api/public`;
     }

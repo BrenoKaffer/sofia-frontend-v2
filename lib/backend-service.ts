@@ -35,7 +35,7 @@ class BackendService {
 
   constructor() {
     this.config = {
-      baseUrl: process.env.SOFIA_BACKEND_URL || '',
+      baseUrl: process.env.SOFIA_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || '',
       timeout: parseInt(process.env.SOFIA_API_TIMEOUT || '15000'),
       retries: parseInt(process.env.SOFIA_API_RETRIES || '3'),
       retryDelay: parseInt(process.env.SOFIA_API_RETRY_DELAY || '1000'),
@@ -45,7 +45,11 @@ class BackendService {
     if (!this.config.baseUrl) {
       this.config.baseUrl = '';
     }
-    this.internalBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_BACKEND_URL || '';
+    this.internalBaseUrl =
+      process.env.NEXT_PUBLIC_API_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      '';
   }
 
   /**

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backendService } from '@/lib/backend-service';
+import { auth } from '@/lib/auth-server';
 
 // MOCK DATA: Função para gerar status das roletas simulados
 function generateMockRouletteStatus() {
@@ -77,11 +78,9 @@ function generateMockRouletteStatus() {
 
 export async function GET(request: NextRequest) {
   try {
-    // Obter informações de autenticação do middleware
-    const userId = request.headers.get('x-user-id');
-    const authType = request.headers.get('x-auth-type');
-    
-    if (!userId) {
+    const authContext = await auth();
+    const isAuthenticated = (authContext as any)?.isAuthenticated === true;
+    if (!isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

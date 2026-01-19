@@ -66,7 +66,12 @@ export async function GET(request: NextRequest) {
 
     // Montar URL do backend externo conforme expectativa dos testes
     // Path: /api/roulette/history (sem hífen)
-    const baseUrl = process.env.BACKEND_URL || '';
+    const baseUrl =
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      process.env.SOFIA_BACKEND_URL ||
+      '';
     const params = new URLSearchParams();
     params.append('page', String(filters.page));
     params.append('limit', String(filters.limit));
@@ -79,7 +84,10 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Buscando histórico de roletas no backend:', url);
 
     // Preparar headers com API key
-    const apiKey = process.env.BACKEND_API_KEY || '';
+    const apiKey =
+      process.env.BACKEND_API_KEY ||
+      ((authContext as any)?.session?.access_token as string) ||
+      '';
 
     // Implementar timeout via AbortController, mas manter os campos extras
     const controller = new AbortController();
@@ -90,7 +98,7 @@ export async function GET(request: NextRequest) {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
           'Content-Type': 'application/json'
         },
         // Campos extras para satisfazer asserções dos testes
