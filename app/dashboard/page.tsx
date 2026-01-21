@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { DashboardLayout } from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowRight, ArrowUpRight, Clock, Activity, TrendingUp, BarChart3, Target, AlertTriangle, CheckCircle, ChevronRight, Play, Zap, History, Settings, ExternalLink } from 'lucide-react';
-import { redirect } from 'next/navigation';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { useDashboardPreferences } from '@/hooks/use-dashboard-preferences';
 import { withLazyLoading } from '@/components/lazy/lazy-component';
@@ -79,6 +79,7 @@ interface KpiData {
 // Dados dinâmicos baseados no backend
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, isLoading, getToken } = useAuth();
   const { preferences: dashboardPreferences, loading: preferencesLoading } = useDashboardPreferences();
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
@@ -640,6 +641,24 @@ export default function DashboardPage() {
     monitoredTablesRef.current = monitoredTables;
   }, [monitoredTables]);
 
+  // Guard de autenticação para redirecionar usuários não logados
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    const checkAuth = async () => {
+      if (!user) {
+        const token = await getToken();
+        if (!token) {
+          router.replace('/login');
+        }
+      }
+    };
+
+    checkAuth();
+  }, [user, isLoading, getToken, router]);
+
   // Efeito para carregar dados iniciais do backend
   useEffect(() => {
     console.log('🔄 useEffect executado - carregando dados reais!');
@@ -871,18 +890,13 @@ export default function DashboardPage() {
     }
   }, [user, getToken]); // Removida fetchRouletteStatus das dependências
 
-  if (isLoading) {
-    console.log('⏳ Dashboard em estado de carregamento...');
+  if (isLoading || !user) {
+    console.log('⏳ Dashboard em estado de carregamento ou usuário não autenticado...');
     return (
       <DashboardLayout>
         <DashboardSkeleton />
       </DashboardLayout>
     );
-  }
-
-  if (!user) {
-    console.log('🚫 Usuário não autenticado, redirecionando...');
-    redirect('/login');
   }
 
   return (

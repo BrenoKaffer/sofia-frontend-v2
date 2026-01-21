@@ -17,8 +17,13 @@ export default function SignInPage() {
     try {
       await login(email, password, remember);
       router.replace("/");
-    } catch {
-      setError("Falha no login. Verifique suas credenciais.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "forbidden_role") {
+        setError("Sua conta não tem acesso de parceiro. Solicite role=partner.");
+      } else {
+        setError("Falha no login. Verifique suas credenciais.");
+      }
     }
   }
 
@@ -67,4 +72,3 @@ export default function SignInPage() {
     </div>
   );
 }
-
