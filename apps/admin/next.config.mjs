@@ -22,6 +22,9 @@ const nextConfig = {
         port: ""
       }
     ]
+  },
+  turbopack: {
+    root: process.cwd()
   }
 };
 
