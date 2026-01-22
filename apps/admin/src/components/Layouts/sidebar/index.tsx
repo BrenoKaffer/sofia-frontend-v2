@@ -16,6 +16,7 @@ const NAV = [
 export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, setIsOpen, isMobile, toggleSidebar } = useSidebarContext();
+  if (pathname.startsWith("/auth")) return null;
   return (
     <>
       {isMobile && isOpen && (

@@ -1,14 +1,16 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { SearchIcon, MenuIcon } from "./icons";
 import { Notification } from "./notification";
-import { ThemeToggleSwitch } from "./theme-toggle";
 import { useSidebarContext } from "../sidebar/sidebar-context";
 import { UserInfo } from "./user-info";
 
 export function Header() {
   const { toggleSidebar, isMobile } = useSidebarContext();
+  const pathname = usePathname();
+  if (pathname.startsWith("/auth")) return null;
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-stroke bg-white px-4 py-5 shadow-1 dark:border-stroke-dark dark:bg-gray-dark md:px-5 2xl:px-10">
       <button
@@ -42,7 +44,6 @@ export function Header() {
           />
           <SearchIcon className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 max-[1015px]:size-5" />
         </div>
-        <ThemeToggleSwitch />
         <Notification />
         <div className="shrink-0">
           <UserInfo />
@@ -51,4 +52,3 @@ export function Header() {
     </header>
   );
 }
-

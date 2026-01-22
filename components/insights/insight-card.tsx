@@ -55,9 +55,11 @@ export function InsightCard({
             <div className="absolute inset-0 bg-black/10 group-hover/card:bg-black/0 transition-colors" />
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-muted/20 to-card">
-             <TrendingUp className="w-12 h-12 text-primary/50" />
-          </div>
+          <img 
+            src={`https://picsum.photos/seed/${encodeURIComponent(id)}-sofia/360/640`} 
+            alt={title} 
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+          />
         )}
 
         {/* Top Badges */}

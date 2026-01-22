@@ -1,15 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
-  const { login, loading } = useAuth();
+  const { login, loading, logout } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    logout();
+  }, [logout]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

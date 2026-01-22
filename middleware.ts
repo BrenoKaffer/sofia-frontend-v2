@@ -194,5 +194,22 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/(.*)']
+  matcher: [
+    '/checkout/:path*',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-email',
+    '/auth/callback',
+    '/dashboard',
+    '/dashboard/:path*',
+    '/automation/:path*',
+    '/betting/:path*',
+    '/analytics/:path*',
+    '/custom-signals/:path*',
+    '/simulator/:path*',
+    '/metrics/:path*',
+    '/admin/:path*',
+  ]
 }

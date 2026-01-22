@@ -75,6 +75,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await loginPartner(email.trim().toLowerCase(), password);
       setToken(res.token);
       setPartner(res.partner);
+      try {
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: res.token, remember: !!remember }),
+        });
+      } catch {}
       if (remember) {
         localStorage.setItem('partner-auth', JSON.stringify({ token: res.token }));
       }
@@ -87,6 +94,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setPartner(null);
     localStorage.removeItem('partner-auth');
+    try {
+      fetch("/api/auth/session", { method: "DELETE" }).catch(() => {});
+    } catch {}
   };
 
   const value = useMemo(

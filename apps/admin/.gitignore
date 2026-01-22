@@ -7,3 +7,4 @@ coverage/
 lint-report.json
 .DS_Store
 .env
+.env.local

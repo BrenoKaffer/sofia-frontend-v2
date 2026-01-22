@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-server';
 import { backendIntegration } from '@/lib/backend-integration';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
@@ -20,14 +21,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: Verificar se o usuário é administrador
-    // const isAdmin = await checkAdminRole(userId);
-    // if (!isAdmin) {
-    //   return NextResponse.json(
-    //     { success: false, error: 'Acesso negado - requer privilégios de administrador' },
-    //     { status: 403 }
-    //   );
-    // }
+    // Verificar privilégios de administrador (via Supabase) ou token de admin no header
+    const isAdmin = await checkAdminRole(userId);
+    const header = request.headers.get('authorization') || '';
+    const bearer = header.startsWith('Bearer ') ? header.slice(7) : header;
+    const expected = process.env.HEALTH_ADMIN_TOKEN || process.env.NEXT_HEALTH_ADMIN_TOKEN || '';
+    const hasTokenAdmin = !!expected && bearer.trim() === expected.trim();
+    if (!isAdmin && !hasTokenAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Acesso negado - requer privilégios de administrador' },
+        { status: 403 }
+      );
+    }
 
     console.log('📊 Coletando status do sistema...');
 
@@ -137,6 +142,34 @@ async function checkCacheStatus() {
     },
     message: 'Cache operacional'
   };
+}
+
+async function checkAdminRole(userId: string): Promise<boolean> {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE;
+    if (!url || !key) return false;
+    const supabaseAdmin = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+    // Preferir view admin_users quando disponível
+    const { data: adminView } = await supabaseAdmin
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+    if (adminView?.user_id) return true;
+    // Fallback: verificar account_status diretamente
+    const { data } = await supabaseAdmin
+      .from('user_profiles')
+      .select('account_status')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+    const status = (data as any)?.account_status;
+    return status === 'admin' || status === 'superadmin';
+  } catch {
+    return false;
+  }
 }
 
 /**

@@ -8,9 +8,18 @@ export function middleware(req: NextRequest) {
     url.pathname = "/auth/sign-in";
     return NextResponse.redirect(url);
   }
+  if (pathname.startsWith("/auth") || pathname.startsWith("/api")) {
+    return NextResponse.next();
+  }
+  const hasSession = req.cookies.get("partner_auth");
+  if (!hasSession) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/auth/sign-in";
+    return NextResponse.redirect(url);
+  }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/login"],
+  matcher: ["/((?!_next|static|images|favicon.ico).*)"],
 };
