@@ -32,7 +32,7 @@
    }
  
   return (
-   <div className="min-h-screen flex flex-col items-center justify-center px-6">
+   <div className="flex flex-col items-center justify-center px-6 py-8 md:py-12 min-h-[calc(100vh-120px)]">
      <div className="mb-8 text-center">
        <h1 className="text-3xl font-extrabold tracking-wide text-dark dark:text-white">SOFIA ADMIN</h1>
      </div>
