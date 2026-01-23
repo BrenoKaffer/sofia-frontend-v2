@@ -4,7 +4,7 @@
  import { useRouter } from "next/navigation";
  
  export default function SignInPage() {
-   const { login, loading, logout } = useAuth();
+  const { login, loading, token } = useAuth();
    const router = useRouter();
    const [email, setEmail] = useState("");
    const [password, setPassword] = useState("");
@@ -12,15 +12,15 @@
    const [remember, setRemember] = useState(true);
    const [error, setError] = useState<string | null>(null);
  
-   useEffect(() => {
-     logout();
-   }, [logout]);
+  useEffect(() => {
+    if (token) router.replace("/dashboard");
+  }, [token, router]);
  
    async function handleLogin() {
      setError(null);
      try {
-       await login(email, password, remember);
-       router.replace("/sales");
+      await login(email, password, remember);
+      router.replace("/dashboard");
      } catch (err) {
        const msg = err instanceof Error ? err.message : "";
        if (msg === "forbidden_role") {
@@ -32,7 +32,7 @@
    }
  
   return (
-   <div className="min-h-screen bg-slate-50 dark:bg-gray-dark flex flex-col items-center justify-center px-6">
+   <div className="min-h-screen flex flex-col items-center justify-center px-6">
      <div className="mb-8 text-center">
        <h1 className="text-3xl font-extrabold tracking-wide text-dark dark:text-white">SOFIA ADMIN</h1>
      </div>
