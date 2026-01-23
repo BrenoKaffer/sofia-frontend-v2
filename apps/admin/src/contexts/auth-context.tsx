@@ -57,9 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (active) setPartner(me);
       } catch {
         if (active) {
-          setPartner(null);
-          setToken(null);
-          localStorage.removeItem('partner-auth');
         }
       }
     }
