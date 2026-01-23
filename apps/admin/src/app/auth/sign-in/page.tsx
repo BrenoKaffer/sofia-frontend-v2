@@ -16,8 +16,7 @@ export default function SignInPage() {
     logout();
   }, [logout]);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleLogin() {
     setError(null);
     try {
       await login(email, password, remember);
@@ -35,13 +34,22 @@ export default function SignInPage() {
   return (
     <div className="mx-auto max-w-md rounded-xl border bg-white p-6 shadow-1 dark:border-dark-4 dark:bg-gray-dark">
       <h1 className="mb-4 text-2xl font-bold text-dark dark:text-white">Entrar</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleLogin();
+        }}
+        className="space-y-4"
+      >
         <div>
           <label className="mb-1 block text-sm">Email</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleLogin();
+            }}
             className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
             autoComplete="email"
             required
@@ -54,6 +62,9 @@ export default function SignInPage() {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleLogin();
+              }}
               className="w-full rounded-lg border bg-gray-2 p-3 pr-10 outline-none dark:border-dark-3 dark:bg-dark-2"
               autoComplete="current-password"
               required
@@ -89,7 +100,8 @@ export default function SignInPage() {
         </div>
         {error && <div className="text-sm text-red-light">{error}</div>}
         <button
-          type="submit"
+          type="button"
+          onClick={handleLogin}
           disabled={loading}
           className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-white disabled:opacity-60"
         >
