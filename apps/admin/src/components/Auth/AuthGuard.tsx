@@ -7,11 +7,19 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { token, ready } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  if (pathname.startsWith('/auth')) return <>{children}</>;
+  const isAuthPage = pathname?.startsWith('/auth');
+
   useEffect(() => {
-    if (ready && !token) router.replace('/auth/sign-in');
-  }, [token, ready, router]);
-  if (!ready) return null;
-  if (!token) return null;
+    if (!ready) return;
+
+    if (isAuthPage) {
+      if (token) router.replace('/dashboard');
+    } else {
+      if (!token) router.replace('/auth/sign-in');
+    }
+  }, [ready, token, router, isAuthPage]);
+
+  if (isAuthPage) return <>{children}</>;
+  if (!ready || !token) return null;
   return <>{children}</>;
 }

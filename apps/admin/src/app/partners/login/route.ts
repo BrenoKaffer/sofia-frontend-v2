@@ -4,8 +4,8 @@ import type { Partner } from "@/types/partner";
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
-    const expectedEmail = String(process.env.TEST_EMAIL || "").trim().toLowerCase();
-    const expectedPassword = String(process.env.TEST_PASSWORD || "");
+    const expectedEmail = String(process.env.TEST_EMAIL || "admin@sofia.com").trim().toLowerCase();
+    const expectedPassword = String(process.env.TEST_PASSWORD || "123456");
     const isValid =
       typeof email === "string" &&
       typeof password === "string" &&
