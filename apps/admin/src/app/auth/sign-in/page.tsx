@@ -31,13 +31,13 @@
      }
    }
  
-   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-gray-dark flex items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-xl border bg-white p-8 shadow-sm dark:border-dark-4 dark:bg-gray-dark">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="text-xl font-bold text-indigo-600">Sofia Admin</div>
-        </div>
-        <h1 className="mb-2 text-2xl font-bold text-dark dark:text-white">Entrar</h1>
+  return (
+   <div className="min-h-screen bg-slate-50 dark:bg-gray-dark flex flex-col items-center justify-center px-6">
+     <div className="mb-8 text-center">
+       <h1 className="text-3xl font-extrabold tracking-wide text-dark dark:text-white">SOFIA ADMIN</h1>
+     </div>
+     <div className="w-full max-w-md rounded-xl border bg-white p-8 shadow-sm dark:border-dark-4 dark:bg-gray-dark">
+       <h2 className="mb-2 text-2xl font-bold text-dark dark:text-white">Entrar</h2>
         <p className="mb-6 text-sm text-dark-6 dark:text-dark-7">Acesse sua conta de parceiro.</p>
         <form
           onSubmit={(e) => {
