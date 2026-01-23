@@ -43,6 +43,7 @@ export default function SignInPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+            autoComplete="email"
             required
           />
         </div>
@@ -54,6 +55,7 @@ export default function SignInPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border bg-gray-2 p-3 pr-10 outline-none dark:border-dark-3 dark:bg-dark-2"
+              autoComplete="current-password"
               required
             />
             <button
