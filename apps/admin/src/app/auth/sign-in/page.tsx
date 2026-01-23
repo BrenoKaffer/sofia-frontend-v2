@@ -20,7 +20,7 @@ export default function SignInPage() {
     setError(null);
     try {
       await login(email, password, remember);
-      router.replace("/");
+      router.replace("/sales");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "forbidden_role") {
