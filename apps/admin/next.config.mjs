@@ -25,6 +25,17 @@ const nextConfig = {
   },
   turbopack: {
     root: process.cwd()
+  },
+  async rewrites() {
+    const target = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "";
+    if (!target) return [];
+    const base = target.endsWith("/api") ? target : `${target}/api`;
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${base}/:path*`
+      }
+    ];
   }
 };
 

@@ -9,13 +9,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "token_missing" }, { status: 400 });
     }
     const res = NextResponse.json({ success: true });
-    res.cookies.set("partner_auth", token, {
+    const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || process.env.COOKIE_DOMAIN || "";
+    const opts: any = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24, // 30d ou 1d
-    });
+      maxAge: remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24,
+    };
+    if (domain) opts.domain = domain;
+    res.cookies.set("partner_auth", token, opts);
     return res;
   } catch (err) {
     return NextResponse.json({ success: false, error: "internal_error" }, { status: 500 });
@@ -24,12 +27,15 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE() {
   const res = NextResponse.json({ success: true });
-  res.cookies.set("partner_auth", "", {
+  const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || process.env.COOKIE_DOMAIN || "";
+  const opts: any = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 0,
-  });
+  };
+  if (domain) opts.domain = domain;
+  res.cookies.set("partner_auth", "", opts);
   return res;
 }

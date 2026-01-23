@@ -3,6 +3,7 @@ export type Partner = {
   user_id: string;
   name: string;
   document?: string;
+  pix_key?: string;
   ref_code: string;
   commission_percentage: number;
   payout_balance: number;

@@ -8,7 +8,8 @@ type RequestOptions = {
 };
 
 export async function apiRequest<T>(opts: RequestOptions): Promise<T> {
-  const url = `${API_BASE_URL}${opts.path}`;
+  const base = API_BASE_URL || "/api";
+  const url = `${base}${opts.path}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
   const res = await fetch(url, {
