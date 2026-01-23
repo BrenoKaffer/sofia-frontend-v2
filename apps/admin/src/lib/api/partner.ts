@@ -3,26 +3,11 @@ import { CHECKOUT_BASE_URL } from "../config";
 import type { Partner, PartnerBalance, PartnerSale, PartnerPayout, PartnerLink, PartnerCustomer, PartnerSaleDetail } from "../../types/partner";
 
 export async function loginPartner(email: string, password: string): Promise<{ token: string; partner: Partner }> {
-  try {
-    return await apiRequest<{ token: string; partner: Partner }>({
-      path: "/partners/login",
-      method: "POST",
-      body: { email, password },
-    });
-  } catch {
-    return {
-      token: "test-token",
-      partner: {
-        id: "test-partner-id",
-        user_id: "test-user-id",
-        name: "Parceiro Teste",
-        document: "00000000000",
-        ref_code: "TESTCODE",
-        commission_percentage: 0,
-        payout_balance: 0,
-      },
-    };
-  }
+  return await apiRequest<{ token: string; partner: Partner }>({
+    path: "/partners/login",
+    method: "POST",
+    body: { email, password },
+  });
 }
 
 export async function getPartnerMe(token: string): Promise<Partner> {

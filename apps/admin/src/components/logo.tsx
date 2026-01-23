@@ -1,7 +1,9 @@
 export function Logo() {
   return (
     <div className="flex h-8 items-center">
-      <span className="text-lg font-bold text-dark dark:text-white">SOFIA</span>
+      <div className="rounded-[5px] bg-black p-1">
+        <img src="/logo_sofia.png" alt="SOFIA" className="h-6 w-auto" />
+      </div>
     </div>
   );
 }
