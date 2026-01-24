@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { registerPartnerAffiliate } from "@/lib/api/partner";
 
 const sanitizeDigits = (v: string) => v.replace(/\D/g, "");
+const sanitizeLetters = (v: string) => v.replace(/[^\p{L}\s]/gu, "");
+const sanitizeStreet = (v: string) => v.replace(/[0-9]/g, "");
 
 function isValidCPF(raw: string): boolean {
   const cpf = sanitizeDigits(raw);
@@ -38,17 +40,14 @@ export default function CadastroAfiliadoPage() {
   const [birthdate, setBirthdate] = useState("");
   const [monthlyIncome, setMonthlyIncome] = useState("");
   const [occupation, setOccupation] = useState("");
-  const [siteUrl, setSiteUrl] = useState("");
   const [phoneDdd, setPhoneDdd] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [street, setStreet] = useState("");
   const [streetNumber, setStreetNumber] = useState("");
-  const [complementary, setComplementary] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [city, setCity] = useState("");
   const [stateUf, setStateUf] = useState("");
-  const [referencePoint, setReferencePoint] = useState("");
   const [bank, setBank] = useState("");
   const [branch, setBranch] = useState("");
   const [account, setAccount] = useState("");
@@ -282,16 +281,13 @@ export default function CadastroAfiliadoPage() {
           birthdate,
           monthly_income: parseMoneyToCents(monthlyIncome),
           professional_occupation: occupation,
-          site_url: siteUrl || undefined,
           address: {
             street,
             street_number: streetNumber,
-            complementary: complementary || undefined,
             neighborhood,
             city,
             state: String(stateUf || "").trim().toUpperCase(),
             zip_code: sanitizeDigits(zipCode),
-            reference_point: referencePoint || undefined,
           },
           phone_numbers: [{ ddd: sanitizeDigits(phoneDdd), number: sanitizeDigits(phoneNumber) }],
         },
@@ -382,10 +378,12 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">CPF</label>
                   <input
                     value={document}
-                    onChange={(e) => setDocument(e.target.value)}
+                    onChange={(e) => setDocument(sanitizeDigits(e.target.value).slice(0, 11))}
                     onBlur={() => markTouched(["document"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                     placeholder="000.000.000-00"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.document && getFieldError("document") && <div className="mt-1 text-xs text-red-light">{getFieldError("document")}</div>}
                 </div>
@@ -423,6 +421,7 @@ export default function CadastroAfiliadoPage() {
                     onBlur={() => markTouched(["monthlyIncome"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                     placeholder="5000"
+                    inputMode="decimal"
                   />
                   {touched.monthlyIncome && getFieldError("monthlyIncome") && <div className="mt-1 text-xs text-red-light">{getFieldError("monthlyIncome")}</div>}
                 </div>
@@ -437,22 +436,15 @@ export default function CadastroAfiliadoPage() {
                   {touched.occupation && getFieldError("occupation") && <div className="mt-1 text-xs text-red-light">{getFieldError("occupation")}</div>}
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="mb-1 block text-sm">Site/URL (opcional)</label>
-                  <input
-                    value={siteUrl}
-                    onChange={(e) => setSiteUrl(e.target.value)}
-                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
-                    placeholder="https://"
-                  />
-                </div>
-                <div>
                   <label className="mb-1 block text-sm">DDD</label>
                   <input
                     value={phoneDdd}
-                    onChange={(e) => setPhoneDdd(e.target.value)}
+                    onChange={(e) => setPhoneDdd(sanitizeDigits(e.target.value).slice(0, 2))}
                     onBlur={() => markTouched(["phoneDdd"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                     placeholder="11"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.phoneDdd && getFieldError("phoneDdd") && <div className="mt-1 text-xs text-red-light">{getFieldError("phoneDdd")}</div>}
                 </div>
@@ -460,10 +452,12 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">Telefone</label>
                   <input
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onChange={(e) => setPhoneNumber(sanitizeDigits(e.target.value).slice(0, 11))}
                     onBlur={() => markTouched(["phoneNumber"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                     placeholder="999999999"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.phoneNumber && getFieldError("phoneNumber") && <div className="mt-1 text-xs text-red-light">{getFieldError("phoneNumber")}</div>}
                 </div>
@@ -476,10 +470,12 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">CEP</label>
                   <input
                     value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value)}
+                    onChange={(e) => setZipCode(sanitizeDigits(e.target.value).slice(0, 8))}
                     onBlur={() => markTouched(["zipCode"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                     placeholder="00000-000"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.zipCode && getFieldError("zipCode") && <div className="mt-1 text-xs text-red-light">{getFieldError("zipCode")}</div>}
                 </div>
@@ -487,7 +483,7 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">UF</label>
                   <input
                     value={stateUf}
-                    onChange={(e) => setStateUf(e.target.value)}
+                    onChange={(e) => setStateUf(sanitizeLetters(e.target.value).trim().toUpperCase().slice(0, 2))}
                     onBlur={() => markTouched(["stateUf"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none uppercase dark:border-dark-3 dark:bg-dark-2"
                     placeholder="SP"
@@ -499,7 +495,7 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">Rua</label>
                   <input
                     value={street}
-                    onChange={(e) => setStreet(e.target.value)}
+                    onChange={(e) => setStreet(sanitizeStreet(e.target.value))}
                     onBlur={() => markTouched(["street"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                   />
@@ -509,19 +505,13 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">Número</label>
                   <input
                     value={streetNumber}
-                    onChange={(e) => setStreetNumber(e.target.value)}
+                    onChange={(e) => setStreetNumber(sanitizeDigits(e.target.value))}
                     onBlur={() => markTouched(["streetNumber"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.streetNumber && getFieldError("streetNumber") && <div className="mt-1 text-xs text-red-light">{getFieldError("streetNumber")}</div>}
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm">Complemento (opcional)</label>
-                  <input
-                    value={complementary}
-                    onChange={(e) => setComplementary(e.target.value)}
-                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
-                  />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm">Bairro</label>
@@ -543,14 +533,6 @@ export default function CadastroAfiliadoPage() {
                   />
                   {touched.city && getFieldError("city") && <div className="mt-1 text-xs text-red-light">{getFieldError("city")}</div>}
                 </div>
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-sm">Ponto de referência (opcional)</label>
-                  <input
-                    value={referencePoint}
-                    onChange={(e) => setReferencePoint(e.target.value)}
-                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
-                  />
-                </div>
               </div>
             )}
 
@@ -560,10 +542,12 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">Banco</label>
                   <input
                     value={bank}
-                    onChange={(e) => setBank(e.target.value)}
+                    onChange={(e) => setBank(sanitizeDigits(e.target.value).slice(0, 3))}
                     onBlur={() => markTouched(["bank"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                     placeholder="001"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.bank && getFieldError("bank") && <div className="mt-1 text-xs text-red-light">{getFieldError("bank")}</div>}
                 </div>
@@ -571,9 +555,11 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">Agência</label>
                   <input
                     value={branch}
-                    onChange={(e) => setBranch(e.target.value)}
+                    onChange={(e) => setBranch(sanitizeDigits(e.target.value))}
                     onBlur={() => markTouched(["branch"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.branch && getFieldError("branch") && <div className="mt-1 text-xs text-red-light">{getFieldError("branch")}</div>}
                 </div>
@@ -581,9 +567,11 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">Conta</label>
                   <input
                     value={account}
-                    onChange={(e) => setAccount(e.target.value)}
+                    onChange={(e) => setAccount(sanitizeDigits(e.target.value))}
                     onBlur={() => markTouched(["account"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.account && getFieldError("account") && <div className="mt-1 text-xs text-red-light">{getFieldError("account")}</div>}
                 </div>
@@ -591,9 +579,11 @@ export default function CadastroAfiliadoPage() {
                   <label className="mb-1 block text-sm">Dígito</label>
                   <input
                     value={digit}
-                    onChange={(e) => setDigit(e.target.value)}
+                    onChange={(e) => setDigit(sanitizeDigits(e.target.value).slice(0, 2))}
                     onBlur={() => markTouched(["digit"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                   />
                   {touched.digit && getFieldError("digit") && <div className="mt-1 text-xs text-red-light">{getFieldError("digit")}</div>}
                 </div>
