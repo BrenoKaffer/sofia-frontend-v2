@@ -60,6 +60,27 @@ function mirrorOf(n) {
   const oppIdx = (idx + Math.floor(N / 2)) % N;
   return EUROPEAN_WHEEL[oppIdx];
 }
+function normalizeToken(t) {
+  if (typeof t === 'number') return t;
+  if (typeof t === 'string') {
+    const s = t.trim();
+    if (/^\d+$/.test(s)) return Number(s);
+    return s;
+  }
+  if (!t || typeof t !== 'object') return null;
+  const n = t.number ?? t.spin_number ?? t.spinNumber ?? t.result ?? t.value ?? t.spin?.number ?? t.spin?.spin_number;
+  if (typeof n === 'number') return n;
+  if (typeof n === 'string') {
+    const s = n.trim();
+    if (/^\d+$/.test(s)) return Number(s);
+    return s;
+  }
+  return null;
+}
+function normalizeHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history.map(normalizeToken).filter((v) => v !== null && v !== undefined);
+}
 function lastTokenColor(history) {
   if (!history.length) return null;
   const last = history[history.length - 1];
@@ -93,7 +114,8 @@ const METADATA = {
 // Grafo do Builder
 const STRATEGY_GRAPH = ${JSON.stringify(graph, null, 2)};
 
-function deriveFromGraph(history, ctx = {}) {
+function deriveFromGraph(historyRaw, ctx = {}) {
+  const history = normalizeHistory(historyRaw);
   const selectionMode = String(ctx.selectionMode || METADATA.selectionMode || 'automatic').toLowerCase();
   const nodes = Array.isArray(STRATEGY_GRAPH?.nodes) ? STRATEGY_GRAPH.nodes : [];
   const signal = nodes.find(n => n?.type === 'signal') || { data: { config: {} }, id: 'signal' };
@@ -126,6 +148,53 @@ function deriveFromGraph(history, ctx = {}) {
     const subtype = String(node?.subtype || '').toLowerCase();
     const c = (node?.data?.config || {});
     let produced = 0;
+    if (subtype === 'trend') {
+      const evento = String(c?.evento ?? c?.event ?? 'vermelho').toLowerCase()
+      const janela = Math.max(1, Number(c?.janela ?? c?.window ?? 10))
+      const freqMin = Math.max(0, Math.min(1, Number(c?.frequenciaMinima ?? c?.minFrequency ?? 0.7)))
+      const recent = history.slice(-janela)
+
+      const isEvento = (t) => {
+        if (evento === 'vermelho' || evento === 'red') {
+          if (typeof t === 'number') return t !== 0 && RED_NUMBERS.includes(t)
+          const s = String(t).toLowerCase()
+          return s === 'vermelho' || s === 'red'
+        }
+        if (evento === 'preto' || evento === 'black') {
+          if (typeof t === 'number') return t !== 0 && BLACK_NUMBERS.includes(t)
+          const s = String(t).toLowerCase()
+          return s === 'preto' || s === 'black'
+        }
+        if (evento === 'zero' || evento === '0') {
+          if (typeof t === 'number') return t === 0
+          const s = String(t).toLowerCase()
+          return s === 'zero' || s === '0'
+        }
+        if (evento === 'par' || evento === 'even') {
+          if (typeof t !== 'number') return false
+          return t !== 0 && t % 2 === 0
+        }
+        if (evento === 'impar' || evento === 'ímpar' || evento === 'odd') {
+          if (typeof t !== 'number') return false
+          return t % 2 === 1
+        }
+        return false
+      }
+
+      const total = recent.length
+      if (total > 0) {
+        const count = recent.reduce((acc, t) => acc + (isEvento(t) ? 1 : 0), 0)
+        const freq = count / total
+        if (freq >= freqMin) {
+          if (evento === 'vermelho' || evento === 'red') RED_NUMBERS.forEach(n => { derived.add(n); produced++; })
+          else if (evento === 'preto' || evento === 'black') BLACK_NUMBERS.forEach(n => { derived.add(n); produced++; })
+          else if (evento === 'zero' || evento === '0') { derived.add(0); produced++; }
+          else if (evento === 'par' || evento === 'even') { for (let n = 2; n <= 36; n += 2) { derived.add(n); produced++; } }
+          else if (evento === 'impar' || evento === 'ímpar' || evento === 'odd') { for (let n = 1; n <= 36; n += 2) { derived.add(n); produced++; } }
+          telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'trend-frequency', params: { evento, janela, freqMin, count, total } })
+        }
+      }
+    }
     // neighbors
     if (subtype === 'neighbors') {
       const ref = Number(c?.numero ?? -1);
