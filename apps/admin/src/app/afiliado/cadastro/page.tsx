@@ -86,6 +86,7 @@ export default function CadastroAfiliadoPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
   const [success, setSuccess] = useState(false);
   const [slug, setSlug] = useState("");
   const [annualLink, setAnnualLink] = useState("");
@@ -180,6 +181,18 @@ export default function CadastroAfiliadoPage() {
   const stepCount = steps.length;
   const currentStep = steps[Math.min(Math.max(step, 0), stepCount - 1)];
 
+  useEffect(() => {
+    setValidationError(null);
+    setError(null);
+    if (step === stepCount - 1 && !hasTriedSubmit) {
+      setTouched((prev) => {
+        const next = { ...prev };
+        for (const f of currentStep.fields) delete next[f];
+        return next;
+      });
+    }
+  }, [currentStep.fields, hasTriedSubmit, step, stepCount]);
+
   const isStepValid = useMemo(() => {
     return !currentStep.fields.some((f) => Boolean(getFieldError(f)));
   }, [
@@ -249,14 +262,14 @@ export default function CadastroAfiliadoPage() {
     setStep((s) => Math.min(stepCount - 1, s + 1));
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit() {
     setError(null);
     setValidationError(null);
     setSuccess(false);
     if (!token) return;
 
     const allFields = steps.flatMap((s) => s.fields);
+    setHasTriedSubmit(true);
     markTouched(allFields);
     if (!isFormValid) {
       setValidationError("Revise os campos destacados. Corrija CPF/telefone/CEP se necessário.");
@@ -328,12 +341,13 @@ export default function CadastroAfiliadoPage() {
       <div className="rounded-xl border bg-white p-6 shadow-1 dark:border-dark-4 dark:bg-gray-dark">
         {!success ? (
           <form
-            onSubmit={submit}
+            onSubmit={(e) => {
+              e.preventDefault();
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && step < stepCount - 1) {
-                e.preventDefault();
-                handleNext();
-              }
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              if (step < stepCount - 1) handleNext();
             }}
             className="space-y-6"
           >
@@ -623,7 +637,12 @@ export default function CadastroAfiliadoPage() {
                   Continuar
                 </button>
               ) : (
-                <button type="submit" disabled={loading || !token} className="rounded-lg bg-primary px-4 py-3 font-semibold text-white disabled:opacity-60">
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={loading || !token}
+                  className="rounded-lg bg-primary px-4 py-3 font-semibold text-white disabled:opacity-60"
+                >
                   {loading ? "Enviando..." : "Concluir cadastro"}
                 </button>
               )}
