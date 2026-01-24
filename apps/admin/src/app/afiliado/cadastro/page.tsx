@@ -55,8 +55,38 @@ export default function CadastroAfiliadoPage() {
   const [digit, setDigit] = useState("");
   const [accountType, setAccountType] = useState<"checking" | "savings" | "">("");
 
+  const steps = useMemo(
+    () => [
+      {
+        id: "personal",
+        title: "Dados pessoais",
+        fields: ["name", "document", "motherName", "birthdate"],
+      },
+      {
+        id: "contact",
+        title: "Contato e renda",
+        fields: ["monthlyIncome", "occupation", "phoneDdd", "phoneNumber"],
+      },
+      {
+        id: "address",
+        title: "Endereço",
+        fields: ["zipCode", "stateUf", "street", "streetNumber", "neighborhood", "city"],
+      },
+      {
+        id: "bank",
+        title: "Dados bancários",
+        fields: ["bank", "branch", "account", "digit", "accountType"],
+      },
+    ],
+    [],
+  );
+
+  const [step, setStep] = useState(0);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [slug, setSlug] = useState("");
   const [annualLink, setAnnualLink] = useState("");
@@ -66,46 +96,171 @@ export default function CadastroAfiliadoPage() {
     setDocument(partner?.document || "");
   }, [partner]);
 
-  const valid = useMemo(() => {
-    const emailOk = true;
-    const cpfOk = isValidCPF(document);
-    const ufOk = String(stateUf || "").trim().length === 2;
-    const phoneOk = sanitizeDigits(phoneDdd).length === 2 && sanitizeDigits(phoneNumber).length >= 8;
-    const zipOk = sanitizeDigits(zipCode).length === 8;
-    const incomeOk = parseMoneyToCents(monthlyIncome) > 0;
+  function markTouched(keys: string[]) {
+    setTouched((prev) => {
+      const next = { ...prev };
+      for (const k of keys) next[k] = true;
+      return next;
+    });
+  }
 
-    const required =
-      name &&
-      document &&
-      motherName &&
-      birthdate &&
-      monthlyIncome &&
-      occupation &&
-      phoneDdd &&
-      phoneNumber &&
-      zipCode &&
-      street &&
-      streetNumber &&
-      neighborhood &&
-      city &&
-      stateUf &&
-      bank &&
-      branch &&
-      account &&
-      digit &&
-      accountType;
+  function getFieldError(key: string): string | null {
+    switch (key) {
+      case "name":
+        if (!String(name || "").trim()) return "Informe seu nome completo.";
+        return null;
+      case "document": {
+        if (!String(document || "").trim()) return "Informe seu CPF.";
+        if (!isValidCPF(document)) return "CPF inválido.";
+        return null;
+      }
+      case "motherName":
+        if (!String(motherName || "").trim()) return "Informe o nome da sua mãe.";
+        return null;
+      case "birthdate":
+        if (!String(birthdate || "").trim()) return "Informe sua data de nascimento.";
+        return null;
+      case "monthlyIncome":
+        if (!String(monthlyIncome || "").trim()) return "Informe sua renda mensal.";
+        if (parseMoneyToCents(monthlyIncome) <= 0) return "Informe uma renda mensal válida.";
+        return null;
+      case "occupation":
+        if (!String(occupation || "").trim()) return "Informe sua profissão.";
+        return null;
+      case "phoneDdd":
+        if (!String(phoneDdd || "").trim()) return "Informe o DDD.";
+        if (sanitizeDigits(phoneDdd).length !== 2) return "DDD inválido.";
+        return null;
+      case "phoneNumber":
+        if (!String(phoneNumber || "").trim()) return "Informe seu telefone.";
+        if (sanitizeDigits(phoneNumber).length < 8) return "Telefone inválido.";
+        return null;
+      case "zipCode":
+        if (!String(zipCode || "").trim()) return "Informe seu CEP.";
+        if (sanitizeDigits(zipCode).length !== 8) return "CEP inválido.";
+        return null;
+      case "stateUf": {
+        const uf = String(stateUf || "").trim();
+        if (!uf) return "Informe a UF.";
+        if (uf.length !== 2) return "UF inválida.";
+        return null;
+      }
+      case "street":
+        if (!String(street || "").trim()) return "Informe a rua.";
+        return null;
+      case "streetNumber":
+        if (!String(streetNumber || "").trim()) return "Informe o número.";
+        return null;
+      case "neighborhood":
+        if (!String(neighborhood || "").trim()) return "Informe o bairro.";
+        return null;
+      case "city":
+        if (!String(city || "").trim()) return "Informe a cidade.";
+        return null;
+      case "bank":
+        if (!String(bank || "").trim()) return "Informe o banco.";
+        if (sanitizeDigits(bank).length < 3) return "Banco inválido.";
+        return null;
+      case "branch":
+        if (!String(branch || "").trim()) return "Informe a agência.";
+        return null;
+      case "account":
+        if (!String(account || "").trim()) return "Informe a conta.";
+        return null;
+      case "digit":
+        if (!String(digit || "").trim()) return "Informe o dígito.";
+        return null;
+      case "accountType":
+        if (!String(accountType || "").trim()) return "Selecione o tipo de conta.";
+        return null;
+      default:
+        return null;
+    }
+  }
 
-    return Boolean(required && emailOk && cpfOk && ufOk && phoneOk && zipOk && incomeOk);
-  }, [account, accountType, bank, birthdate, branch, city, digit, document, motherName, monthlyIncome, name, neighborhood, occupation, phoneDdd, phoneNumber, stateUf, street, streetNumber, zipCode]);
+  const stepCount = steps.length;
+  const currentStep = steps[Math.min(Math.max(step, 0), stepCount - 1)];
+
+  const isStepValid = useMemo(() => {
+    return !currentStep.fields.some((f) => Boolean(getFieldError(f)));
+  }, [
+    account,
+    accountType,
+    bank,
+    birthdate,
+    branch,
+    city,
+    currentStep.fields,
+    digit,
+    document,
+    motherName,
+    monthlyIncome,
+    name,
+    neighborhood,
+    occupation,
+    phoneDdd,
+    phoneNumber,
+    stateUf,
+    steps,
+    street,
+    streetNumber,
+    zipCode,
+  ]);
+
+  const isFormValid = useMemo(() => {
+    const allFields = steps.flatMap((s) => s.fields);
+    return !allFields.some((f) => Boolean(getFieldError(f)));
+  }, [
+    account,
+    accountType,
+    bank,
+    birthdate,
+    branch,
+    city,
+    digit,
+    document,
+    motherName,
+    monthlyIncome,
+    name,
+    neighborhood,
+    occupation,
+    phoneDdd,
+    phoneNumber,
+    stateUf,
+    steps,
+    street,
+    streetNumber,
+    zipCode,
+  ]);
+
+  function handleBack() {
+    setValidationError(null);
+    setError(null);
+    setStep((s) => Math.max(0, s - 1));
+  }
+
+  function handleNext() {
+    setValidationError(null);
+    setError(null);
+    markTouched(currentStep.fields);
+    if (!isStepValid) {
+      setValidationError("Revise os campos destacados para continuar.");
+      return;
+    }
+    setStep((s) => Math.min(stepCount - 1, s + 1));
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setValidationError(null);
     setSuccess(false);
     if (!token) return;
 
-    if (!valid) {
-      setError("Preencha todos os campos obrigatórios e verifique CPF/telefone/CEP.");
+    const allFields = steps.flatMap((s) => s.fields);
+    markTouched(allFields);
+    if (!isFormValid) {
+      setValidationError("Revise os campos destacados. Corrija CPF/telefone/CEP se necessário.");
       return;
     }
 
@@ -176,117 +331,313 @@ export default function CadastroAfiliadoPage() {
 
       <div className="rounded-xl border bg-white p-6 shadow-1 dark:border-dark-4 dark:bg-gray-dark">
         {!success ? (
-          <form onSubmit={submit} className="space-y-6">
-            {error && <div className="rounded-lg border bg-gray-2 p-3 text-sm text-red-600 dark:border-dark-3 dark:bg-dark-2">{error}</div>}
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm">Nome completo</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">CPF</label>
-                <input value={document} onChange={(e) => setDocument(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" placeholder="000.000.000-00" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Nome da mãe</label>
-                <input value={motherName} onChange={(e) => setMotherName(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Data de nascimento</label>
-                <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Renda mensal (R$)</label>
-                <input value={monthlyIncome} onChange={(e) => setMonthlyIncome(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" placeholder="5000" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Profissão</label>
-                <input value={occupation} onChange={(e) => setOccupation(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm">Site/URL (opcional)</label>
-                <input value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" placeholder="https://" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">DDD</label>
-                <input value={phoneDdd} onChange={(e) => setPhoneDdd(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" placeholder="11" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Telefone</label>
-                <input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" placeholder="999999999" />
+          <form
+            onSubmit={submit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && step < stepCount - 1) {
+                e.preventDefault();
+                handleNext();
+              }
+            }}
+            className="space-y-6"
+          >
+            <div className="rounded-lg border bg-gray-2 p-4 text-sm dark:border-dark-3 dark:bg-dark-2">
+              <div className="font-semibold text-dark dark:text-white">Sobre seus dados</div>
+              <div className="mt-1 text-dark-5 dark:text-dark-6">
+                As informações deste formulário são usadas no processo de validação KYC da Pagar.me (gateway de pagamento usado pela SOFIA) para comprovar seus dados e liberar o seu recipient_id, que conecta suas vendas aos valores disponíveis para saque.
               </div>
             </div>
 
-            <div className="h-px w-full bg-gray-200 dark:bg-dark-3" />
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm">CEP</label>
-                <input value={zipCode} onChange={(e) => setZipCode(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" placeholder="00000-000" />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm text-dark-5 dark:text-dark-6">
+                <div>
+                  Etapa {step + 1} de {stepCount} — {currentStep.title}
+                </div>
+                <div>{Math.round(((step + 1) / stepCount) * 100)}%</div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm">UF</label>
-                <input value={stateUf} onChange={(e) => setStateUf(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none uppercase dark:border-dark-3 dark:bg-dark-2" placeholder="SP" maxLength={2} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm">Rua</label>
-                <input value={street} onChange={(e) => setStreet(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Número</label>
-                <input value={streetNumber} onChange={(e) => setStreetNumber(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Complemento (opcional)</label>
-                <input value={complementary} onChange={(e) => setComplementary(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Bairro</label>
-                <input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm">Cidade</label>
-                <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm">Ponto de referência (opcional)</label>
-                <input value={referencePoint} onChange={(e) => setReferencePoint(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
+              <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-dark-3">
+                <div className="h-2 rounded-full bg-primary" style={{ width: `${((step + 1) / stepCount) * 100}%` }} />
               </div>
             </div>
 
-            <div className="h-px w-full bg-gray-200 dark:bg-dark-3" />
+            {(validationError || error) && (
+              <div className="rounded-lg border bg-gray-2 p-3 text-sm text-red-600 dark:border-dark-3 dark:bg-dark-2">
+                {validationError || error}
+              </div>
+            )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm">Banco</label>
-                <input value={bank} onChange={(e) => setBank(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" placeholder="001" />
+            {step === 0 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm">Nome completo</label>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onBlur={() => markTouched(["name"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.name && getFieldError("name") && <div className="mt-1 text-xs text-red-light">{getFieldError("name")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">CPF</label>
+                  <input
+                    value={document}
+                    onChange={(e) => setDocument(e.target.value)}
+                    onBlur={() => markTouched(["document"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    placeholder="000.000.000-00"
+                  />
+                  {touched.document && getFieldError("document") && <div className="mt-1 text-xs text-red-light">{getFieldError("document")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Nome da mãe</label>
+                  <input
+                    value={motherName}
+                    onChange={(e) => setMotherName(e.target.value)}
+                    onBlur={() => markTouched(["motherName"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.motherName && getFieldError("motherName") && <div className="mt-1 text-xs text-red-light">{getFieldError("motherName")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Data de nascimento</label>
+                  <input
+                    type="date"
+                    value={birthdate}
+                    onChange={(e) => setBirthdate(e.target.value)}
+                    onBlur={() => markTouched(["birthdate"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.birthdate && getFieldError("birthdate") && <div className="mt-1 text-xs text-red-light">{getFieldError("birthdate")}</div>}
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm">Agência</label>
-                <input value={branch} onChange={(e) => setBranch(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
+            )}
+
+            {step === 1 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm">Renda mensal (R$)</label>
+                  <input
+                    value={monthlyIncome}
+                    onChange={(e) => setMonthlyIncome(e.target.value)}
+                    onBlur={() => markTouched(["monthlyIncome"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    placeholder="5000"
+                  />
+                  {touched.monthlyIncome && getFieldError("monthlyIncome") && <div className="mt-1 text-xs text-red-light">{getFieldError("monthlyIncome")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Profissão</label>
+                  <input
+                    value={occupation}
+                    onChange={(e) => setOccupation(e.target.value)}
+                    onBlur={() => markTouched(["occupation"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.occupation && getFieldError("occupation") && <div className="mt-1 text-xs text-red-light">{getFieldError("occupation")}</div>}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm">Site/URL (opcional)</label>
+                  <input
+                    value={siteUrl}
+                    onChange={(e) => setSiteUrl(e.target.value)}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    placeholder="https://"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">DDD</label>
+                  <input
+                    value={phoneDdd}
+                    onChange={(e) => setPhoneDdd(e.target.value)}
+                    onBlur={() => markTouched(["phoneDdd"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    placeholder="11"
+                  />
+                  {touched.phoneDdd && getFieldError("phoneDdd") && <div className="mt-1 text-xs text-red-light">{getFieldError("phoneDdd")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Telefone</label>
+                  <input
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onBlur={() => markTouched(["phoneNumber"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    placeholder="999999999"
+                  />
+                  {touched.phoneNumber && getFieldError("phoneNumber") && <div className="mt-1 text-xs text-red-light">{getFieldError("phoneNumber")}</div>}
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm">Conta</label>
-                <input value={account} onChange={(e) => setAccount(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
+            )}
+
+            {step === 2 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm">CEP</label>
+                  <input
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value)}
+                    onBlur={() => markTouched(["zipCode"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    placeholder="00000-000"
+                  />
+                  {touched.zipCode && getFieldError("zipCode") && <div className="mt-1 text-xs text-red-light">{getFieldError("zipCode")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">UF</label>
+                  <input
+                    value={stateUf}
+                    onChange={(e) => setStateUf(e.target.value)}
+                    onBlur={() => markTouched(["stateUf"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none uppercase dark:border-dark-3 dark:bg-dark-2"
+                    placeholder="SP"
+                    maxLength={2}
+                  />
+                  {touched.stateUf && getFieldError("stateUf") && <div className="mt-1 text-xs text-red-light">{getFieldError("stateUf")}</div>}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm">Rua</label>
+                  <input
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                    onBlur={() => markTouched(["street"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.street && getFieldError("street") && <div className="mt-1 text-xs text-red-light">{getFieldError("street")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Número</label>
+                  <input
+                    value={streetNumber}
+                    onChange={(e) => setStreetNumber(e.target.value)}
+                    onBlur={() => markTouched(["streetNumber"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.streetNumber && getFieldError("streetNumber") && <div className="mt-1 text-xs text-red-light">{getFieldError("streetNumber")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Complemento (opcional)</label>
+                  <input
+                    value={complementary}
+                    onChange={(e) => setComplementary(e.target.value)}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Bairro</label>
+                  <input
+                    value={neighborhood}
+                    onChange={(e) => setNeighborhood(e.target.value)}
+                    onBlur={() => markTouched(["neighborhood"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.neighborhood && getFieldError("neighborhood") && <div className="mt-1 text-xs text-red-light">{getFieldError("neighborhood")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Cidade</label>
+                  <input
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    onBlur={() => markTouched(["city"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.city && getFieldError("city") && <div className="mt-1 text-xs text-red-light">{getFieldError("city")}</div>}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm">Ponto de referência (opcional)</label>
+                  <input
+                    value={referencePoint}
+                    onChange={(e) => setReferencePoint(e.target.value)}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm">Dígito</label>
-                <input value={digit} onChange={(e) => setDigit(e.target.value)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2" />
+            )}
+
+            {step === 3 && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm">Banco</label>
+                  <input
+                    value={bank}
+                    onChange={(e) => setBank(e.target.value)}
+                    onBlur={() => markTouched(["bank"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                    placeholder="001"
+                  />
+                  {touched.bank && getFieldError("bank") && <div className="mt-1 text-xs text-red-light">{getFieldError("bank")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Agência</label>
+                  <input
+                    value={branch}
+                    onChange={(e) => setBranch(e.target.value)}
+                    onBlur={() => markTouched(["branch"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.branch && getFieldError("branch") && <div className="mt-1 text-xs text-red-light">{getFieldError("branch")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Conta</label>
+                  <input
+                    value={account}
+                    onChange={(e) => setAccount(e.target.value)}
+                    onBlur={() => markTouched(["account"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.account && getFieldError("account") && <div className="mt-1 text-xs text-red-light">{getFieldError("account")}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm">Dígito</label>
+                  <input
+                    value={digit}
+                    onChange={(e) => setDigit(e.target.value)}
+                    onBlur={() => markTouched(["digit"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  />
+                  {touched.digit && getFieldError("digit") && <div className="mt-1 text-xs text-red-light">{getFieldError("digit")}</div>}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm">Tipo de conta</label>
+                  <select
+                    value={accountType}
+                    onChange={(e) => setAccountType(e.target.value as any)}
+                    onBlur={() => markTouched(["accountType"])}
+                    className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
+                  >
+                    <option value="">Selecione</option>
+                    <option value="checking">Conta corrente</option>
+                    <option value="savings">Poupança</option>
+                  </select>
+                  {touched.accountType && getFieldError("accountType") && <div className="mt-1 text-xs text-red-light">{getFieldError("accountType")}</div>}
+                </div>
               </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm">Tipo de conta</label>
-                <select value={accountType} onChange={(e) => setAccountType(e.target.value as any)} className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2">
-                  <option value="">Selecione</option>
-                  <option value="checking">Conta corrente</option>
-                  <option value="savings">Poupança</option>
-                </select>
-              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleBack}
+                disabled={loading || step === 0}
+                className="rounded-lg border px-4 py-3 font-semibold text-dark disabled:opacity-60 dark:border-dark-3 dark:text-white"
+              >
+                Voltar
+              </button>
+              {step < stepCount - 1 ? (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={loading || !token}
+                  className="rounded-lg bg-primary px-4 py-3 font-semibold text-white disabled:opacity-60"
+                >
+                  Continuar
+                </button>
+              ) : (
+                <button type="submit" disabled={loading || !token} className="rounded-lg bg-primary px-4 py-3 font-semibold text-white disabled:opacity-60">
+                  {loading ? "Enviando..." : "Concluir cadastro"}
+                </button>
+              )}
             </div>
-
-            <button type="submit" disabled={loading || !token} className="rounded-lg bg-primary px-4 py-3 font-semibold text-white disabled:opacity-60">
-              {loading ? "Enviando..." : "Concluir cadastro"}
-            </button>
           </form>
         ) : (
           <div className="space-y-4">
@@ -318,4 +669,3 @@ export default function CadastroAfiliadoPage() {
     </div>
   );
 }
-
