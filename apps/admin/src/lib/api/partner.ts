@@ -1,5 +1,4 @@
 import { apiRequest } from "./http";
-import { CHECKOUT_BASE_URL } from "../config";
 import type { Partner, PartnerBalance, PartnerSale, PartnerPayout, PartnerLink, PartnerCustomer, PartnerSaleDetail } from "../../types/partner";
 
 export async function loginPartner(email: string, password: string): Promise<{ token: string; partner: Partner }> {
@@ -115,16 +114,49 @@ export async function getPartnerLinks(token: string): Promise<{ items: PartnerLi
   try {
     return await apiRequest<{ items: PartnerLink[] }>({ path: "/partners/me/links", token });
   } catch {
-    const base = CHECKOUT_BASE_URL || "";
-    const ref = "TESTCODE";
-    const plan = "OD4QF0B1dnaXSTSt0";
-    return {
-      items: [
-        { url: `${base}/checkout/${plan}/${ref}`, label: "Plano PRO Anual" },
-        { url: `${base}/checkout/${plan}/${ref}?utm_source=partner&utm_medium=link`, label: "Link com UTM" },
-      ],
-    };
+    return { items: [] };
   }
+}
+
+export async function registerPartnerAffiliate(
+  token: string,
+  payload: {
+    name: string;
+    document: string;
+    bank_account: {
+      holder_name: string;
+      bank: string;
+      branch_number: string;
+      account_number: string;
+      account_check_digit: string;
+      type: "checking" | "savings";
+    };
+    register_information: {
+      mother_name: string;
+      birthdate: string;
+      monthly_income: number;
+      professional_occupation: string;
+      site_url?: string;
+      address: {
+        street: string;
+        street_number: string;
+        complementary?: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+        zip_code: string;
+        reference_point?: string;
+      };
+      phone_numbers: { ddd: string; number: string }[];
+    };
+  },
+): Promise<{ success: boolean; affiliate_slug?: string; checkout_links?: { annual: string }; error?: any }> {
+  return await apiRequest<{ success: boolean; affiliate_slug?: string; checkout_links?: { annual: string }; error?: any }>({
+    path: "/partners/me/affiliate/register",
+    method: "POST",
+    token,
+    body: payload,
+  });
 }
 
 export async function getPartnerCustomers(token: string, params?: Record<string, string>): Promise<{ items: PartnerCustomer[] }> {

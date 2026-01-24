@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { getPartnerLinks } from "@/lib/api/partner";
@@ -66,7 +67,12 @@ export default function LinksPage() {
           ))}
           {!loading && items.length === 0 && (
             <div className="rounded-lg border bg-gray-2 p-6 text-center text-sm text-dark-5 dark:border-dark-3 dark:bg-dark-2 dark:text-dark-6">
-              Nenhum link disponível.
+              <div>Nenhum link disponível.</div>
+              <div className="mt-3">
+                <Link href="/afiliado/cadastro" className="inline-flex rounded-lg bg-primary px-4 py-2 font-semibold text-white">
+                  Completar cadastro de afiliado
+                </Link>
+              </div>
             </div>
           )}
         </div>
