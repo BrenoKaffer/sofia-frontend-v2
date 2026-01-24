@@ -154,12 +154,6 @@ export function evaluateConditionNode(node: any, history: Token[]): boolean {
       const len = history.length
       return len >= inicio && len <= fim
     }
-    case 'sequence': {
-      // alias para pattern.exato
-      const seqRaw: string[] = Array.isArray(cfg.sequencia) ? cfg.sequencia : []
-      const seq: Token[] = seqRaw.map(normalizeToken).filter((t): t is Token => t !== null)
-      return matchSequenceExact(history, seq)
-    }
     case 'specific-number': {
       const numero: number = Number(cfg.numero ?? -1)
       const modo: string = String(cfg.modo || 'ocorreu').toLowerCase()
@@ -237,6 +231,62 @@ export function evaluateConditionNode(node: any, history: Token[]): boolean {
       nums.forEach(n => { const c = colOf(n); if (c>=0) counts[c]++ })
       const maxCount = Math.max(...counts)
       return maxCount >= freqMin
+    }
+    case 'recent-in-set': {
+      const janela: number = Math.max(1, Number(cfg.janela ?? cfg.window ?? 5))
+      const set: number[] = Array.isArray(cfg.set) ? cfg.set.filter((n: any) => typeof n === 'number') : []
+      const slice = history.slice(-janela).filter((t): t is number => typeof t === 'number')
+      return set.length > 0 && slice.some(n => set.includes(n))
+    }
+    case 'adjacent-in-list': {
+      const janela: number = Math.max(2, Number(cfg.janela ?? cfg.window ?? 6))
+      const list: number[] = Array.isArray(cfg.list) ? cfg.list.filter((n: any) => typeof n === 'number') : []
+      const circular: boolean = Boolean(cfg.circular ?? false)
+      const slice = history.slice(-janela).filter((t): t is number => typeof t === 'number')
+      if (list.length < 2 || slice.length < 2) return false
+      for (let i = 0; i < slice.length - 1; i++) {
+        const a = slice[i]
+        const b = slice[i + 1]
+        const ia = list.indexOf(a)
+        const ib = list.indexOf(b)
+        if (ia === -1 || ib === -1) continue
+        const diff = Math.abs(ia - ib)
+        const adjacent = diff === 1 || (circular && list.length > 2 && diff === list.length - 1)
+        if (adjacent) return true
+      }
+      return false
+    }
+    case 'terminal-pattern': {
+      const janela: number = Math.max(2, Number(cfg.janela ?? cfg.window ?? 6))
+      const padrao: string = String(cfg.padrao ?? 'any').toLowerCase()
+      const minStrength: number = Math.max(1, Number(cfg.minStrength ?? 1))
+      const nums = history.slice(-janela).filter((t): t is number => typeof t === 'number')
+      if (nums.length < 2) return false
+      const terminals = nums.map(n => Math.abs(n) % 10)
+
+      let best: { type: string; terminal: number; strength: number; idx: number } | null = null
+      const consider = (type: string, terminal: number, strength: number, idx: number) => {
+        if (strength < minStrength) return
+        if (padrao !== 'any' && padrao !== type.toLowerCase()) return
+        if (!best) { best = { type, terminal, strength, idx }; return }
+        if (strength > best.strength) { best = { type, terminal, strength, idx }; return }
+        if (strength === best.strength && idx > best.idx) { best = { type, terminal, strength, idx }; return }
+      }
+
+      for (let i = 1; i < terminals.length; i++) {
+        if (terminals[i] === terminals[i - 1]) consider('consecutive', terminals[i], 2, i)
+      }
+      for (let i = 2; i < terminals.length; i++) {
+        if (terminals[i] === terminals[i - 2] && terminals[i] !== terminals[i - 1]) consider('alternating', terminals[i], 3, i)
+      }
+      for (let i = 3; i < terminals.length; i++) {
+        if (terminals[i] === terminals[i - 3] && terminals[i] !== terminals[i - 1] && terminals[i] !== terminals[i - 2]) consider('gap_2', terminals[i], 2, i)
+      }
+      for (let i = 4; i < terminals.length; i++) {
+        if (terminals[i] === terminals[i - 4] && terminals[i] !== terminals[i - 1] && terminals[i] !== terminals[i - 2] && terminals[i] !== terminals[i - 3]) consider('gap_3', terminals[i], 1, i)
+      }
+
+      return best !== null
     }
     case 'mirror': {
       const lastNum = [...history].reverse().find(t => typeof t === 'number') as number | undefined

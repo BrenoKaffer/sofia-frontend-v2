@@ -95,6 +95,57 @@ function lastTokenColor(history) {
   return null;
 }
 
+function numberTerminal(n) {
+  return Math.abs(n) % 10;
+}
+
+const TERMINAL_NUMBERS_MAP = {
+  0: [0, 10, 20, 30],
+  1: [1, 11, 21, 31],
+  2: [2, 12, 22, 32],
+  3: [3, 13, 23, 33],
+  4: [4, 14, 24, 34],
+  5: [5, 15, 25, 35],
+  6: [6, 16, 26, 36],
+  7: [7, 17, 27],
+  8: [8, 18, 28],
+  9: [9, 19, 29]
+};
+
+function analyzeTerminalPattern(numbers, cfg = {}) {
+  const janela = Math.max(2, Number(cfg.janela ?? cfg.window ?? 6));
+  const padrao = String(cfg.padrao ?? 'any').toLowerCase();
+  const minStrength = Math.max(1, Number(cfg.minStrength ?? 1));
+
+  const recentNums = numbers.slice(-janela).filter(n => typeof n === 'number');
+  if (recentNums.length < 2) return null;
+  const terminals = recentNums.map(numberTerminal);
+
+  let best = null;
+  const consider = (type, terminal, strength, idx) => {
+    if (strength < minStrength) return;
+    if (padrao !== 'any' && padrao !== String(type).toLowerCase()) return;
+    if (!best) { best = { type, terminal, strength, idx }; return; }
+    if (strength > best.strength) { best = { type, terminal, strength, idx }; return; }
+    if (strength === best.strength && idx > best.idx) { best = { type, terminal, strength, idx }; return; }
+  };
+
+  for (let i = 1; i < terminals.length; i++) {
+    if (terminals[i] === terminals[i-1]) consider('consecutive', terminals[i], 2, i);
+  }
+  for (let i = 2; i < terminals.length; i++) {
+    if (terminals[i] === terminals[i-2] && terminals[i] !== terminals[i-1]) consider('alternating', terminals[i], 3, i);
+  }
+  for (let i = 3; i < terminals.length; i++) {
+    if (terminals[i] === terminals[i-3] && terminals[i] !== terminals[i-1] && terminals[i] !== terminals[i-2]) consider('gap_2', terminals[i], 2, i);
+  }
+  for (let i = 4; i < terminals.length; i++) {
+    if (terminals[i] === terminals[i-4] && terminals[i] !== terminals[i-1] && terminals[i] !== terminals[i-2] && terminals[i] !== terminals[i-3]) consider('gap_3', terminals[i], 1, i);
+  }
+
+  return best;
+}
+
 const METADATA = {
   name: ${JSON.stringify(name)},
   description: ${JSON.stringify(description)},
@@ -369,7 +420,6 @@ function deriveFromGraph(historyRaw, ctx = {}) {
           const matchRate = matches / sequencia.length;
           const requiredRate = Math.max(0, Math.min(1, (sequencia.length - tolerancia) / sequencia.length));
           if (matchRate >= requiredRate) {
-            // Predizer próximo número baseado no padrão
             const nextIdx = sequencia.length % sequencia.length;
             const nextNum = sequencia[nextIdx];
             if (typeof nextNum === 'number' && nextNum >= 0 && nextNum <= 36) {
@@ -378,6 +428,62 @@ function deriveFromGraph(historyRaw, ctx = {}) {
             }
           }
         }
+      }
+    }
+    if (subtype === 'recent-in-set') {
+      const janela = Math.max(1, Number(c?.janela ?? c?.window ?? 5));
+      const set = Array.isArray(c?.set) ? c.set.filter(n => typeof n === 'number') : [];
+      const outputNumbers = Array.isArray(c?.outputNumbers) ? c.outputNumbers.filter(n => typeof n === 'number') : [];
+      const slice = history.slice(-janela).filter(t => typeof t === 'number');
+      const hit = set.length > 0 && slice.some(n => set.includes(n));
+      if (hit) {
+        const toAdd = (outputNumbers.length ? outputNumbers : set).filter(n => typeof n === 'number' && n >= 0 && n <= 36);
+        toAdd.forEach(n => { derived.add(n); produced++; });
+        telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'recent-in-set', params: { janela, setSize: set.length, added: toAdd.length } });
+      }
+    }
+    if (subtype === 'adjacent-in-list') {
+      const janela = Math.max(2, Number(c?.janela ?? c?.window ?? 6));
+      const list = Array.isArray(c?.list) ? c.list.filter(n => typeof n === 'number') : [];
+      const circular = Boolean(c?.circular ?? false);
+      const outputNumbers = Array.isArray(c?.outputNumbers) ? c.outputNumbers.filter(n => typeof n === 'number') : [];
+      const slice = history.slice(-janela).filter(t => typeof t === 'number');
+      let hitPair = null;
+      if (list.length >= 2 && slice.length >= 2) {
+        for (let i = 0; i < slice.length - 1; i++) {
+          const a = slice[i];
+          const b = slice[i + 1];
+          const ia = list.indexOf(a);
+          const ib = list.indexOf(b);
+          if (ia === -1 || ib === -1) continue;
+          const diff = Math.abs(ia - ib);
+          const adjacent = diff === 1 || (circular && list.length > 2 && diff === list.length - 1);
+          if (adjacent) { hitPair = { a, b, ia, ib }; break; }
+        }
+      }
+      if (hitPair) {
+        const toAdd = (outputNumbers.length ? outputNumbers : [hitPair.a, hitPair.b]).filter(n => typeof n === 'number' && n >= 0 && n <= 36);
+        toAdd.forEach(n => { derived.add(n); produced++; });
+        telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'adjacent-in-list', params: { janela, listSize: list.length, circular, hit: hitPair, added: toAdd.length } });
+      }
+    }
+    if (subtype === 'terminal-pattern') {
+      const janela = Math.max(2, Number(c?.janela ?? c?.window ?? 6));
+      const includeNeighbors = Boolean(c?.includeNeighbors ?? false);
+      const neighborRadius = Math.max(0, Number(c?.neighborRadius ?? c?.raio ?? 0));
+      const includeZero = Boolean(c?.includeZero ?? false);
+      const nums = history.slice(-janela).filter(t => typeof t === 'number');
+      const best = analyzeTerminalPattern(nums, c);
+      if (best && typeof best.terminal === 'number') {
+        const base = TERMINAL_NUMBERS_MAP[best.terminal] || [];
+        base.forEach(n => { derived.add(n); produced++; });
+        if (includeNeighbors && neighborRadius > 0) {
+          base.forEach(ref => {
+            EUROPEAN_WHEEL.forEach(n => { if (circularDistance(n, ref) <= neighborRadius) { derived.add(n); produced++; } });
+          });
+        }
+        if (includeZero) { derived.add(0); produced++; }
+        telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'terminal-pattern', params: { janela, best, includeNeighbors, neighborRadius, includeZero } });
       }
     }
     condBool[node.id] = produced > 0;
@@ -390,10 +496,9 @@ function deriveFromGraph(historyRaw, ctx = {}) {
     const opCfg = node?.data?.config || {};
     const op = String(opCfg.operador ?? opCfg.operator ?? 'AND').toUpperCase();
     const inputs = incomingEdgesTo(node.id)
-      .filter(e => e.type === 'condition')
+      .filter(e => byId[e.source]?.type === 'condition')
       .map(e => condBool[e.source] ?? false);
-    // Block unsupported nested logic: logic node receiving 'success' from another logic
-    const hasNestedLogicIncoming = incomingEdgesTo(node.id).some(e => e.type === 'success');
+    const hasNestedLogicIncoming = incomingEdgesTo(node.id).some(e => byId[e.source]?.type === 'logic');
     let result = false;
     if (hasNestedLogicIncoming) {
       result = false;

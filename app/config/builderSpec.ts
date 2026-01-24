@@ -208,6 +208,27 @@ export const builderSpec: BuilderSpec = {
                 label: 'Sequência Personalizada',
                 description: 'Verifica correspondência com uma sequência definida e prevê o próximo.',
                 defaultConfig: { sequencia: [1,2,3], tolerancia: 0 }
+              },
+              {
+                type: 'condition',
+                subtype: 'recent-in-set',
+                label: 'Recente em Conjunto',
+                description: 'Ativa se algum número de um conjunto apareceu na janela recente.',
+                defaultConfig: { janela: 5, set: [13, 14, 15], outputNumbers: [13, 14, 15] }
+              },
+              {
+                type: 'condition',
+                subtype: 'adjacent-in-list',
+                label: 'Adjacente em Lista',
+                description: 'Ativa se dois números adjacentes em uma lista ocorrerem consecutivamente.',
+                defaultConfig: { janela: 6, list: [21, 23, 25, 27], circular: false, outputNumbers: [] }
+              },
+              {
+                type: 'condition',
+                subtype: 'terminal-pattern',
+                label: 'Padrão de Terminais',
+                description: 'Detecta padrões no último dígito (terminal) e pode incluir vizinhos na roda.',
+                defaultConfig: { janela: 6, padrao: 'any', minStrength: 1, includeNeighbors: true, neighborRadius: 2, includeZero: true }
               }
             ]
           },
@@ -304,6 +325,25 @@ export const builderSpec: BuilderSpec = {
           'condition:sequence_custom': [
             { label: 'Sequência (lista de números)', type: 'array', key: 'sequencia' },
             { label: 'Tolerância (erros permitidos)', type: 'number', key: 'tolerancia' }
+          ],
+          'condition:recent-in-set': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Conjunto (lista de números)', type: 'array', key: 'set' },
+            { label: 'Números de saída (opcional)', type: 'array', key: 'outputNumbers' }
+          ],
+          'condition:adjacent-in-list': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Lista (ordem importa)', type: 'array', key: 'list' },
+            { label: 'Circular', type: 'checkbox', key: 'circular' },
+            { label: 'Números de saída (opcional)', type: 'array', key: 'outputNumbers' }
+          ],
+          'condition:terminal-pattern': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Padrão', type: 'select', options: ['any', 'consecutive', 'alternating', 'gap_2', 'gap_3'], key: 'padrao' },
+            { label: 'Força mínima', type: 'number', key: 'minStrength' },
+            { label: 'Incluir vizinhos', type: 'checkbox', key: 'includeNeighbors' },
+            { label: 'Raio dos vizinhos', type: 'number', key: 'neighborRadius' },
+            { label: 'Incluir Zero', type: 'checkbox', key: 'includeZero' }
           ],
           'logic': [
             { label: 'Operador', type: 'select', options: ['AND', 'OR', 'NOT'], key: 'operador' }
