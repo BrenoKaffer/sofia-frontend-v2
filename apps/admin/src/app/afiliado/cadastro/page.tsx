@@ -344,7 +344,7 @@ export default function CadastroAfiliadoPage() {
             <div className="rounded-lg border bg-gray-2 p-4 text-sm dark:border-dark-3 dark:bg-dark-2">
               <div className="font-semibold text-dark dark:text-white">Sobre seus dados</div>
               <div className="mt-1 text-dark-5 dark:text-dark-6">
-                As informações deste formulário são usadas no processo de validação KYC da Pagar.me (gateway de pagamento usado pela SOFIA) para comprovar seus dados e liberar o seu recipient_id, que conecta suas vendas aos valores disponíveis para saque. O sistema SOFIA não tem acesso as eles.
+                As informações deste formulário são usadas no processo de validação KYC da Pagar.me (gateway de pagamento usado pela SOFIA) para comprovar seus dados e liberar o seu recipient_id, que conecta suas vendas aos valores disponíveis para saque. O sistema SOFIA não tem acesso a essas informações.
               </div>
             </div>
 
