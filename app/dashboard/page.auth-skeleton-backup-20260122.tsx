@@ -643,10 +643,21 @@ export default function DashboardPage() {
 
   // Guard de autenticação para redirecionar usuários não logados
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.replace('/login');
+    if (isLoading) {
+      return;
     }
-  }, [user, isLoading, router]);
+
+    const checkAuth = async () => {
+      if (!user) {
+        const token = await getToken();
+        if (!token) {
+          router.replace('/login');
+        }
+      }
+    };
+
+    checkAuth();
+  }, [user, isLoading, getToken, router]);
 
   // Efeito para carregar dados iniciais do backend
   useEffect(() => {
@@ -879,8 +890,8 @@ export default function DashboardPage() {
     }
   }, [user, getToken]); // Removida fetchRouletteStatus das dependências
 
-  if (isLoading) {
-    console.log('⏳ Dashboard em estado de carregamento...');
+  if (isLoading || !user) {
+    console.log('⏳ Dashboard em estado de carregamento ou usuário não autenticado...');
     return (
       <DashboardLayout>
         <DashboardSkeleton />

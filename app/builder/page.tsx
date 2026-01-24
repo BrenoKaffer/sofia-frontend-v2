@@ -19,7 +19,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { Switch } from '@/components/ui/switch'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-  import { Play, Save, RotateCcw, Layers, Trash2, Puzzle, X, Info, CheckCircle, XCircle, AlertTriangle, Download, ChevronRight, MoreVertical } from 'lucide-react'
+  import { Play, Save, RotateCcw, Layers, Trash2, Puzzle, X, Info, CheckCircle, XCircle, AlertTriangle, Download, ChevronRight, MoreVertical, Edit3 } from 'lucide-react'
   import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { builderSpec, CURRENT_SCHEMA_VERSION } from '../config/builderSpec'
@@ -50,6 +50,31 @@ interface Connection {
   source: string
   target: string
   type: 'success' | 'failure' | 'condition'
+}
+
+interface TemplateGraph {
+  schemaVersion: string
+  nodes: StrategyNode[]
+  connections: Connection[]
+  selectionMode?: 'automatic' | 'hybrid' | 'manual'
+  gating?: { enabled: boolean } | undefined
+}
+
+interface StrategyTemplateFile {
+  type: 'sofia_strategy_template'
+  schemaVersion: string
+  templateId?: string
+  name: string
+  description?: string
+  author?: {
+    displayName: string
+    contact?: string
+  }
+  tags?: string[]
+  metadata?: Record<string, any>
+  graph: TemplateGraph
+  createdAt?: string
+  updatedAt?: string
 }
 
 // Ajuda contextual para campos genéricos
@@ -176,9 +201,10 @@ export default function BuilderPage() {
 
   const [strategies, setStrategies] = useState<Array<{ id: string; name: string; description?: string; status: 'active' | 'paused'; nodes: StrategyNode[]; connections: Connection[]; createdAt: number; updatedAt: number; selectionMode?: 'automatic' | 'hybrid' | 'manual'; gating?: { enabled: boolean } }>>([])
   const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(null)
+  const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [templates, setTemplates] = useState<any[]>([])
-   const [templateQuery, setTemplateQuery] = useState('')
+  const [templateQuery, setTemplateQuery] = useState('')
 
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
@@ -365,14 +391,14 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
 
   async function refreshTemplates() {
     try {
-      const resp = await fetch('/api/templates/strategies')
+      const resp = await fetch('/api/dynamic-strategies/templates', { cache: 'no-store' })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
         toast.message('Falha ao carregar templates.', { description: String((data as any)?.error || resp.statusText) })
         return
       }
       const data = await resp.json()
-      const list = Array.isArray(data?.templates) ? data.templates : []
+      const list = Array.isArray((data as any)?.templates) ? (data as any).templates : []
       setTemplates(list)
       toast.success('Templates carregados.')
     } catch (e: any) {
@@ -383,6 +409,39 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
   useEffect(() => {
     refreshTemplates()
   }, [])
+
+  function buildTemplateFileFromTemplate(tpl: any): StrategyTemplateFile {
+    const payload = tpl?.builder_payload || tpl
+    const rawNodes = Array.isArray(payload?.nodes) ? payload.nodes : []
+    const rawConnections = Array.isArray(payload?.connections) ? payload.connections : []
+    const nodes = normalizeNodes(rawNodes)
+    const connections = rawConnections.map((c: any, i: number) => ({
+      id: String(c?.id || `c_${Date.now()}_${i}`),
+      source: String(c?.source || ''),
+      target: String(c?.target || ''),
+      type: (c?.type as 'success' | 'failure' | 'condition') || 'success'
+    })).filter((c: Connection) => c.source && c.target)
+    const graph: TemplateGraph = {
+      schemaVersion: String(payload?.schemaVersion || payload?.schema_version || CURRENT_SCHEMA_VERSION),
+      nodes,
+      connections,
+      selectionMode: (payload as any)?.selectionMode,
+      gating: (payload as any)?.gating
+    }
+    const createdAt = tpl?.created_at || tpl?.createdAt
+    const updatedAt = tpl?.updated_at || tpl?.updatedAt
+    const file: StrategyTemplateFile = {
+      type: 'sofia_strategy_template',
+      schemaVersion: graph.schemaVersion,
+      templateId: tpl?.id ? String(tpl.id) : undefined,
+      name: String(tpl?.name || 'Template do Builder'),
+      description: typeof tpl?.description === 'string' ? tpl.description : undefined,
+      graph,
+      createdAt: createdAt ? new Date(createdAt).toISOString() : undefined,
+      updatedAt: updatedAt ? new Date(updatedAt).toISOString() : undefined
+    }
+    return file
+  }
 
   const toggleFullscreen = useCallback(() => {
     const el = builderRef.current || canvasRef.current
@@ -413,6 +472,30 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
         .catch(() => toast.error('Falha ao copiar JSON'))
     } else {
       toast.message('JSON:', { description: json })
+    }
+  }
+
+  function exportTemplateFile(tpl: any) {
+    try {
+      const file = buildTemplateFileFromTemplate(tpl)
+      const json = JSON.stringify(file, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const safeName = String(tpl?.name || 'template')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+      const idPart = tpl?.id || tpl?.template_key || 'local'
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `sofia-template-${safeName}-${idPart}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Template exportado como arquivo JSON')
+    } catch {
+      toast.error('Falha ao exportar template')
     }
   }
 
@@ -451,6 +534,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       const text = await file.text()
       const parsed = JSON.parse(text)
       const list = (Array.isArray(parsed) ? parsed : [parsed]).map((p: any) => {
+        const id = p?.id || p?.templateId || `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
         const rawNodes = ((p?.graph?.nodes ?? p?.nodes) ?? [])
         const rawConns = ((p?.graph?.connections ?? p?.connections ?? p?.edges) ?? [])
         const nodes = rawNodes.map((n: any, idx: number) => {
@@ -476,16 +560,20 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
           type: (c.type as 'success' | 'failure' | 'condition') || 'success'
         }))
         return {
-          id: p.id,
+          id,
           name: p.name,
           description: p.description,
           status: (p.status as 'active' | 'paused') ?? 'paused',
           nodes,
           connections,
-          createdAt: p?.meta?.createdAt ?? Date.now(),
-          updatedAt: p?.meta?.updatedAt ?? Date.now(),
-          selectionMode: (p?.selectionMode as 'automatic' | 'hybrid' | 'manual') ?? undefined,
-          gating: (p?.gating && typeof p.gating === 'object') ? p.gating : undefined,
+          createdAt: p?.meta?.createdAt ?? p?.createdAt ?? Date.now(),
+          updatedAt: p?.meta?.updatedAt ?? p?.updatedAt ?? Date.now(),
+          selectionMode: (p?.selectionMode as 'automatic' | 'hybrid' | 'manual') ?? (p?.graph?.selectionMode as 'automatic' | 'hybrid' | 'manual') ?? undefined,
+          gating: (p?.gating && typeof p.gating === 'object')
+            ? p.gating
+            : (p?.graph?.gating && typeof p.graph.gating === 'object')
+              ? p.graph.gating
+              : undefined,
         }
       })
       setStrategies(list)
@@ -515,6 +603,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
   function createNewStrategy() {
     const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
     setCurrentStrategyId(id)
+    setCurrentTemplateId(null)
     setNodes([])
     setConnections([])
     setSelectedNode(null)
@@ -524,111 +613,182 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
   }
 
   function duplicateTemplate(tpl: any) {
-     const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-     setCurrentStrategyId(id)
-     const positionedNodes = Array.isArray(tpl.nodes) ? tpl.nodes.map((n: any, idx: number) => ({
-       ...n,
-       id: n.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-       position: n.position || { x: 120 + idx * 160, y: 120 },
-       data: { ...(n.data || {}), label: n.data?.label || n.type }
-     })) : []
-     const conns = Array.isArray(tpl.connections) ? tpl.connections.map((c: any, i: number) => ({
-       id: c.id || `c_${Date.now()}_${i}`,
-       source: c.source,
-       target: c.target,
-       type: c.type || 'condition'
-     })) : []
-     setNodes(positionedNodes)
-     setConnections(conns)
-     setSelectedNode(null)
-     setDraftStrategyName(`${tpl.name || 'Template'} (cópia)`) 
-     setIsBuilderOpen(true)
-     toast.success('Cópia criada. Edite e salve sua estratégia.')
-   }
+    const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    const payload = tpl?.builder_payload || tpl
+    const rawNodes = Array.isArray(payload?.nodes) ? payload.nodes : []
+    const rawConnections = Array.isArray(payload?.connections) ? payload.connections : []
+    setCurrentStrategyId(id)
+    setCurrentTemplateId(null)
+    const positionedNodes = rawNodes.map((n: any, idx: number) => ({
+      ...n,
+      id: n?.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      position: n?.position || { x: 120 + idx * 160, y: 120 },
+      data: { ...(n?.data || {}), label: n?.data?.label || n?.type || 'Nó' }
+    }))
+    const conns = rawConnections.map((c: any, i: number) => ({
+      id: c?.id || `c_${Date.now()}_${i}`,
+      source: c?.source,
+      target: c?.target,
+      type: c?.type || 'condition'
+    }))
+    setNodes(positionedNodes)
+    setConnections(conns)
+    setSelectedNode(null)
+    setDraftStrategyName(`${tpl?.name || 'Template'} (cópia)`)
+    setIsBuilderOpen(true)
+    toast.success('Cópia criada. Edite e salve sua estratégia.')
+  }
 
-   // Normaliza nós carregados do servidor/arquivo para garantir posição e label
-   function normalizeNodes(arr: any[]): StrategyNode[] {
-     const GRID_X = 160
-     const GRID_Y = 120
-     return (Array.isArray(arr) ? arr : []).map((n: any, idx: number) => {
-       const hasPos = n && n.position && Number.isFinite(n.position.x) && Number.isFinite(n.position.y)
-       const fallbackPos = { x: 120 + (idx % 5) * GRID_X, y: 120 + Math.floor(idx / 5) * GRID_Y }
-       return {
-         id: String(n?.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
-         type: (n?.type as NodeType) || 'condition',
-         subtype: n?.subtype,
-         position: hasPos ? n.position : fallbackPos,
-         data: { ...(n?.data || {}), label: n?.data?.label || n?.type || 'Nó' }
-       }
-     })
-   }
+  function editTemplate(tpl: any) {
+    const templateId = String(tpl?.id || '').trim()
+    const payload = tpl?.builder_payload || tpl
+    const rawNodes = Array.isArray(payload?.nodes) ? payload.nodes : []
+    const rawConnections = Array.isArray(payload?.connections) ? payload.connections : []
 
-   async function duplicateAndSaveTemplate(tpl: any) {
-     const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-     const positionedNodes = Array.isArray(tpl.nodes) ? tpl.nodes.map((n: any, idx: number) => ({
-       ...n,
-       id: n.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-       position: n.position || { x: 120 + idx * 160, y: 120 },
-       data: { ...(n.data || {}), label: n.data?.label || n.type }
-     })) : []
-     const conns = Array.isArray(tpl.connections) ? tpl.connections.map((c: any, i: number) => ({
-       id: c.id || `c_${Date.now()}_${i}`,
-       source: c.source,
-       target: c.target,
-       type: c.type || 'condition'
-     })) : []
-     const record = {
-       id,
-       name: `${tpl.name || 'Template'} (cópia)`,
-       description: tpl.description || '',
-       status: 'active',
-       nodes: positionedNodes,
-       connections: conns,
-       createdAt: Date.now(),
-       updatedAt: Date.now(),
-       source: 'builder',
-       template_key: tpl.template_key || tpl.name || undefined
-     }
-     try {
-       const resp = await fetch('/api/strategies', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify(record)
-       })
-       if (!resp.ok) {
-         const data = await resp.json().catch(() => ({}))
-         toast.message('Falha ao salvar cópia.', { description: String((data as any)?.error || resp.statusText) })
-         return
-       }
-       toast.success('Cópia salva com sucesso.')
+    if (!templateId || rawNodes.length === 0) {
+      toast.message('Template inválido para edição.', { description: 'Template sem ID ou sem nós.' })
+      return
+    }
 
-       // Registrar no StrategyEngine (compatibilidade)
-       try {
-         const regResp = await fetch('/api/automation/strategy/register', {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({
-             strategy_id: id,
-             rules: { nodes: positionedNodes, connections: conns },
-             status: record.status,
-             source: 'Builder/Templates'
-           })
-         })
-         const regData = await regResp.json().catch(() => ({}))
-         if (!regResp.ok || regData.success === false) {
-           toast.message('Cópia salva, mas falha ao registrar no Engine.', { description: String((regData as any)?.error || regResp.statusText) })
-         } else {
-           toast.success('Estratégia registrada no Engine.')
-         }
-       } catch (err: any) {
-         toast.message('Cópia salva, mas erro ao registrar no Engine.', { description: err?.message || String(err) })
-       }
+    const positionedNodes = rawNodes.map((n: any, idx: number) => ({
+      ...n,
+      id: n?.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      position: n?.position || { x: 120 + idx * 160, y: 120 },
+      data: { ...(n?.data || {}), label: n?.data?.label || n?.type || 'Nó' }
+    }))
+    const conns = rawConnections.map((c: any, i: number) => ({
+      id: c?.id || `c_${Date.now()}_${i}`,
+      source: c?.source,
+      target: c?.target,
+      type: c?.type || 'condition'
+    }))
 
-       await refreshStrategies()
-     } catch (e: any) {
-       toast.message('Erro de rede ao salvar cópia.', { description: e?.message || String(e) })
-     }
-   }
+    setCurrentStrategyId(null)
+    setCurrentTemplateId(templateId)
+    setNodes(positionedNodes)
+    setConnections(conns)
+    setSelectedNode(null)
+
+    const rawSelectionMode = String((payload as any)?.selectionMode || '').toLowerCase()
+    if (rawSelectionMode === 'automatic' || rawSelectionMode === 'hybrid' || rawSelectionMode === 'manual') {
+      setSelectionMode(rawSelectionMode as 'automatic' | 'hybrid' | 'manual')
+    } else {
+      setSelectionMode('automatic')
+    }
+    setGatingEnabled(Boolean((payload as any)?.gating?.enabled))
+    setDraftStrategyName(tpl?.name || '')
+    setIsBuilderOpen(true)
+    toast.success('Template carregado para edição.')
+  }
+
+  function normalizeNodes(arr: any[]): StrategyNode[] {
+    const GRID_X = 160
+    const GRID_Y = 120
+    return (Array.isArray(arr) ? arr : []).map((n: any, idx: number) => {
+      const hasPos = n && n.position && Number.isFinite(n.position.x) && Number.isFinite(n.position.y)
+      const fallbackPos = { x: 120 + (idx % 5) * GRID_X, y: 120 + Math.floor(idx / 5) * GRID_Y }
+      return {
+        id: String(n?.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+        type: (n?.type as NodeType) || 'condition',
+        subtype: n?.subtype,
+        position: hasPos ? n.position : fallbackPos,
+        data: { ...(n?.data || {}), label: n?.data?.label || n?.type || 'Nó' }
+      }
+    })
+  }
+
+  async function duplicateAndSaveTemplate(tpl: any) {
+    const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    setCurrentTemplateId(null)
+    const payload = tpl?.builder_payload || tpl
+    const rawNodes = Array.isArray(payload?.nodes) ? payload.nodes : []
+    const rawConnections = Array.isArray(payload?.connections) ? payload.connections : []
+    const positionedNodes = rawNodes.map((n: any, idx: number) => ({
+      ...n,
+      id: n?.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      position: n?.position || { x: 120 + idx * 160, y: 120 },
+      data: { ...(n?.data || {}), label: n?.data?.label || n?.type || 'Nó' }
+    }))
+    const conns = rawConnections.map((c: any, i: number) => ({
+      id: c?.id || `c_${Date.now()}_${i}`,
+      source: c?.source,
+      target: c?.target,
+      type: c?.type || 'condition'
+    }))
+    const record = {
+      id,
+      name: `${tpl?.name || 'Template'} (cópia)`,
+      description: tpl?.description || '',
+      status: 'active' as const,
+      nodes: positionedNodes,
+      connections: conns,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      source: 'builder',
+      template_key: tpl?.template_key || tpl?.name || undefined
+    }
+    try {
+      const resp = await fetch('/api/strategies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      })
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}))
+        toast.message('Falha ao salvar cópia.', { description: String((data as any)?.error || resp.statusText) })
+        return
+      }
+      toast.success('Cópia salva com sucesso.')
+
+      try {
+        const regResp = await fetch('/api/automation/strategy/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            strategy_id: id,
+            rules: { nodes: positionedNodes, connections: conns },
+            status: record.status,
+            source: 'Builder/Templates'
+          })
+        })
+        const regData = await regResp.json().catch(() => ({}))
+        if (!regResp.ok || regData.success === false) {
+          toast.message('Cópia salva, mas falha ao registrar no Engine.', { description: String((regData as any)?.error || regResp.statusText) })
+        } else {
+          toast.success('Estratégia registrada no Engine.')
+        }
+      } catch (err: any) {
+        toast.message('Cópia salva, mas erro ao registrar no Engine.', { description: err?.message || String(err) })
+      }
+
+      await refreshStrategies()
+    } catch (e: any) {
+      toast.message('Erro de rede ao salvar cópia.', { description: e?.message || String(e) })
+    }
+  }
+
+  async function publishTemplate(tpl: any) {
+    const id = String(tpl?.id || '').trim()
+    if (!id) {
+      toast.message('Template inválido para publicação.', { description: 'ID do template ausente.' })
+      return
+    }
+    try {
+      const resp = await fetch(`/api/dynamic-strategies/templates/${id}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || (data as any)?.success === false) {
+        toast.message('Falha ao publicar template.', { description: String((data as any)?.error || resp.statusText) })
+        return
+      }
+      toast.success('Template publicado como estratégia dinâmica.')
+      await refreshTemplates()
+    } catch (e: any) {
+      toast.message('Erro de rede ao publicar template.', { description: e?.message || String(e) })
+    }
+  }
 
   function addNodeFromTemplate(tpl: { type: NodeType; subtype?: string; label: string; defaultConfig?: Record<string, any> }, position: { x: number; y: number }) {
     const id = `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -825,10 +985,71 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     }
   }
 
+  async function saveAsTemplate() {
+    const preferredName = (draftStrategyName || '').trim()
+    const name = preferredName
+      ? preferredName
+      : (nodes[0]?.data.label ? `Template: ${nodes[0].data.label}` : `Template ${templates.length + 1}`)
+
+    if (!name) {
+      toast.message('Nome inválido para template.', { description: 'Defina um nome para salvar como template.' })
+      return
+    }
+
+    if (!Array.isArray(nodes) || nodes.length === 0) {
+      toast.message('Nenhum nó no canvas.', { description: 'Adicione nós antes de salvar como template.' })
+      return
+    }
+
+    if (!CURRENT_SCHEMA_VERSION) {
+      toast.message('Erro interno: versão do schema não definida.', { description: 'Contate o suporte técnico.' })
+      return
+    }
+
+    const builderPayload = {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      nodes: [...nodes],
+      connections: [...connections],
+      selectionMode,
+      gating: { enabled: !!gatingEnabled }
+    }
+
+    const description = 'Template criado via Builder'
+    const existingId = currentTemplateId ? String(currentTemplateId).trim() : ''
+
+    try {
+      const commonBody = {
+        name,
+        description,
+        builder_payload: builderPayload
+      }
+
+      const resp = await fetch('/api/dynamic-strategies/templates', {
+        method: existingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(existingId ? { id: existingId, ...commonBody } : commonBody)
+      })
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || !(data as any)?.ok) {
+        toast.message('Falha ao salvar template.', { description: String((data as any)?.error || resp.statusText) })
+        return
+      }
+      const saved = (data as any)?.template
+      if (saved && saved.id) {
+        setCurrentTemplateId(String(saved.id))
+      }
+      toast.success(existingId ? 'Template atualizado com sucesso.' : 'Template salvo com sucesso.')
+      await refreshTemplates()
+    } catch (e: any) {
+      toast.message('Erro de rede ao salvar template.', { description: e?.message || String(e) })
+    }
+  }
+
   function editStrategy(strategyId: string) {
     const s = strategies.find(st => st.id === strategyId)
     if (!s) return
     setCurrentStrategyId(strategyId)
+    setCurrentTemplateId(null)
     setNodes(normalizeNodes(s.nodes))
     setConnections(Array.isArray(s.connections) ? [...s.connections] : [])
     setSelectedNode(null)
@@ -2161,7 +2382,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                       ) : (
                         <div className="space-y-2">
                           {templates.map((tpl: any) => (
-                            <Card key={tpl.template_key || tpl.name}>
+                            <Card key={tpl.id || tpl.template_key || tpl.name}>
                               <CardContent className="py-3 flex items-center justify-between">
                                 <div>
                                   <div className="font-medium flex items-center">
@@ -2169,12 +2390,29 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                                     <Badge variant="outline" className="ml-2">Template</Badge>
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {tpl.description || 'Template curado'} &bull; v{tpl.version || '1.0.0'}
+                                    {tpl.description || 'Template do Builder'}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground mt-1">
+                                    {tpl.is_published
+                                      ? `Publicado como: ${tpl.published_strategy_slug || 'estratégia dinâmica'}`
+                                      : 'Ainda não publicado como estratégia dinâmica'}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Button onClick={() => duplicateTemplate(tpl)}>
-                                    <Puzzle className="mr-2 h-4 w-4" /> Duplicar e Editar
+                                  <Button variant="outline" onClick={() => editTemplate(tpl)}>
+                                    <Edit3 className="mr-2 h-4 w-4" /> Editar Template
+                                  </Button>
+                                  <Button variant="outline" onClick={() => duplicateTemplate(tpl)}>
+                                    <Puzzle className="mr-2 h-4 w-4" /> Duplicar Estratégia
+                                  </Button>
+                                  <Button variant="outline" onClick={() => exportTemplateFile(tpl)}>
+                                    <Download className="mr-2 h-4 w-4" /> Baixar Template
+                                  </Button>
+                                  <Button
+                                    onClick={() => publishTemplate(tpl)}
+                                    disabled={tpl.is_published}
+                                  >
+                                    {tpl.is_published ? 'Publicado' : 'Publicar'}
                                   </Button>
                                 </div>
                               </CardContent>
@@ -2210,7 +2448,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                       />
                     </div>
                     {(templates.filter((tpl: any) => (tpl.name || '').toLowerCase().includes(templateQuery.toLowerCase()))).map((tpl: any) => (
-                      <Card key={tpl.template_key || tpl.name}>
+                      <Card key={tpl.id || tpl.template_key || tpl.name}>
                         <CardContent className="py-3 flex items-center justify-between">
                           <div>
                             <div className="font-medium flex items-center">
@@ -2218,15 +2456,29 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                               <Badge variant="outline" className="ml-2">Template</Badge>
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {tpl.description || 'Template curado'} &bull; v{tpl.version || '1.0.0'}
+                              {tpl.description || 'Template do Builder'}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground mt-1">
+                              {tpl.is_published
+                                ? `Publicado como: ${tpl.published_strategy_slug || 'estratégia dinâmica'}`
+                                : 'Ainda não publicado como estratégia dinâmica'}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button onClick={() => duplicateTemplate(tpl)}>
-                              <Puzzle className="mr-2 h-4 w-4" /> Duplicar e Editar
+                            <Button variant="outline" onClick={() => editTemplate(tpl)}>
+                              <Edit3 className="mr-2 h-4 w-4" /> Editar Template
                             </Button>
-                            <Button variant="secondary" onClick={() => duplicateAndSaveTemplate(tpl)}>
-                              Salvar cópia
+                            <Button variant="outline" onClick={() => duplicateTemplate(tpl)}>
+                              <Puzzle className="mr-2 h-4 w-4" /> Duplicar Estratégia
+                            </Button>
+                            <Button variant="outline" onClick={() => exportTemplateFile(tpl)}>
+                              <Download className="mr-2 h-4 w-4" /> Baixar Template
+                            </Button>
+                            <Button
+                              onClick={() => publishTemplate(tpl)}
+                              disabled={tpl.is_published}
+                            >
+                              {tpl.is_published ? 'Publicado' : 'Publicar'}
                             </Button>
                           </div>
                         </CardContent>
@@ -2506,44 +2758,46 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
         </Card>
       </div>
       <Separator className="my-4" />
-      <DialogFooter className="sm:justify-start">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Modo de seleção oculto no MVP */}
-            <div className="flex items-center gap-2 mt-5">
-              <Switch checked={gatingEnabled} onCheckedChange={setGatingEnabled} />
-              <Label className="text-xs">Limites (gating)</Label>
-            </div>
-            <div className="space-y-1 mt-5">
-              <Label className="text-xs">Amostra real (giros)</Label>
-              <Input
-                type="number"
-                min={1}
-                max={500}
-                value={realHistoryLimit}
-                onChange={(e) => {
-                  const val = Math.floor(Number(e.target.value) || 0)
-                  setRealHistoryLimit(val)
-                }}
-                onBlur={() => setRealHistoryLimit((prev) => Math.max(1, Math.min(500, Math.floor(prev || 0))))}
-                className={`h-8 w-[120px] ${realHistoryLimit < 1 || realHistoryLimit > 500 ? 'border-red-500' : ''}`}
-              />
-              <p className="text-[10px] text-muted-foreground">1–500; usado ao testar com histórico real.</p>
-            </div>
-            {/* Bloco de status do backend removido para simplificação da UI */}
-
-            {/* Botão de teste movido para o lado esquerdo */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" onClick={unifiedTest} disabled={isTesting || isValidatingServer} className="mt-5">
-                    <Play className="mr-2 h-4 w-4" /> {isTesting ? 'Testando...' : 'Testar'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Executa o teste (usa histórico real quando disponível)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      <DialogFooter className="sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 mt-5">
+            <Switch checked={gatingEnabled} onCheckedChange={setGatingEnabled} />
+            <Label className="text-xs">Limites (gating)</Label>
           </div>
+          <div className="space-y-1 mt-5">
+            <Label className="text-xs">Amostra real (giros)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={500}
+              value={realHistoryLimit}
+              onChange={(e) => {
+                const val = Math.floor(Number(e.target.value) || 0)
+                setRealHistoryLimit(val)
+              }}
+              onBlur={() => setRealHistoryLimit((prev) => Math.max(1, Math.min(500, Math.floor(prev || 0))))}
+              className={`h-8 w-[120px] ${realHistoryLimit < 1 || realHistoryLimit > 500 ? 'border-red-500' : ''}`}
+            />
+            <p className="text-[10px] text-muted-foreground">1–500; usado ao testar com histórico real.</p>
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="secondary" onClick={unifiedTest} disabled={isTesting || isValidatingServer} className="mt-5">
+                  <Play className="mr-2 h-4 w-4" /> {isTesting ? 'Testando...' : 'Testar'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Executa o teste (usa histórico real quando disponível)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <div className="flex items-center gap-2 mt-5">
+          <Button variant="outline" onClick={saveAsTemplate}>
+            <Save className="mr-2 h-4 w-4" /> Salvar como Template
+          </Button>
+          <Button onClick={saveStrategy}>
+            <Save className="mr-2 h-4 w-4" /> Salvar Estratégia
+          </Button>
         </div>
       </DialogFooter>
     </DialogContent>
