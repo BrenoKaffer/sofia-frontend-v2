@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Cadastro de Parceiro - SOFIA Admin",
-  icons: {
-    icon: "/favicon-affiliate.png",
-    shortcut: "/favicon-affiliate.png",
-    apple: "/favicon-affiliate.png",
-  },
+  title: "Cadastro de Afiliado - SOFIA Admin",
 };
 
 export default function CadastroAfiliadoLayout({
