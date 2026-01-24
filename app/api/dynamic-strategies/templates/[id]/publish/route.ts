@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth } from '@/lib/auth-server'
 import { compileBuilderToJS } from '@/lib/builder-compiler'
@@ -20,7 +20,7 @@ function getSupabaseAdmin() {
   })
 }
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth()
     if (!userId) {
@@ -36,7 +36,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }, { status: 500 })
     }
 
-    const id = String(params.id || '').trim()
+    const { id: rawId } = await ctx.params
+    const id = String(rawId || '').trim()
     if (!id) {
       return NextResponse.json({ success: false, error: 'ID do template é obrigatório' }, { status: 400 })
     }
