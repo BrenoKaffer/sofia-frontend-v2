@@ -3,6 +3,7 @@
  import { useEffect, useState } from "react";
  import { useAuth } from "@/contexts/auth-context";
  import { getPartnerBalance, getPartnerSales, getPartnerLinks } from "@/lib/api/partner";
+import { ClockIcon, PercentIcon, ShoppingBagIcon, WalletIcon } from "@/components/Layouts/header/icons";
  import type { PartnerSale } from "@/types/partner";
  
  export default function DashboardPage() {
@@ -43,20 +44,48 @@
          <div className="mt-2 text-sm text-dark-5 dark:text-dark-6">{partner?.name || ""}</div>
          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
            <div className="rounded-lg border p-4 dark:border-dark-4">
-             <div className="text-sm text-dark-5 dark:text-dark-6">Saldo disponível</div>
-             <div className="mt-1 text-xl font-semibold">R$ {((balance?.available || 0) / 100).toFixed(2)}</div>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm text-dark-5 dark:text-dark-6">Saldo disponível</div>
+                <div className="mt-1 text-xl font-semibold">R$ {((balance?.available || 0) / 100).toFixed(2)}</div>
+              </div>
+              <div className="grid size-10 place-items-center rounded-full bg-green-light-7 text-green dark:bg-green/10">
+                <WalletIcon className="h-5 w-5" />
+              </div>
+            </div>
            </div>
            <div className="rounded-lg border p-4 dark:border-dark-4">
-             <div className="text-sm text-dark-5 dark:text-dark-6">Saques pendentes</div>
-             <div className="mt-1 text-xl font-semibold">R$ {((balance?.pending || 0) / 100).toFixed(2)}</div>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm text-dark-5 dark:text-dark-6">Saques pendentes</div>
+                <div className="mt-1 text-xl font-semibold">R$ {((balance?.pending || 0) / 100).toFixed(2)}</div>
+              </div>
+              <div className="grid size-10 place-items-center rounded-full bg-yellow-light-4 text-yellow-dark dark:bg-yellow-dark/10">
+                <ClockIcon className="h-5 w-5" />
+              </div>
+            </div>
            </div>
            <div className="rounded-lg border p-4 dark:border-dark-4">
-             <div className="text-sm text-dark-5 dark:text-dark-6">Total de vendas</div>
-             <div className="mt-1 text-xl font-semibold">R$ {((balance?.total_sales || 0) / 100).toFixed(2)}</div>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm text-dark-5 dark:text-dark-6">Total de vendas</div>
+                <div className="mt-1 text-xl font-semibold">R$ {((balance?.total_sales || 0) / 100).toFixed(2)}</div>
+              </div>
+              <div className="grid size-10 place-items-center rounded-full bg-blue-light-5 text-blue dark:bg-blue/10">
+                <ShoppingBagIcon className="h-5 w-5" />
+              </div>
+            </div>
            </div>
            <div className="rounded-lg border p-4 dark:border-dark-4">
-             <div className="text-sm text-dark-5 dark:text-dark-6">Total em comissão</div>
-             <div className="mt-1 text-xl font-semibold">R$ {((balance?.total_commission || 0) / 100).toFixed(2)}</div>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm text-dark-5 dark:text-dark-6">Total em comissão</div>
+                <div className="mt-1 text-xl font-semibold">R$ {((balance?.total_commission || 0) / 100).toFixed(2)}</div>
+              </div>
+              <div className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary dark:bg-primary/15">
+                <PercentIcon className="h-5 w-5" />
+              </div>
+            </div>
            </div>
          </div>
        </div>
