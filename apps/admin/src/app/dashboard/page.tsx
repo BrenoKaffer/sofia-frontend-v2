@@ -106,7 +106,7 @@ import { ClockIcon, PercentIcon, ShoppingBagIcon, WalletIcon } from "@/component
                <div>Nenhum link disponível.</div>
                <div className="mt-3">
                  <Link href="/afiliado/cadastro" className="inline-flex rounded-lg bg-primary px-4 py-2 font-semibold text-white">
-                   Completar cadastro de afiliado
+                  Completar cadastro de parceiro
                  </Link>
                </div>
              </div>
