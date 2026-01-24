@@ -1,9 +1,8 @@
-import { API_BASE_URL } from "../config";
 import type { Partner } from "../../types/partner";
 
 export async function ssoExchange(): Promise<{ token: string; partner: Partner } | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/partners/sso`, {
+    const res = await fetch(`/partners/sso`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

@@ -7,17 +7,22 @@ export async function POST(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "no_session" }, { status: 401 });
   }
-  if (token !== "test-token") {
-    return NextResponse.json({ error: "invalid_token" }, { status: 401 });
+
+  const rawBase = (process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "").trim();
+  const base = rawBase.replace(/\/+$/, "");
+  const apiBase = base ? (base.endsWith("/api") ? base : `${base}/api`) : "https://api.v1sofia.com/api";
+
+  const backendRes = await fetch(`${apiBase}/partners/me`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  const json = (await backendRes.json().catch(() => ({}))) as any;
+  if (!backendRes.ok) {
+    const code = String(json?.error || "unauthorized");
+    return NextResponse.json({ error: code }, { status: backendRes.status });
   }
-  const partner: Partner = {
-    id: "test-partner-id",
-    user_id: "test-user-id",
-    name: "Parceiro Teste",
-    document: "00000000000",
-    ref_code: "TESTCODE",
-    commission_percentage: 0,
-    payout_balance: 0,
-  };
-  return NextResponse.json({ token, partner }, { status: 200 });
+
+  return NextResponse.json({ token, partner: json as Partner }, { status: 200 });
 }
