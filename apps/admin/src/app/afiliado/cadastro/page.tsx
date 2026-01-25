@@ -31,7 +31,28 @@ function parseMoneyToCents(v: string) {
   return Math.round(n * 100);
 }
 
-export default function CadastroAfiliadoPage() {
+function decodeJwtPayload(token: string): any | null {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length < 2) return null;
+    const raw = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = raw.length % 4 ? "=".repeat(4 - (raw.length % 4)) : "";
+    const json = atob(`${raw}${pad}`);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function resolveEmailFromToken(token: string): string | null {
+  const payload = decodeJwtPayload(token);
+  const email = payload?.email;
+  if (typeof email !== "string") return null;
+  const normalized = email.trim().toLowerCase();
+  return normalized ? normalized : null;
+}
+
+export default function CadastroParceiroPage() {
   const { token, partner } = useAuth();
 
   const [name, setName] = useState("");
@@ -268,6 +289,7 @@ export default function CadastroAfiliadoPage() {
     setSuccess(false);
     if (!token) return;
 
+    const email = resolveEmailFromToken(token) || undefined;
     const allFields = steps.flatMap((s) => s.fields);
     setHasTriedSubmit(true);
     markTouched(allFields);
@@ -280,6 +302,7 @@ export default function CadastroAfiliadoPage() {
     try {
       const res = await registerPartnerAffiliate(token, {
         name,
+        ...(email ? { email } : {}),
         document: sanitizeDigits(document),
         bank_account: {
           holder_name: name,

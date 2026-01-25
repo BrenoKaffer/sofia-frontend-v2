@@ -122,6 +122,7 @@ export async function registerPartnerAffiliate(
   token: string,
   payload: {
     name: string;
+    email?: string;
     document: string;
     bank_account: {
       holder_name: string;

@@ -19,6 +19,17 @@ export async function apiRequest<T>(opts: RequestOptions): Promise<T> {
     cache: "no-store",
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(String((json as any)?.error || res.statusText));
+  if (!res.ok) {
+    const err = (json as any)?.error;
+    const message =
+      typeof err === "string"
+        ? err
+        : typeof err?.message === "string"
+          ? err.message
+          : err
+            ? JSON.stringify(err)
+            : res.statusText;
+    throw new Error(message);
+  }
   return json as T;
 }
