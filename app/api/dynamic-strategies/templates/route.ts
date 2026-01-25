@@ -17,6 +17,58 @@ function getSupabaseAdmin() {
   })
 }
 
+async function seedCoreTemplates(supabase: ReturnType<typeof getSupabaseAdmin>) {
+  const core = [
+    { name: 'Conexão de Cores SOFIA', slug: 'conexao-de-cores-sofia', description: 'Estratégia baseada em padrões de cores na roleta' },
+    { name: 'Puxador de Terminais', slug: 'puxador-de-terminais', description: 'Estratégia de análise de terminais' },
+    { name: 'Estrategia de Irmãos', slug: 'estrategia-de-irmaos', description: 'Estratégia baseada em números irmãos na roleta' },
+    { name: 'Estratégia de Espelho', slug: 'estrategia-de-espelho', description: 'Estratégia baseada em padrões de espelho' },
+    { name: 'Estratégia de Ausência', slug: 'estrategia-de-ausencia', description: 'Estratégia baseada em ausência de eventos' },
+    { name: 'Estratégia de Alternância', slug: 'estrategia-de-alternancia', description: 'Estratégia baseada em alternância de padrões' },
+    { name: 'Estratégia de Setor Dominante', slug: 'estrategia-de-setor-dominante', description: 'Estratégia baseada em setor dominante' },
+    { name: 'Estratégia Padrão do Dia', slug: 'estrategia-padrao-do-dia', description: 'Estratégia baseada em padrões do dia' },
+  ]
+
+  const slugs = core.map(c => c.slug)
+  const { data: existing, error: existingError } = await supabase
+    .from('strategy_templates')
+    .select('published_strategy_slug')
+    .eq('user_id', 'system')
+    .in('published_strategy_slug', slugs)
+
+  if (existingError) {
+    throw new Error(existingError.message)
+  }
+
+  const existingSlugs = new Set((existing || []).map((x: any) => String(x?.published_strategy_slug || '').trim()).filter(Boolean))
+  const missing = core.filter(c => !existingSlugs.has(c.slug))
+
+  if (missing.length === 0) return
+
+  const nowPayloadBase = {
+    schemaVersion: '1.0.0',
+    nodes: [],
+    connections: [],
+    selectionMode: 'automatic',
+    gating: { enabled: false },
+    metadata: { origin: 'official', author: { displayName: 'SOFIA' } }
+  }
+
+  const rows = missing.map(c => ({
+    user_id: 'system',
+    name: c.name,
+    description: c.description,
+    builder_payload: nowPayloadBase,
+    is_published: true,
+    published_strategy_slug: c.slug
+  }))
+
+  const { error: insertError } = await supabase.from('strategy_templates').insert(rows)
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth()
@@ -25,6 +77,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = getSupabaseAdmin()
+    await seedCoreTemplates(supabase)
     const url = new URL(request.url)
     const id = url.searchParams.get('id')
 
@@ -32,8 +85,8 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase
         .from('strategy_templates')
         .select('id,user_id,name,description,builder_payload,is_published,published_strategy_slug,created_at,updated_at')
-        .eq('user_id', userId)
         .eq('id', id)
+        .or(`user_id.eq.${userId},user_id.eq.system`)
         .maybeSingle()
 
       if (error) {
@@ -49,7 +102,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('strategy_templates')
       .select('id,user_id,name,description,builder_payload,is_published,published_strategy_slug,created_at,updated_at')
-      .eq('user_id', userId)
+      .or(`user_id.eq.${userId},user_id.eq.system`)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -88,13 +141,40 @@ export async function POST(request: NextRequest) {
         nodes: rawNodes,
         connections: rawConnections,
         selectionMode: graph.selectionMode,
-        gating: graph.gating
+        gating: graph.gating,
+        metadata: (anyBody.metadata && typeof anyBody.metadata === 'object') ? anyBody.metadata : undefined
       }
       if (!name) {
         name = String(anyBody.name || 'Template importado').trim()
       }
       if (!description && typeof anyBody.description === 'string') {
         description = anyBody.description
+      }
+    }
+
+    if (anyBody.author && typeof anyBody.author === 'object') {
+      const existingMeta = (builderPayload && typeof builderPayload === 'object' && (builderPayload as any).metadata && typeof (builderPayload as any).metadata === 'object')
+        ? (builderPayload as any).metadata
+        : {}
+      builderPayload = {
+        ...(builderPayload || {}),
+        metadata: {
+          ...existingMeta,
+          author: anyBody.author
+        }
+      }
+    }
+
+    if (Array.isArray(anyBody.tags)) {
+      const existingMeta = (builderPayload && typeof builderPayload === 'object' && (builderPayload as any).metadata && typeof (builderPayload as any).metadata === 'object')
+        ? (builderPayload as any).metadata
+        : {}
+      builderPayload = {
+        ...(builderPayload || {}),
+        metadata: {
+          ...existingMeta,
+          tags: anyBody.tags
+        }
       }
     }
 

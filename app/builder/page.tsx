@@ -19,14 +19,13 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { Switch } from '@/components/ui/switch'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-  import { Play, Save, RotateCcw, Layers, Trash2, Puzzle, X, Info, CheckCircle, XCircle, AlertTriangle, Download, ChevronRight, MoreVertical, Edit3 } from 'lucide-react'
-  import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
+import { Play, Save, RotateCcw, Layers, Trash2, Puzzle, Info, CheckCircle, XCircle, AlertTriangle, Download, ChevronRight, MoreVertical, Edit3 } from 'lucide-react'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { builderSpec, CURRENT_SCHEMA_VERSION } from '../config/builderSpec'
-import ReactFlow, { Background, Controls, MiniMap, MarkerType, Connection as RFConnection, Edge as RFEdge, Node as RFNode } from 'reactflow'
+import ReactFlow, { Background, Controls, MarkerType, Connection as RFConnection, Edge as RFEdge, Node as RFNode } from 'reactflow'
 import { parseHistoryInput, evaluateConditionNode, evaluateLogicNode } from '../lib/strategySemantics'
 import { compileBuilderToJS } from '../../lib/builder-compiler'
-import { useFeatureFlag, FEATURE_FLAGS } from '@/lib/feature-flags'
 import { useAuth } from '@/contexts/auth-context'
 import { useUserStatus } from '@/hooks/useUserStatus'
 import { useUpgrade } from '@/contexts/upgrade-context'
@@ -187,7 +186,6 @@ export default function BuilderPage() {
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [draftStrategyName, setDraftStrategyName] = useState('')
 
-
   const [nodes, setNodes] = useState<StrategyNode[]>([])
   const [connections, setConnections] = useState<Connection[]>([])
   const [selectedNode, setSelectedNode] = useState<StrategyNode | null>(null)
@@ -199,16 +197,17 @@ export default function BuilderPage() {
     defaultConfig?: Record<string, any>
   } | null>(null)
 
-  const [strategies, setStrategies] = useState<Array<{ id: string; name: string; description?: string; status: 'active' | 'paused'; nodes: StrategyNode[]; connections: Connection[]; createdAt: number; updatedAt: number; selectionMode?: 'automatic' | 'hybrid' | 'manual'; gating?: { enabled: boolean } }>>([])
-  const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(null)
   const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [templates, setTemplates] = useState<any[]>([])
+  const [instances, setInstances] = useState<any[]>([])
   const [templateQuery, setTemplateQuery] = useState('')
+  const [showHidden, setShowHidden] = useState(false)
+  const [hiddenTemplateIds, setHiddenTemplateIds] = useState<Record<string, boolean>>({})
+  const [busyTemplateIds, setBusyTemplateIds] = useState<Record<string, boolean>>({})
 
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
-  const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const builderRef = useRef<HTMLDivElement | null>(null)
   const [isTesting, setIsTesting] = useState(false)
   const [isTestReportOpen, setIsTestReportOpen] = useState(false)
@@ -231,9 +230,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
   const [selectionMode, setSelectionMode] = useState<'automatic' | 'hybrid' | 'manual'>('automatic')
   const [gatingEnabled, setGatingEnabled] = useState<boolean>(false)
   const [historySource, setHistorySource] = useState<'manual' | 'real'>('manual')
-  // Estado de saúde do backend
-  const [backendHealth, setBackendHealth] = useState<{ status: 'healthy' | 'degraded' | 'unhealthy'; metrics?: { responseTime?: number }; services?: any } | null>(null)
-  const [isHealthLoading, setIsHealthLoading] = useState<boolean>(false)
   const [realHistoryLimit, setRealHistoryLimit] = useState<number>(60)
 
   // Carregar preferências do Builder na inicialização
@@ -279,74 +275,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     return () => document.removeEventListener('fullscreenchange', handler)
   }, [])
 
-  // Carrega estratÃ©gias do servidor ao iniciar
-  useEffect(() => {
-    refreshStrategies()
-  }, [])
-
-  // Busca saúde do backend ao abrir o Builder e atualiza a cada 60s
-  useEffect(() => {
-    let intervalId: any = null
-    if (isBuilderOpen) {
-      refreshBackendHealth()
-      intervalId = setInterval(refreshBackendHealth, 60000)
-    }
-    return () => {
-      if (intervalId) clearInterval(intervalId)
-    }
-  }, [isBuilderOpen])
-
-  async function refreshBackendHealth() {
-    try {
-      setIsHealthLoading(true)
-      const resp = await fetch('/api/system/health', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store'
-      })
-      const data = await resp.json().catch(() => ({}))
-      if (resp.ok) {
-        setBackendHealth({ status: data.status || 'healthy', metrics: data.metrics, services: data.services })
-      } else {
-        setBackendHealth({ status: 'unhealthy' })
-      }
-    } catch (e) {
-      setBackendHealth({ status: 'unhealthy' })
-    } finally {
-      setIsHealthLoading(false)
-    }
-  }
-
-  // Revalidate automático: foco/visibilidade/online/intervalo
-  useEffect(() => {
-    let lastCall = 0
-    const minIntervalMs = 15000
-    const safeRefresh = () => {
-      const now = Date.now()
-      if (now - lastCall < minIntervalMs) return
-      lastCall = now
-      refreshStrategies()
-    }
-
-    const onFocus = () => safeRefresh()
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') safeRefresh()
-    }
-    const onOnline = () => safeRefresh()
-
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onVisibility)
-    window.addEventListener('online', onOnline)
-
-    const intervalId = setInterval(safeRefresh, 120000)
-
-    return () => {
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onVisibility)
-      window.removeEventListener('online', onOnline)
-      clearInterval(intervalId)
-    }
-  }, [])
 
   // Atalho para excluir nÃ³ ou conexÃ£o selecionada
   useEffect(() => {
@@ -366,28 +294,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [selectedNode, selectedEdgeId])
 
-  async function refreshStrategies() {
-    try {
-      const resp = await fetch('/api/strategies')
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}))
-        toast.message('Falha ao carregar do servidor.', { description: String((data as any)?.error || resp.statusText) })
-        return
-      }
-      const data = await resp.json()
-      const rawList = Array.isArray(data) ? data : (data?.strategies || [])
-      // Garanta que cada estratégia tenha arrays válidos para evitar crashes no render
-      const list = rawList.map((s: any) => ({
-        ...s,
-        nodes: Array.isArray(s?.nodes) ? s.nodes : (Array.isArray(s?.graph?.nodes) ? s.graph.nodes : []),
-        connections: Array.isArray(s?.connections) ? s.connections : (Array.isArray(s?.graph?.connections) ? s.graph.connections : [])
-      }))
-      setStrategies(list)
-      toast.success('Estratégias carregadas do servidor.')
-    } catch (e: any) {
-      toast.message('Erro de rede ao carregar estratégias.', { description: e?.message || String(e) })
-    }
-  }
 
   async function refreshTemplates() {
     try {
@@ -406,9 +312,232 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     }
   }
 
+  async function refreshInstances() {
+    try {
+      const resp = await fetch('/api/strategy-instances', { cache: 'no-store' })
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}))
+        toast.message('Falha ao carregar instâncias.', { description: String((data as any)?.error || resp.statusText) })
+        return
+      }
+      const data = await resp.json().catch(() => ({}))
+      const list = Array.isArray((data as any)?.instances) ? (data as any).instances : []
+      setInstances(list)
+    } catch (e: any) {
+      toast.message('Erro de rede ao carregar instâncias.', { description: e?.message || String(e) })
+    }
+  }
+
   useEffect(() => {
     refreshTemplates()
+    refreshInstances()
+    try {
+      const raw = window.localStorage.getItem('sofia.builder.hiddenTemplateIds')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed === 'object') {
+          setHiddenTemplateIds(parsed as Record<string, boolean>)
+        }
+      }
+    } catch { }
   }, [])
+
+  const instanceByTemplateId = useMemo(() => {
+    const map: Record<string, any> = {}
+    for (const inst of (Array.isArray(instances) ? instances : [])) {
+      const tableId = String((inst as any)?.table_id || '').trim()
+      if (!tableId) continue
+      if (!map[tableId]) map[tableId] = inst
+    }
+    return map
+  }, [instances])
+
+  const filteredTemplates = useMemo(() => {
+    const query = String(templateQuery || '').trim().toLowerCase()
+    const list = Array.isArray(templates) ? templates : []
+
+    const visible = list.filter((tpl: any) => {
+      if (!showHidden && isTemplateHidden(tpl)) return false
+      if (!query) return true
+      const name = String(tpl?.name || '').toLowerCase()
+      const slug = String(tpl?.published_strategy_slug || '').toLowerCase()
+      const author = String(getTemplateAuthorName(tpl) || '').toLowerCase()
+      return name.includes(query) || slug.includes(query) || author.includes(query)
+    })
+
+    visible.sort((a: any, b: any) => {
+      const aOrigin = getTemplateOrigin(a)
+      const bOrigin = getTemplateOrigin(b)
+      const aRank = aOrigin === 'official' ? 0 : 1
+      const bRank = bOrigin === 'official' ? 0 : 1
+      if (aRank !== bRank) return aRank - bRank
+      const aDate = new Date(a?.updated_at || a?.created_at || 0).getTime()
+      const bDate = new Date(b?.updated_at || b?.created_at || 0).getTime()
+      return bDate - aDate
+    })
+
+    return visible
+  }, [templates, templateQuery, showHidden, hiddenTemplateIds, instances, userProfile, user])
+
+  function getTemplateId(tpl: any): string {
+    return String(tpl?.id || '').trim()
+  }
+
+  function getTemplateMeta(tpl: any): any {
+    const payload = tpl?.builder_payload
+    const meta = payload && typeof payload === 'object' ? (payload as any).metadata : null
+    return meta && typeof meta === 'object' ? meta : null
+  }
+
+  function getTemplateOrigin(tpl: any): string {
+    if (String(tpl?.user_id || '') === 'system') return 'official'
+    const meta = getTemplateMeta(tpl)
+    const origin = String(meta?.origin || '').trim().toLowerCase()
+    if (origin === 'official' || origin === 'imported' || origin === 'created') return origin
+    return 'created'
+  }
+
+  function getTemplateAuthorName(tpl: any): string {
+    if (String(tpl?.user_id || '') === 'system') return 'SOFIA'
+    const meta = getTemplateMeta(tpl)
+    const display = String(meta?.author?.displayName || '').trim()
+    if (display) return display
+    const fallback = String((userProfile as any)?.full_name || user?.email || 'Você').trim()
+    return fallback || 'Você'
+  }
+
+  function isTemplateHidden(tpl: any): boolean {
+    const id = getTemplateId(tpl)
+    if (!id) return false
+    return Boolean(hiddenTemplateIds[id])
+  }
+
+  function setTemplateHidden(tpl: any, hidden: boolean) {
+    const id = getTemplateId(tpl)
+    if (!id) return
+    setHiddenTemplateIds(prev => {
+      const next = { ...(prev || {}) }
+      if (hidden) next[id] = true
+      else delete next[id]
+      try {
+        window.localStorage.setItem('sofia.builder.hiddenTemplateIds', JSON.stringify(next))
+      } catch { }
+      return next
+    })
+  }
+
+  async function ensureTemplatePublished(tpl: any): Promise<{ ok: boolean; slug?: string }> {
+    const id = getTemplateId(tpl)
+    if (!id) return { ok: false }
+    const existingSlug = String(tpl?.published_strategy_slug || '').trim()
+    if (tpl?.is_published && existingSlug) return { ok: true, slug: existingSlug }
+
+    try {
+      const resp = await fetch(`/api/dynamic-strategies/templates/${id}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || (data as any)?.success === false) {
+        toast.message('Falha ao publicar.', { description: String((data as any)?.error || resp.statusText) })
+        return { ok: false }
+      }
+    } catch (e: any) {
+      toast.message('Erro de rede ao publicar.', { description: e?.message || String(e) })
+      return { ok: false }
+    }
+
+    try {
+      const resp = await fetch(`/api/dynamic-strategies/templates?id=${encodeURIComponent(id)}`, { cache: 'no-store' })
+      const data = await resp.json().catch(() => ({}))
+      const updated = (data as any)?.template
+      const slug = String(updated?.published_strategy_slug || '').trim()
+      if (resp.ok && (data as any)?.ok && slug) {
+        await refreshTemplates()
+        return { ok: true, slug }
+      }
+      toast.message('Publicado, mas sem slug.', { description: 'Tente atualizar a lista e publicar novamente.' })
+      return { ok: false }
+    } catch (e: any) {
+      toast.message('Erro ao validar publicação.', { description: e?.message || String(e) })
+      return { ok: false }
+    }
+  }
+
+  async function setTemplateEnabled(tpl: any, enabled: boolean) {
+    const templateId = getTemplateId(tpl)
+    if (!templateId) {
+      toast.message('Estratégia inválida.', { description: 'ID ausente.' })
+      return
+    }
+    if (busyTemplateIds[templateId]) return
+
+    setBusyTemplateIds(prev => ({ ...(prev || {}), [templateId]: true }))
+    try {
+      const published = await ensureTemplatePublished(tpl)
+      if (!published.ok || !published.slug) return
+
+      const existing = instanceByTemplateId[templateId]
+      if (existing?.id) {
+        const resp = await fetch('/api/strategy-instances', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: existing.id,
+            enabled,
+            params: (existing?.params && typeof existing.params === 'object') ? existing.params : null
+          })
+        })
+        const data = await resp.json().catch(() => ({}))
+        if (!resp.ok || !(data as any)?.ok) {
+          toast.message('Falha ao atualizar instância.', { description: String((data as any)?.error || resp.statusText) })
+          return
+        }
+      } else {
+        const resp = await fetch('/api/strategy-instances', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table_id: templateId,
+            strategy_slug: published.slug,
+            enabled,
+            params: null
+          })
+        })
+        const data = await resp.json().catch(() => ({}))
+        if (!resp.ok || !(data as any)?.ok) {
+          toast.message('Falha ao criar instância.', { description: String((data as any)?.error || resp.statusText) })
+          return
+        }
+      }
+
+      await refreshInstances()
+
+      try {
+        const toggle = await fetch('/api/dynamic-strategies/toggle', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: published.slug, enabled, reason: enabled ? 'Ativada via Builder' : 'Desativada via Builder' })
+        })
+        const data = await toggle.json().catch(() => ({}))
+        if (!toggle.ok || (data as any)?.success === false) {
+          toast.message('Instância atualizada, mas falhou no backend.', { description: String((data as any)?.error || toggle.statusText) })
+          return
+        }
+      } catch (e: any) {
+        toast.message('Instância atualizada, mas falhou no backend.', { description: e?.message || String(e) })
+        return
+      }
+
+      toast.success(enabled ? 'Estratégia ativada.' : 'Estratégia desativada.')
+    } finally {
+      setBusyTemplateIds(prev => {
+        const next = { ...(prev || {}) }
+        delete next[templateId]
+        return next
+      })
+    }
+  }
 
   function buildTemplateFileFromTemplate(tpl: any): StrategyTemplateFile {
     const payload = tpl?.builder_payload || tpl
@@ -453,28 +582,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     }
   }, [])
 
-  function exportStrategies() {
-    const payload = strategies.map(s => ({
-      id: s.id,
-      name: s.name,
-      description: s.description,
-      status: s.status,
-      graph: {
-        nodes: s.nodes.map(n => ({ id: n.id, type: n.type, subtype: n.subtype, data: n.data, position: n.position })),
-        connections: s.connections.map(c => ({ id: c.id, source: c.source, target: c.target, type: c.type }))
-      },
-      meta: { createdAt: s.createdAt, updatedAt: s.updatedAt }
-    }))
-    const json = JSON.stringify(payload, null, 2)
-    if (typeof navigator !== 'undefined' && (navigator as any).clipboard) {
-      ; (navigator as any).clipboard.writeText(json)
-        .then(() => toast.success('Exportado: JSON copiado para área de transferência'))
-        .catch(() => toast.error('Falha ao copiar JSON'))
-    } else {
-      toast.message('JSON:', { description: json })
-    }
-  }
-
   function exportTemplateFile(tpl: any) {
     try {
       const file = buildTemplateFileFromTemplate(tpl)
@@ -499,94 +606,81 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     }
   }
 
-  function exportStrategyFile(strategyId: string) {
-    const s = strategies.find(st => st.id === strategyId)
-    if (!s) return
-    const payload = {
-      id: s.id,
-      name: s.name,
-      description: s.description,
-      status: s.status,
-      graph: {
-        nodes: s.nodes.map(n => ({ id: n.id, type: n.type, subtype: n.subtype, data: n.data, position: n.position })),
-        connections: s.connections.map(c => ({ id: c.id, source: c.source, target: c.target, type: c.type }))
-      },
-      meta: { createdAt: s.createdAt, updatedAt: s.updatedAt }
-    }
-    const json = JSON.stringify(payload, null, 2)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const safeName = (s.name || 'estrategia').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `estrategia-${safeName}-${s.id}.json`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-    toast.success('Download iniciado')
-  }
-
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     try {
       const text = await file.text()
       const parsed = JSON.parse(text)
-      const list = (Array.isArray(parsed) ? parsed : [parsed]).map((p: any) => {
-        const id = p?.id || p?.templateId || `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-        const rawNodes = ((p?.graph?.nodes ?? p?.nodes) ?? [])
-        const rawConns = ((p?.graph?.connections ?? p?.connections ?? p?.edges) ?? [])
-        const nodes = rawNodes.map((n: any, idx: number) => {
-          const type: NodeType = (n.type as NodeType) || 'condition'
-          const computedSubtype = n.subtype || inferConditionSubtype(n)
-          const position = n.position || { x: 40 + (idx % 4) * 160, y: 40 + Math.floor(idx / 4) * 120 }
-          const baseData = n.data ? { ...n.data } : { label: n.label || `${type || 'nó'} ${idx + 1}`, config: n.config || {} }
-          if (type === 'condition' && !baseData.conditionType) {
-            ;(baseData as any).conditionType = computedSubtype
+      const incoming = Array.isArray(parsed) ? parsed : [parsed]
+      const created: any[] = []
+
+      for (const p of incoming) {
+        let body: any = p
+
+        const isTemplateFile = p && typeof p === 'object' && p.type === 'sofia_strategy_template' && p.graph && typeof p.graph === 'object'
+        if (!isTemplateFile) {
+          const rawNodes = ((p?.graph?.nodes ?? p?.nodes) ?? [])
+          const rawConns = ((p?.graph?.connections ?? p?.connections ?? p?.edges) ?? [])
+          const nodes = rawNodes.map((n: any, idx: number) => {
+            const type: NodeType = (n.type as NodeType) || 'condition'
+            const computedSubtype = n.subtype || inferConditionSubtype(n)
+            const position = n.position || { x: 40 + (idx % 4) * 160, y: 40 + Math.floor(idx / 4) * 120 }
+            const baseData = n.data ? { ...n.data } : { label: n.label || `${type || 'nó'} ${idx + 1}`, config: n.config || {} }
+            if (type === 'condition' && !baseData.conditionType) {
+              ;(baseData as any).conditionType = computedSubtype
+            }
+            return {
+              id: n.id || `n_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+              type,
+              subtype: computedSubtype,
+              position,
+              data: baseData
+            }
+          })
+          const connections = rawConns.map((c: any, idx: number) => ({
+            id: c.id || `e_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+            source: c.source,
+            target: c.target,
+            type: (c.type as 'success' | 'failure' | 'condition') || 'success'
+          }))
+
+          body = {
+            type: 'sofia_strategy_template',
+            schemaVersion: String(p?.schemaVersion || p?.graph?.schemaVersion || CURRENT_SCHEMA_VERSION || '1.0.0'),
+            name: String(p?.name || 'Estratégia importada'),
+            description: typeof p?.description === 'string' ? p.description : 'Importada via JSON',
+            author: p?.author,
+            metadata: { origin: 'imported' },
+            graph: {
+              schemaVersion: String(p?.schemaVersion || p?.graph?.schemaVersion || CURRENT_SCHEMA_VERSION || '1.0.0'),
+              nodes,
+              connections,
+              selectionMode: (p?.selectionMode as any) ?? (p?.graph?.selectionMode as any),
+              gating: (p?.gating && typeof p.gating === 'object') ? p.gating : ((p?.graph?.gating && typeof p.graph.gating === 'object') ? p.graph.gating : undefined)
+            }
           }
-          return {
-            id: n.id || `n_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
-            type,
-            subtype: computedSubtype,
-            position,
-            data: baseData
-          }
-        })
-        const connections = rawConns.map((c: any, idx: number) => ({
-          id: c.id || `e_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
-          source: c.source,
-          target: c.target,
-          type: (c.type as 'success' | 'failure' | 'condition') || 'success'
-        }))
-        return {
-          id,
-          name: p.name,
-          description: p.description,
-          status: (p.status as 'active' | 'paused') ?? 'paused',
-          nodes,
-          connections,
-          createdAt: p?.meta?.createdAt ?? p?.createdAt ?? Date.now(),
-          updatedAt: p?.meta?.updatedAt ?? p?.updatedAt ?? Date.now(),
-          selectionMode: (p?.selectionMode as 'automatic' | 'hybrid' | 'manual') ?? (p?.graph?.selectionMode as 'automatic' | 'hybrid' | 'manual') ?? undefined,
-          gating: (p?.gating && typeof p.gating === 'object')
-            ? p.gating
-            : (p?.graph?.gating && typeof p.graph.gating === 'object')
-              ? p.graph.gating
-              : undefined,
         }
-      })
-      setStrategies(list)
-      // Abrir automaticamente a primeira estratÃ©gia importada no canvas
-      if (list.length > 0) {
-        const first = list[0]
-        setCurrentStrategyId(first.id)
-        setNodes(normalizeNodes(first.nodes))
-        setConnections([...first.connections])
-        setSelectedNode(null)
-        setIsBuilderOpen(true)
+
+        const resp = await fetch('/api/dynamic-strategies/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+        const data = await resp.json().catch(() => ({}))
+        if (!resp.ok || !(data as any)?.ok) {
+          toast.message('Falha ao importar item.', { description: String((data as any)?.error || resp.statusText) })
+          continue
+        }
+        if ((data as any)?.template) created.push((data as any).template)
       }
-      toast.success('Importado com sucesso')
+
+      await refreshTemplates()
+      if (created.length > 0) {
+        editTemplate(created[0])
+      }
+
+      toast.success('Importação concluída')
     } catch (err) {
       toast.error('Falha ao importar JSON')
     } finally {
@@ -601,8 +695,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
   ), [])
 
   function createNewStrategy() {
-    const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-    setCurrentStrategyId(id)
     setCurrentTemplateId(null)
     setNodes([])
     setConnections([])
@@ -613,11 +705,9 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
   }
 
   function duplicateTemplate(tpl: any) {
-    const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
     const payload = tpl?.builder_payload || tpl
     const rawNodes = Array.isArray(payload?.nodes) ? payload.nodes : []
     const rawConnections = Array.isArray(payload?.connections) ? payload.connections : []
-    setCurrentStrategyId(id)
     setCurrentTemplateId(null)
     const positionedNodes = rawNodes.map((n: any, idx: number) => ({
       ...n,
@@ -641,12 +731,18 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
 
   function editTemplate(tpl: any) {
     const templateId = String(tpl?.id || '').trim()
+    const templateOwner = String(tpl?.user_id || '').trim()
     const payload = tpl?.builder_payload || tpl
     const rawNodes = Array.isArray(payload?.nodes) ? payload.nodes : []
     const rawConnections = Array.isArray(payload?.connections) ? payload.connections : []
 
-    if (!templateId || rawNodes.length === 0) {
-      toast.message('Template inválido para edição.', { description: 'Template sem ID ou sem nós.' })
+    if (!templateId) {
+      toast.message('Template inválido para edição.', { description: 'Template sem ID.' })
+      return
+    }
+
+    if (templateOwner === 'system') {
+      duplicateTemplate(tpl)
       return
     }
 
@@ -663,7 +759,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       type: c?.type || 'condition'
     }))
 
-    setCurrentStrategyId(null)
     setCurrentTemplateId(templateId)
     setNodes(positionedNodes)
     setConnections(conns)
@@ -695,99 +790,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
         data: { ...(n?.data || {}), label: n?.data?.label || n?.type || 'Nó' }
       }
     })
-  }
-
-  async function duplicateAndSaveTemplate(tpl: any) {
-    const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-    setCurrentTemplateId(null)
-    const payload = tpl?.builder_payload || tpl
-    const rawNodes = Array.isArray(payload?.nodes) ? payload.nodes : []
-    const rawConnections = Array.isArray(payload?.connections) ? payload.connections : []
-    const positionedNodes = rawNodes.map((n: any, idx: number) => ({
-      ...n,
-      id: n?.id || `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      position: n?.position || { x: 120 + idx * 160, y: 120 },
-      data: { ...(n?.data || {}), label: n?.data?.label || n?.type || 'Nó' }
-    }))
-    const conns = rawConnections.map((c: any, i: number) => ({
-      id: c?.id || `c_${Date.now()}_${i}`,
-      source: c?.source,
-      target: c?.target,
-      type: c?.type || 'condition'
-    }))
-    const record = {
-      id,
-      name: `${tpl?.name || 'Template'} (cópia)`,
-      description: tpl?.description || '',
-      status: 'active' as const,
-      nodes: positionedNodes,
-      connections: conns,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      source: 'builder',
-      template_key: tpl?.template_key || tpl?.name || undefined
-    }
-    try {
-      const resp = await fetch('/api/strategies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record)
-      })
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}))
-        toast.message('Falha ao salvar cópia.', { description: String((data as any)?.error || resp.statusText) })
-        return
-      }
-      toast.success('Cópia salva com sucesso.')
-
-      try {
-        const regResp = await fetch('/api/automation/strategy/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            strategy_id: id,
-            rules: { nodes: positionedNodes, connections: conns },
-            status: record.status,
-            source: 'Builder/Templates'
-          })
-        })
-        const regData = await regResp.json().catch(() => ({}))
-        if (!regResp.ok || regData.success === false) {
-          toast.message('Cópia salva, mas falha ao registrar no Engine.', { description: String((regData as any)?.error || regResp.statusText) })
-        } else {
-          toast.success('Estratégia registrada no Engine.')
-        }
-      } catch (err: any) {
-        toast.message('Cópia salva, mas erro ao registrar no Engine.', { description: err?.message || String(err) })
-      }
-
-      await refreshStrategies()
-    } catch (e: any) {
-      toast.message('Erro de rede ao salvar cópia.', { description: e?.message || String(e) })
-    }
-  }
-
-  async function publishTemplate(tpl: any) {
-    const id = String(tpl?.id || '').trim()
-    if (!id) {
-      toast.message('Template inválido para publicação.', { description: 'ID do template ausente.' })
-      return
-    }
-    try {
-      const resp = await fetch(`/api/dynamic-strategies/templates/${id}/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      const data = await resp.json().catch(() => ({}))
-      if (!resp.ok || (data as any)?.success === false) {
-        toast.message('Falha ao publicar template.', { description: String((data as any)?.error || resp.statusText) })
-        return
-      }
-      toast.success('Template publicado como estratégia dinâmica.')
-      await refreshTemplates()
-    } catch (e: any) {
-      toast.message('Erro de rede ao publicar template.', { description: e?.message || String(e) })
-    }
   }
 
   function addNodeFromTemplate(tpl: { type: NodeType; subtype?: string; label: string; defaultConfig?: Record<string, any> }, position: { x: number; y: number }) {
@@ -829,162 +831,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     setDraggedTpl(null)
   }
 
-  async function saveStrategy() {
-    const id = currentStrategyId || `s_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-    const preferredName = (draftStrategyName || '').trim()
-    const name = preferredName ? preferredName : (nodes[0]?.data.label ? `Estratégia: ${nodes[0].data.label}` : `Estratégia ${strategies.length + 1}`)
-    
-    // ValidaÃ§Ã£o: schemaVersion Ã© obrigatÃ³rio
-    if (!CURRENT_SCHEMA_VERSION) {
-      toast.message('Erro interno: versão do schema não definida.', { description: 'Contate o suporte técnico.' })
-      return
-    }
-    
-    // ValidaÃ§Ã£o: aÃ§Ã£o 'apostar' com seleÃ§Ã£o manual exige pelo menos um nÃºmero
-    const invalidSignal = nodes.find(n => (
-      n.type === 'signal' &&
-      String((n.data?.config?.acao || '')).toLowerCase() === 'apostar' &&
-      String((n.data?.config?.selectionMode || '')).toLowerCase() === 'manual' &&
-      (!Array.isArray(n.data?.config?.numeros) || (n.data?.config?.numeros || []).length === 0)
-    ))
-    if (invalidSignal) {
-      toast.message('Seleção de números obrigatória para ação "apostar".', { description: 'Defina pelo menos um número (0–36) quando o modo é manual.' })
-      return
-    }
-
-    // Guardrails: validar números (0–36) e duplicatas na seleção manual
-    const badSignalNums = nodes.find(n => {
-      if (n.type !== 'signal') return false
-      const acao = String((n.data?.config?.acao || '')).toLowerCase()
-      const mode = String((n.data?.config?.selectionMode || '')).toLowerCase()
-      const arr = Array.isArray(n.data?.config?.numeros) ? n.data.config.numeros : []
-      if (acao !== 'apostar' || mode !== 'manual') return false
-      const outOfRange = arr.some(x => !Number.isFinite(x) || x < 0 || x > 36)
-      const hasDup = new Set(arr).size !== arr.length
-      return outOfRange || hasDup
-    })
-    if (badSignalNums) {
-      toast.message('Números inválidos na seleção.', { description: 'Use apenas 0–36 e evite duplicados.' })
-      return
-    }
-
-    // Guardrail: stake deve ser > 0
-    const badStake = nodes.find(n => (n.type === 'signal' && !(Number(n.data?.config?.stake) > 0)))
-    if (badStake) {
-      toast.message('Stake inválida.', { description: 'Informe um valor de stake maior que 0.' })
-      return
-    }
-
-    // Guardrail: protecaoLimite deve ser inteiro >= 0
-    const badProtecao = nodes.find(n => {
-      if (n.type !== 'signal') return false
-      const lim = Number(n.data?.config?.protecaoLimite)
-      return Number.isNaN(lim) || lim < 0 || !Number.isInteger(lim)
-    })
-    if (badProtecao) {
-      toast.message('Limite de proteção inválido.', { description: 'Use um inteiro maior ou igual a 0.' })
-      return
-    }
-
-    // Guardrail: ausência com evento = número requer alvo 0–36
-    const badAbsenceNumero = nodes.find(n => {
-      const subtype = String(n.subtype || n.data?.conditionType || '').toLowerCase()
-      if (n.type !== 'condition' || subtype !== 'absence') return false
-      const ev = String(n.data?.config?.evento || '').toLowerCase()
-      if (ev !== 'numero') return false
-      const alvo = Number(n.data?.config?.numeroAlvo ?? n.data?.config?.numero)
-      return !Number.isFinite(alvo) || alvo < 0 || alvo > 36
-    })
-    if (badAbsenceNumero) {
-      toast.message('Número alvo inválido para ausência.', { description: 'Quando evento = número, defina um alvo entre 0 e 36.' })
-      return
-    }
-
-    const existingIndex = strategies.findIndex(s => s.id === id)
-    const record = {
-      schemaVersion: CURRENT_SCHEMA_VERSION,
-      id,
-      name,
-      description: 'Criada via Builder',
-      status: existingIndex >= 0 ? strategies[existingIndex].status : 'paused',
-      nodes: [...nodes],
-      connections: [...connections],
-      createdAt: existingIndex >= 0 ? strategies[existingIndex].createdAt : Date.now(),
-      updatedAt: Date.now(),
-      selectionMode,
-      gating: { enabled: !!gatingEnabled },
-    }
-    setStrategies(prev => existingIndex >= 0 ? prev.map(s => (s.id === id ? record : s)) : [...prev, record])
-    setCurrentStrategyId(null)
-    setIsBuilderOpen(false)
-    setDraftStrategyName('')
-    try {
-      const resp = await fetch('/api/strategies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record)
-      })
-      if (resp.ok) {
-        toast.success('Estratégia salva (local + servidor).')
-        // Emitir evento local para atualizaÃ§Ã£o em tempo real
-        try {
-          const bc = new BroadcastChannel('strategies')
-          bc.postMessage({ type: 'strategy_saved', strategy: record })
-          bc.close()
-        } catch (_) {
-          // Sem suporte a BroadcastChannel, segue sem realtime
-        }
-        // Registrar no StrategyEngine
-        try {
-          const reg = await fetch('/api/automation/strategy/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              strategy_id: record.id,
-              rules: { nodes: record.nodes, connections: record.connections },
-              status: record.status,
-              source: 'builder'
-            })
-          })
-          if (reg.ok) {
-            toast.success('Registrada no StrategyEngine.')
-          } else {
-            const data = await reg.json().catch(() => ({}))
-            toast.message('Registrada parcialmente. Falha no StrategyEngine.', { description: String((data as any)?.error || reg.statusText) })
-          }
-        } catch (e: any) {
-          toast.message('Registrada parcialmente. Erro de rede no StrategyEngine.', { description: e?.message || String(e) })
-        }
-        // Publicar no backend (dinÃ¢micas)
-        try {
-          const pub = await fetch('/api/dynamic-strategies/upload-from-builder', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: record.name,
-              description: record.description || 'Estratégia criada via Builder',
-              nodes: record.nodes,
-              connections: record.connections
-            })
-          })
-          const pubData = await pub.json().catch(() => ({}))
-          if (pub.ok && (pubData as any)?.success) {
-            toast.success('Publicada no backend.')
-          } else {
-            toast.message('Registrada. Falha ao publicar no backend.', { description: String((pubData as any)?.error || pub.statusText) })
-          }
-        } catch (e: any) {
-          toast.message('Registrada. Erro de rede ao publicar no backend.', { description: e?.message || String(e) })
-        }
-      } else {
-        const data = await resp.json().catch(() => ({}))
-        toast.message('Salvo localmente. Falha no servidor.', { description: String((data as any)?.error || resp.statusText) })
-      }
-    } catch (e: any) {
-      toast.message('Salvo localmente. Erro de rede ao salvar no servidor.', { description: e?.message || String(e) })
-    }
-  }
-
   async function saveAsTemplate() {
     const preferredName = (draftStrategyName || '').trim()
     const name = preferredName
@@ -1006,16 +852,91 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       return
     }
 
+    const invalidSignal = nodes.find(n => (
+      n.type === 'signal' &&
+      String((n.data?.config?.acao || '')).toLowerCase() === 'apostar' &&
+      String((n.data?.config?.selectionMode || '')).toLowerCase() === 'manual' &&
+      (!Array.isArray(n.data?.config?.numeros) || (n.data?.config?.numeros || []).length === 0)
+    ))
+    if (invalidSignal) {
+      toast.message('Seleção de números obrigatória para ação "apostar".', { description: 'Defina pelo menos um número (0–36) quando o modo é manual.' })
+      return
+    }
+
+    const badSignalNums = nodes.find(n => {
+      if (n.type !== 'signal') return false
+      const acao = String((n.data?.config?.acao || '')).toLowerCase()
+      const mode = String((n.data?.config?.selectionMode || '')).toLowerCase()
+      const arr = Array.isArray(n.data?.config?.numeros) ? n.data.config.numeros : []
+      if (acao !== 'apostar' || mode !== 'manual') return false
+      const outOfRange = arr.some(x => !Number.isFinite(x) || x < 0 || x > 36)
+      const hasDup = new Set(arr).size !== arr.length
+      return outOfRange || hasDup
+    })
+    if (badSignalNums) {
+      toast.message('Números inválidos na seleção.', { description: 'Use apenas 0–36 e evite duplicados.' })
+      return
+    }
+
+    const badStake = nodes.find(n => {
+      if (n.type !== 'signal') return false
+      const raw = n.data?.config?.stake
+      if (raw === undefined || raw === null || raw === '') return false
+      return !(Number(raw) > 0)
+    })
+    if (badStake) {
+      toast.message('Stake inválida.', { description: 'Informe um valor de stake maior que 0.' })
+      return
+    }
+
+    const badProtecao = nodes.find(n => {
+      if (n.type !== 'signal') return false
+      const raw = n.data?.config?.protecaoLimite
+      if (raw === undefined || raw === null || raw === '') return false
+      const lim = Number(raw)
+      return Number.isNaN(lim) || lim < 0 || !Number.isInteger(lim)
+    })
+    if (badProtecao) {
+      toast.message('Limite de proteção inválido.', { description: 'Use um inteiro maior ou igual a 0.' })
+      return
+    }
+
+    const badAbsenceNumero = nodes.find(n => {
+      const subtype = String(n.subtype || n.data?.conditionType || '').toLowerCase()
+      if (n.type !== 'condition' || subtype !== 'absence') return false
+      const ev = String(n.data?.config?.evento || '').toLowerCase()
+      if (ev !== 'numero') return false
+      const alvo = Number(n.data?.config?.numeroAlvo ?? n.data?.config?.numero)
+      return !Number.isFinite(alvo) || alvo < 0 || alvo > 36
+    })
+    if (badAbsenceNumero) {
+      toast.message('Número alvo inválido para ausência.', { description: 'Quando evento = número, defina um alvo entre 0 e 36.' })
+      return
+    }
+
+    const existingId = currentTemplateId ? String(currentTemplateId).trim() : ''
+    const currentTpl = existingId ? templates.find((t: any) => String(t?.id || '').trim() === existingId) : null
+    const existingMeta = currentTpl ? (getTemplateMeta(currentTpl) || {}) : {}
+    const authorDisplayName = String((existingMeta as any)?.author?.displayName || '').trim()
+      || String((userProfile as any)?.full_name || user?.email || 'Você').trim()
+      || 'Você'
+    const origin = String((existingMeta as any)?.origin || '').trim() || 'created'
+    const nextMeta = {
+      ...existingMeta,
+      origin,
+      author: (existingMeta as any)?.author || { displayName: authorDisplayName }
+    }
+
     const builderPayload = {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       nodes: [...nodes],
       connections: [...connections],
       selectionMode,
-      gating: { enabled: !!gatingEnabled }
+      gating: { enabled: !!gatingEnabled },
+      metadata: nextMeta
     }
 
     const description = 'Template criado via Builder'
-    const existingId = currentTemplateId ? String(currentTemplateId).trim() : ''
 
     try {
       const commonBody = {
@@ -1038,103 +959,51 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       if (saved && saved.id) {
         setCurrentTemplateId(String(saved.id))
       }
-      toast.success(existingId ? 'Template atualizado com sucesso.' : 'Template salvo com sucesso.')
+      toast.success(existingId ? 'Estratégia atualizada com sucesso.' : 'Estratégia salva com sucesso.')
       await refreshTemplates()
+      setIsBuilderOpen(false)
+      setDraftStrategyName('')
     } catch (e: any) {
       toast.message('Erro de rede ao salvar template.', { description: e?.message || String(e) })
     }
   }
 
-  function editStrategy(strategyId: string) {
-    const s = strategies.find(st => st.id === strategyId)
-    if (!s) return
-    setCurrentStrategyId(strategyId)
-    setCurrentTemplateId(null)
-    setNodes(normalizeNodes(s.nodes))
-    setConnections(Array.isArray(s.connections) ? [...s.connections] : [])
-    setSelectedNode(null)
-    setDraftStrategyName(s.name || '')
-    setSelectionMode((s.selectionMode as 'automatic' | 'hybrid' | 'manual') || 'automatic')
-    setGatingEnabled(Boolean(s.gating?.enabled))
-    setIsBuilderOpen(true)
-  }
-
-  async function toggleStrategyStatus(strategyId: string) {
-    const s = strategies.find(st => st.id === strategyId)
-    if (!s) return
-    const newStatus = s.status === 'active' ? 'paused' : 'active'
-    // Atualiza UI de forma otimista
-    setStrategies(prev => prev.map(x => x.id === strategyId ? { ...x, status: newStatus, updatedAt: Date.now() } : x))
-    try {
-      const resp = await fetch(`/api/strategies/${strategyId}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: s.name,
-            description: s.description,
-            status: newStatus,
-            nodes: s.nodes,
-            connections: s.connections,
-            selectionMode: s.selectionMode,
-            gating: s.gating,
-          })
-        }
-      )
-      const data = await resp.json().catch(() => ({}))
-      if (resp.ok && (data as any)?.strategy) {
-        const server = (data as any).strategy
-        setStrategies(prev => prev.map(x => x.id === strategyId ? server : x))
-        toast.success(newStatus === 'active' ? 'Estratégia ativada.' : 'Estratégia pausada.')
-      } else {
-        toast.message('Falha ao atualizar status no servidor.', { description: String((data as any)?.error || resp.statusText) })
-      }
-    } catch (e: any) {
-      toast.message('Erro de rede ao alterar status.', { description: e?.message || String(e) })
-    }
-  }
-
-  async function deleteStrategyRecord(strategyId: string) {
-    try {
-      const resp = await fetch(`/api/strategies/${strategyId}`, { method: 'DELETE' })
-      const data = await resp.json().catch(() => ({}))
-      if (resp.ok && (data as any)?.ok) {
-        setStrategies(prev => prev.filter(s => s.id !== strategyId))
-        if (currentStrategyId === strategyId) setCurrentStrategyId(null)
-        toast.success('Estratégia excluída do servidor.')
-      } else {
-        toast.message('Falha ao excluir no servidor.', { description: String((data as any)?.error || resp.statusText) })
-      }
-    } catch (e: any) {
-      toast.message('Erro de rede ao excluir estratégia.', { description: e?.message || String(e) })
-    }
-  }
-
-  async function publishStrategy(strategyId: string) {
-    const s = strategies.find(st => st.id === strategyId)
-    if (!s) {
-      toast.message('Estratégia não encontrada para publicar.')
+  async function deleteTemplateRecord(templateId: string) {
+    const tpl = templates.find((t: any) => String(t?.id || '').trim() === String(templateId).trim())
+    if (!tpl) {
+      toast.message('Estratégia não encontrada.')
       return
     }
+    if (String(tpl?.user_id || '') === 'system') {
+      toast.message('Não é possível excluir uma estratégia oficial.')
+      return
+    }
+
+    const existingInstance = instanceByTemplateId[String(templateId).trim()]
     try {
-      const resp = await fetch('/api/dynamic-strategies/upload-from-builder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: s.name,
-          description: s.description || 'Estratégia criada via Builder',
-          nodes: s.nodes,
-          connections: s.connections
-        })
-      })
-      const data = await resp.json().catch(() => ({}))
-      if (resp.ok && (data as any)?.success) {
-        toast.success('Estratégia publicada para o backend.')
-      } else {
-        toast.message('Falha ao publicar estratégia.', { description: String((data as any)?.error || resp.statusText) })
+      if (existingInstance?.enabled) {
+        await setTemplateEnabled(tpl, false)
       }
+    } catch { }
+
+    if (existingInstance?.id) {
+      try {
+        await fetch(`/api/strategy-instances?id=${encodeURIComponent(String(existingInstance.id))}`, { method: 'DELETE' })
+      } catch { }
+    }
+
+    try {
+      const resp = await fetch(`/api/dynamic-strategies/templates?id=${encodeURIComponent(String(templateId))}`, { method: 'DELETE' })
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || !(data as any)?.ok) {
+        toast.message('Falha ao excluir estratégia.', { description: String((data as any)?.error || resp.statusText) })
+        return
+      }
+      toast.success('Estratégia excluída.')
+      await refreshTemplates()
+      await refreshInstances()
     } catch (e: any) {
-      toast.message('Erro de rede ao publicar estratégia.', { description: e?.message || String(e) })
+      toast.message('Erro de rede ao excluir estratégia.', { description: e?.message || String(e) })
     }
   }
 
@@ -1356,40 +1225,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     }).catch(() => {})
   }
 
-  async function testStrategyWithRealHistory() {
-    if (isTesting || isValidatingServer) return
-    try {
-      setIsTesting(true)
-      setHistorySource('real')
-      const limit = Math.max(1, Math.min(500, Number(realHistoryLimit) || 60))
-      const url = `/api/roulette-history?limit=${limit}`
-      const headers: HeadersInit = serverToken ? { 'Authorization': `Bearer ${serverToken}` } : {}
-      const resp = await fetch(url, { headers })
-      const data = await resp.json().catch(() => ({}))
-      if (!resp.ok || !(data as any)?.success || !Array.isArray((data as any).data)) {
-        const msg = String((data as any)?.message || (data as any)?.error || resp.statusText)
-        toast.message('Falha ao obter histórico real.', { description: msg })
-        setHistorySource('manual')
-        setIsTesting(false)
-        return
-      }
-      const spins = ((data as any).data as any[]).map((d: any) => Number(d.number)).filter((n: number) => Number.isFinite(n))
-      if (spins.length === 0) {
-        toast.message('Histórico real vazio.')
-        setHistorySource('manual')
-        setIsTesting(false)
-        return
-      }
-      setSimulatedHistoryInput(spins.join(','))
-      // Executa teste com histórico real
-      testStrategy()
-    } catch (e: any) {
-      toast.message('Erro de rede ao obter histórico.', { description: e?.message || String(e) })
-      setHistorySource('manual')
-      setIsTesting(false)
-    }
-  }
-
   // Botão único de teste: tenta histórico real quando possível e faz fallback para teste local
   async function unifiedTest() {
     if (isTesting || isValidatingServer) return
@@ -1538,67 +1373,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     setSelectedEdgeId(edge.id)
     setSelectedNode(null)
   }, [])
-
-  function renderConnections() {
-    const canvas = canvasRef.current
-    if (!canvas) return null
-    const canvasRect = canvas.getBoundingClientRect()
-    const lines = connections.map((c) => {
-      const srcEl = nodeRefs.current[c.source]
-      const tgtEl = nodeRefs.current[c.target]
-      if (!srcEl || !tgtEl) return null
-      const srcRect = srcEl.getBoundingClientRect()
-      const tgtRect = tgtEl.getBoundingClientRect()
-      const x1 = (srcRect.left - canvasRect.left) + srcRect.width / 2
-      const y1 = (srcRect.top - canvasRect.top) + srcRect.height / 2
-      const x2 = (tgtRect.left - canvasRect.left) + tgtRect.width / 2
-      const y2 = (tgtRect.top - canvasRect.top) + tgtRect.height / 2
-      return { x1, y1, x2, y2, type: c.type, id: c.id }
-    }).filter(Boolean) as Array<{ x1: number; y1: number; x2: number; y2: number; type: 'success' | 'failure' | 'condition'; id: string }>
-
-    const color = { success: '#16a34a', failure: '#dc2626', condition: '#3b82f6' }
-
-    return (
-      <svg className="absolute inset-0 pointer-events-none">
-        <defs>
-          <marker id="arrow-success" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill={color.success}></path>
-          </marker>
-          <marker id="arrow-failure" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill={color.failure}></path>
-          </marker>
-          <marker id="arrow-condition" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill={color.condition}></path>
-          </marker>
-        </defs>
-        {lines.map((l) => {
-          const dx = l.x2 - l.x1
-          const dy = l.y2 - l.y1
-          const len = Math.hypot(dx, dy)
-          const endOffset = 22
-          const startOffset = 18
-          const ratioEnd = len > 0 ? (len - endOffset) / len : 1
-          const ex = l.x1 + dx * ratioEnd
-          const ey = l.y1 + dy * ratioEnd
-          const sx = l.x1 + (dx / (len || 1)) * startOffset
-          const sy = l.y1 + (dy / (len || 1)) * startOffset
-          const markerId = l.type === 'success' ? 'arrow-success' : l.type === 'failure' ? 'arrow-failure' : 'arrow-condition'
-          return (
-            <line
-              key={l.id}
-              x1={sx}
-              y1={sy}
-              x2={ex}
-              y2={ey}
-              stroke={color[l.type]}
-              strokeWidth={2}
-              markerEnd={`url(#${markerId})`}
-            />
-          )
-        })}
-      </svg>
-    )
-  }
 
   function renderFields() {
     if (!selectedNode) return null
@@ -1799,7 +1573,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
           if (selectedNode.type === 'signal' && f.key === 'numeros') {
             const cfg = selectedNode.data.config || {}
             const selectedNums: number[] = Array.isArray(cfg.numeros) ? cfg.numeros : []
-            const mode = String(cfg.selectionMode || 'manual').toLowerCase()
             // No MVP, o seletor de números deve estar sempre disponível
             const toggleNumber = (num: number) => {
               let next = Array.isArray(selectedNums) ? [...selectedNums] : []
@@ -1914,7 +1687,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                       const active = selectedNums.includes(num)
                       const isRed = RED_NUMBERS.includes(num)
                       const isGreen = GREEN_NUMBERS.includes(num)
-                      const isBlack = BLACK_NUMBERS.includes(num)
                       const style = isRed
                         ? (active ? 'bg-red-600 hover:bg-red-700 text-white border-red-700' : 'text-red-600 border-red-400 hover:bg-white/10')
                         : isGreen
@@ -2060,7 +1832,6 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                       const active = currentNumber === num
                       const isRed = RED_NUMBERS.includes(num)
                       const isGreen = GREEN_NUMBERS.includes(num)
-                      const isBlack = BLACK_NUMBERS.includes(num)
                       const style = isRed
                         ? (active ? 'bg-red-600 hover:bg-red-700 text-white border-red-700' : 'text-red-600 border-red-400 hover:bg-white/10')
                         : isGreen
@@ -2316,176 +2087,122 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList>
-                {(((builderSpec.layout.sections.header.elements.find((e: any) => e.type === 'tabs') as any)?.options) ?? ['Estratégias', 'Templates', 'Performance']).map((opt: string) => (
-                  <TabsTrigger key={opt.toLowerCase()} value={opt.toLowerCase()}>{opt}</TabsTrigger>
-                ))}
+                {(((builderSpec.layout.sections.header.elements.find((e: any) => e.type === 'tabs') as any)?.options) ?? ['Estratégias', 'Performance'])
+                  .filter((opt: string) => opt.toLowerCase() !== 'templates')
+                  .map((opt: string) => (
+                    <TabsTrigger key={opt.toLowerCase()} value={opt.toLowerCase()}>{opt}</TabsTrigger>
+                  ))}
               </TabsList>
               <TabsContent value="estratégias">
-                {strategies.length === 0 ? (
-                    <div className="p-3 border rounded-md bg-muted/20">
-                      <div className="text-sm text-muted-foreground">Nenhuma estratégia salva ainda. Use o botão no topo para criar uma nova.</div>
-                    </div>
-                  ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      {strategies.map(s => (
-                        <Card key={s.id}>
-                          <CardContent className="py-3 flex items-center justify-between">
-                            <div>
-                              <div className="font-medium">{s.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {s.status === 'active' ? 'Ativa' : 'Pausada'} &bull; {Array.isArray(s.nodes) ? s.nodes.length : 0} nós &bull; atualizado {new Date(s.updatedAt).toLocaleString()}
-                              </div>
-                            </div>
-                            <div className="flex items-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" aria-label="Mais ações">
-                                    <MoreVertical className="h-5 w-5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => editStrategy(s.id)}>
-                                    Editar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => exportStrategyFile(s.id)}>
-                                    <Save className="mr-2 h-4 w-4" /> Baixar JSON
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDeleteId(s.id)}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-
-                    <Separator />
-                    <div>
-                      <div className="text-sm font-medium mb-2">Templates disponíveis</div>
-                      {templates.length === 0 ? (
-                        <div className="p-3 border rounded-md bg-muted/20">
-                          <div className="text-sm font-medium mb-1">Nenhum template disponível</div>
-                          <div className="text-xs text-muted-foreground mb-2">Carregue templates ou crie uma nova estratégia.</div>
-                          <div className="flex gap-2">
-                            <Button onClick={createNewStrategy}>
-                              <Puzzle className="mr-2 h-4 w-4" /> Nova Estratégia
-                            </Button>
-                            <Button variant="secondary" onClick={refreshTemplates}>
-                              <RotateCcw className="mr-2 h-4 w-4" /> Carregar Templates
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {templates.map((tpl: any) => (
-                            <Card key={tpl.id || tpl.template_key || tpl.name}>
-                              <CardContent className="py-3 flex items-center justify-between">
-                                <div>
-                                  <div className="font-medium flex items-center">
-                                    {tpl.name}
-                                    <Badge variant="outline" className="ml-2">Template</Badge>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {tpl.description || 'Template do Builder'}
-                                  </div>
-                                  <div className="text-[11px] text-muted-foreground mt-1">
-                                    {tpl.is_published
-                                      ? `Publicado como: ${tpl.published_strategy_slug || 'estratégia dinâmica'}`
-                                      : 'Ainda não publicado como estratégia dinâmica'}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button variant="outline" onClick={() => editTemplate(tpl)}>
-                                    <Edit3 className="mr-2 h-4 w-4" /> Editar Template
-                                  </Button>
-                                  <Button variant="outline" onClick={() => duplicateTemplate(tpl)}>
-                                    <Puzzle className="mr-2 h-4 w-4" /> Duplicar Estratégia
-                                  </Button>
-                                  <Button variant="outline" onClick={() => exportTemplateFile(tpl)}>
-                                    <Download className="mr-2 h-4 w-4" /> Baixar Template
-                                  </Button>
-                                  <Button
-                                    onClick={() => publishTemplate(tpl)}
-                                    disabled={tpl.is_published}
-                                  >
-                                    {tpl.is_published ? 'Publicado' : 'Publicar'}
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="templates">
-                {templates.length === 0 ? (
-                    <div className="p-3 border rounded-md bg-muted/20">
-                      <div className="text-sm font-medium mb-1">Nenhum template disponível</div>
-                      <div className="text-xs text-muted-foreground mb-2">Carregue templates ou crie uma nova estratégia.</div>
-                      <div className="flex gap-2">
-                        <Button onClick={createNewStrategy}>
-                          <Puzzle className="mr-2 h-4 w-4" /> Nova Estratégia
-                        </Button>
-                        <Button variant="secondary" onClick={refreshTemplates}>
-                          <RotateCcw className="mr-2 h-4 w-4" /> Carregar Templates
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                  <div className="space-y-3">
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
                       <Input
-                        placeholder="Buscar template por nome..."
+                        placeholder="Buscar estratégia por nome, autor ou slug..."
                         value={templateQuery}
                         onChange={(e) => setTemplateQuery(e.target.value)}
+                        className="w-[320px] max-w-full"
                       />
+                      <Button variant="secondary" onClick={refreshTemplates}>
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Atualizar
+                      </Button>
                     </div>
-                    {(templates.filter((tpl: any) => (tpl.name || '').toLowerCase().includes(templateQuery.toLowerCase()))).map((tpl: any) => (
-                      <Card key={tpl.id || tpl.template_key || tpl.name}>
-                        <CardContent className="py-3 flex items-center justify-between">
-                          <div>
-                            <div className="font-medium flex items-center">
-                              {tpl.name}
-                              <Badge variant="outline" className="ml-2">Template</Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {tpl.description || 'Template do Builder'}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground mt-1">
-                              {tpl.is_published
-                                ? `Publicado como: ${tpl.published_strategy_slug || 'estratégia dinâmica'}`
-                                : 'Ainda não publicado como estratégia dinâmica'}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" onClick={() => editTemplate(tpl)}>
-                              <Edit3 className="mr-2 h-4 w-4" /> Editar Template
-                            </Button>
-                            <Button variant="outline" onClick={() => duplicateTemplate(tpl)}>
-                              <Puzzle className="mr-2 h-4 w-4" /> Duplicar Estratégia
-                            </Button>
-                            <Button variant="outline" onClick={() => exportTemplateFile(tpl)}>
-                              <Download className="mr-2 h-4 w-4" /> Baixar Template
-                            </Button>
-                            <Button
-                              onClick={() => publishTemplate(tpl)}
-                              disabled={tpl.is_published}
-                            >
-                              {tpl.is_published ? 'Publicado' : 'Publicar'}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    <div className="flex items-center gap-2">
+                      <Switch checked={showHidden} onCheckedChange={(v) => setShowHidden(Boolean(v))} />
+                      <span className="text-sm text-muted-foreground">Mostrar ocultas</span>
+                    </div>
                   </div>
-                )}
+
+                  {filteredTemplates.length === 0 ? (
+                    <div className="p-3 border rounded-md bg-muted/20">
+                      <div className="text-sm font-medium mb-1">Nenhuma estratégia encontrada</div>
+                      <div className="text-xs text-muted-foreground">Importe um JSON ou crie uma nova estratégia.</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredTemplates.map((tpl: any) => {
+                        const templateId = getTemplateId(tpl)
+                        const inst = templateId ? instanceByTemplateId[templateId] : null
+                        const enabled = Boolean(inst?.enabled)
+                        const origin = getTemplateOrigin(tpl)
+                        const author = getTemplateAuthorName(tpl)
+                        const hidden = isTemplateHidden(tpl)
+                        const canDelete = String(tpl?.user_id || '') !== 'system'
+                        const isBusy = Boolean(templateId && busyTemplateIds[templateId])
+
+                        const originLabel = origin === 'official'
+                          ? 'Oficial'
+                          : origin === 'imported'
+                            ? 'Importada'
+                            : 'Criada'
+
+                        return (
+                          <Card key={templateId || tpl.template_key || tpl.name}>
+                            <CardContent className="py-3 flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-medium flex items-center gap-2">
+                                  <span className="truncate">{tpl.name}</span>
+                                  <Badge variant="outline">{originLabel}</Badge>
+                                  {hidden ? <Badge variant="secondary">Oculta</Badge> : null}
+                                  {enabled ? <Badge>Ativa</Badge> : <Badge variant="secondary">Pausada</Badge>}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {tpl.description || 'Estratégia do Builder'} &bull; {author}
+                                  {tpl.is_published && tpl.published_strategy_slug ? ` • ${tpl.published_strategy_slug}` : ''}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant={enabled ? 'secondary' : 'default'}
+                                  onClick={() => setTemplateEnabled(tpl, !enabled)}
+                                  disabled={isBusy}
+                                >
+                                  {enabled ? 'Desativar' : 'Ativar'}
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" aria-label="Mais ações">
+                                      <MoreVertical className="h-5 w-5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => editTemplate(tpl)}>
+                                      <Edit3 className="mr-2 h-4 w-4" />
+                                      Abrir no canvas
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => duplicateTemplate(tpl)}>
+                                      <Puzzle className="mr-2 h-4 w-4" />
+                                      Duplicar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => exportTemplateFile(tpl)}>
+                                      <Download className="mr-2 h-4 w-4" />
+                                      Baixar JSON
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => setTemplateHidden(tpl, !hidden)}>
+                                      {hidden ? 'Mostrar na lista' : 'Ocultar da lista'}
+                                    </DropdownMenuItem>
+                                    {canDelete ? (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDeleteId(templateId)}>
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Excluir
+                                        </DropdownMenuItem>
+                                      </>
+                                    ) : null}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </TabsContent>
               <TabsContent value="performance">
                 <div className="text-sm text-muted-foreground">Métricas agregadas e top estratégias.</div>
@@ -2506,7 +2223,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={() => {
                   if (confirmDeleteId) {
-                    deleteStrategyRecord(confirmDeleteId)
+                    deleteTemplateRecord(confirmDeleteId)
                     setConfirmDeleteId(null)
                   }
                 }}
@@ -2792,10 +2509,7 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-2 mt-5">
-          <Button variant="outline" onClick={saveAsTemplate}>
-            <Save className="mr-2 h-4 w-4" /> Salvar como Template
-          </Button>
-          <Button onClick={saveStrategy}>
+          <Button onClick={saveAsTemplate}>
             <Save className="mr-2 h-4 w-4" /> Salvar Estratégia
           </Button>
         </div>

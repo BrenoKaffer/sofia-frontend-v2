@@ -113,7 +113,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
     }));
   };
 
-  const SidebarContent = () => (
+  const renderSidebarContent = () => (
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-4 justify-between">
@@ -244,13 +244,13 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       <aside
         className={`hidden lg:flex flex-col border-r bg-card/50 backdrop-blur-sm ${collapsed ? 'w-20' : 'w-72'} h-screen`}
       >
-        <SidebarContent />
+        {renderSidebarContent()}
       </aside>
 
       {/* Mobile Sidebar */}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-80 p-0 overflow-y-auto">
-          <SidebarContent />
+          {renderSidebarContent()}
         </SheetContent>
       </Sheet>
     </>

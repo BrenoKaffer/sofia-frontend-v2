@@ -92,7 +92,7 @@ export const builderSpec: BuilderSpec = {
         elements: [
           { type: 'title', value: 'Builder de Estratégias' },
           { type: 'button', label: 'Nova Estratégia', action: 'createNewStrategy' },
-          { type: 'tabs', options: ['Estratégias', 'Templates', 'Performance'] }
+          { type: 'tabs', options: ['Estratégias', 'Performance'] }
         ]
       },
       content: {
