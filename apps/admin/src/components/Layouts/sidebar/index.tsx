@@ -36,14 +36,14 @@ export function Sidebar() {
         aria-hidden={!isOpen}
         inert={!isOpen}
       >
-        <div className="flex h-full flex-col py-10 pl-[25px] pr-[7px]">
-          <div className="relative pr-4.5">
-            <Link href={"/dashboard"} onClick={() => isMobile && toggleSidebar()} className="px-0 py-2.5 min-[850px]:py-0">
-              <div className="flex h-12 items-center">
-                <div className="rounded-[5px] bg-black p-1">
-                  <img src="/logo_sofia.png" alt="SOFIA" className="h-8 w-auto" />
-                </div>
-              </div>
+        <div className="flex h-full flex-col px-4 py-10">
+          <div className="relative">
+            <Link
+              href={"/dashboard"}
+              onClick={() => isMobile && toggleSidebar()}
+              className="flex w-full items-center justify-center py-2.5 min-[850px]:py-0"
+            >
+              <img src="/logo_sofia_claro.png" alt="SOFIA" className="h-12 w-auto" />
             </Link>
           </div>
           <nav className="custom-scrollbar mt-6 flex-1 overflow-y-auto pr-3 min-[850px]:mt-10" role="navigation" aria-label="Menu">
