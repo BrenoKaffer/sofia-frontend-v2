@@ -10,19 +10,7 @@ export async function loginPartner(email: string, password: string): Promise<{ t
 }
 
 export async function getPartnerMe(token: string): Promise<Partner> {
-  try {
-    return await apiRequest<Partner>({ path: "/partners/me", token });
-  } catch {
-    return {
-      id: "test-partner-id",
-      user_id: "test-user-id",
-      name: "Parceiro Teste",
-      document: "00000000000",
-      ref_code: "TESTCODE",
-      commission_percentage: 0,
-      payout_balance: 0,
-    };
-  }
+  return await apiRequest<Partner>({ path: "/partners/me", token });
 }
 
 export async function getPartnerBalance(token: string): Promise<PartnerBalance> {
