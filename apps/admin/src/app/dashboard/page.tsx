@@ -7,7 +7,7 @@ import { ClockIcon, PercentIcon, ShoppingBagIcon, WalletIcon } from "@/component
  import type { PartnerSale } from "@/types/partner";
  
  export default function DashboardPage() {
-   const { token, partner } = useAuth();
+  const { token } = useAuth();
    const [balance, setBalance] = useState<{ available: number; pending: number; total_sales: number; total_commission: number } | null>(null);
    const [sales, setSales] = useState<PartnerSale[]>([]);
    const [links, setLinks] = useState<{ url: string; label: string }[]>([]);
@@ -41,7 +41,6 @@ import { ClockIcon, PercentIcon, ShoppingBagIcon, WalletIcon } from "@/component
      <div className="space-y-6">
        <div className="rounded-xl border bg-white p-6 shadow-1 dark:border-dark-4 dark:bg-gray-dark">
          <h1 className="text-2xl font-bold text-dark dark:text-white">Dashboard</h1>
-         <div className="mt-2 text-sm text-dark-5 dark:text-dark-6">{partner?.name || ""}</div>
          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
            <div className="rounded-lg border p-4 dark:border-dark-4">
             <div className="flex items-start justify-between gap-3">
