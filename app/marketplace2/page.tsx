@@ -30,7 +30,7 @@ const ActionButton = ({ children }: { children: React.ReactNode }) => (
 );
 
 // The main hero component
-export const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
+const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
   tagline,
   title,
   description,
@@ -188,7 +188,7 @@ interface ArticleCardGridProps {
  * A responsive grid of article cards with a title.
  * Features animations on load and hover.
  */
-export const ArticleCardGrid: React.FC<ArticleCardGridProps> = ({ title, articles }) => {
+const ArticleCardGrid: React.FC<ArticleCardGridProps> = ({ title, articles }) => {
   // Animation variant for the grid container to stagger children
   const containerVariants = {
     hidden: { opacity: 0 },
