@@ -121,13 +121,14 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
         <motion.div
           className="flex gap-4"
           animate={{
-            x: ["-100%", "0%"],
+            x: ["0%", "-50%"],
             transition: {
               ease: "linear",
               duration: 40,
               repeat: Infinity,
             },
           }}
+          style={{ width: "max-content", willChange: "transform" }}
         >
           {duplicatedImages.map((src, index) => (
             <motion.div
@@ -147,6 +148,9 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
                 src={src}
                 alt={`Showcase image ${index + 1}`}
                 className="w-full h-full object-cover rounded-2xl shadow-md"
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                  e.currentTarget.src = "/hero-poster.jpg";
+                }}
               />
             </motion.div>
           ))}
@@ -242,6 +246,9 @@ const ArticleCardGrid: React.FC<ArticleCardGridProps> = ({ title, articles }) =>
                     className="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300"
                     whileHover={{ scale: 1.08 }}
                     transition={{ type: "spring", stiffness: 250, damping: 18 }}
+                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                      e.currentTarget.src = "/hero-poster.jpg";
+                    }}
                   />
               </div>
 
@@ -279,39 +286,25 @@ function sigFromString(value: string): number {
   return acc
 }
 
-const UNSPLASH_PHOTO_IDS = [
-  "ax_jJpHdYjI",
-  "mD1V-eS1Wb4",
-  "1S-VJgvh_Oc",
-  "2y7yiuEgT3k",
-  "3-dz_zeSiI4",
-  "pHUF3pNk1XA",
-  "TtAoOVEXgMw",
-  "Nwpyc1dks4g",
-  "-6GvTDpkkPU",
-  "Wl5vq0X1eEw",
-  "0KF9Q0Nu4Nw",
-  "bYtIpXnzsQM",
-  "mC_g8eqXV9U",
-  "xP6ngsgxck0",
-]
-
-function pickUnsplashPhotoId(seed: number): string {
-  const safeSeed = Number.isFinite(seed) ? Math.abs(seed) : 0
-  return UNSPLASH_PHOTO_IDS[safeSeed % UNSPLASH_PHOTO_IDS.length]
-}
-
-function unsplashPhotoUrl(opts: { width: number; height: number; seed: number }): string {
-  const id = pickUnsplashPhotoId(opts.seed)
-  return `https://source.unsplash.com/${id}/${opts.width}x${opts.height}`
+function picsumPhotoUrl(opts: { width: number; height: number; seed: number }): string {
+  const safeSeed = Number.isFinite(opts.seed) ? Math.abs(Math.trunc(opts.seed)) : 0
+  return `https://picsum.photos/seed/sofia-${safeSeed}/${opts.width}/${opts.height}`
 }
 
 function getTemplateImage(tpl: TemplateRow): string {
   const meta = tpl?.builder_payload && typeof tpl.builder_payload === "object" ? tpl.builder_payload.metadata : null
   const image = meta && typeof meta === "object" ? String((meta as any)?.image || "").trim() : ""
-  if (image) return image
+  if (image) {
+    try {
+      const parsed = new URL(image)
+      const host = parsed.hostname.toLowerCase()
+      if (!host.includes("unsplash.com")) return image
+    } catch {
+      if (!image.toLowerCase().includes("unsplash.com")) return image
+    }
+  }
   const seed = sigFromString(String(tpl?.id || tpl?.name || "sofia"))
-  return unsplashPhotoUrl({ width: 900, height: 700, seed })
+  return picsumPhotoUrl({ width: 900, height: 700, seed })
 }
 
 export default function Marketplace2Page() {
@@ -346,7 +339,7 @@ export default function Marketplace2Page() {
     ]
     return base.map((b, idx) => ({
       id: `mock-${idx + 1}`,
-      imageSrc: unsplashPhotoUrl({ width: 900, height: 700, seed: baseSeed + (idx + 1) * 37 }),
+      imageSrc: picsumPhotoUrl({ width: 900, height: 700, seed: baseSeed + (idx + 1) * 37 }),
       title: b.title,
       linkText: "Usar no Builder",
       linkHref: "/builder",
@@ -367,14 +360,14 @@ export default function Marketplace2Page() {
 
   const heroImages = useMemo(
     () => [
-      unsplashPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 11 }),
-      unsplashPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 12 }),
-      unsplashPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 13 }),
-      unsplashPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 14 }),
-      unsplashPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 15 }),
-      unsplashPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 16 }),
-      unsplashPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 17 }),
-      unsplashPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 18 }),
+      picsumPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 11 }),
+      picsumPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 12 }),
+      picsumPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 13 }),
+      picsumPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 14 }),
+      picsumPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 15 }),
+      picsumPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 16 }),
+      picsumPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 17 }),
+      picsumPhotoUrl({ width: 720, height: 960, seed: (randomSeed ?? 1) + 18 }),
     ],
     [randomSeed]
   );
