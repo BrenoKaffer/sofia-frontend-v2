@@ -17,9 +17,9 @@ export const metadata: Metadata = {
   },
   description: "Portal do Parceiro SOFIA para gestão de vendas, checkout e financeiro.",
   icons: {
-    icon: [{ url: "/logo_sofia_claro.png" }],
-    apple: [{ url: "/logo_sofia_claro.png" }],
-    shortcut: ["/logo_sofia_claro.png"],
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: ["/favicon.svg"],
   },
 };
 
