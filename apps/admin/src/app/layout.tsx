@@ -16,6 +16,11 @@ export const metadata: Metadata = {
     default: APP_NAME,
   },
   description: "Portal do Parceiro SOFIA para gestão de vendas, checkout e financeiro.",
+  icons: {
+    icon: [{ url: "/logo_sofia_claro.png" }],
+    apple: [{ url: "/logo_sofia_claro.png" }],
+    shortcut: ["/logo_sofia_claro.png"],
+  },
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {

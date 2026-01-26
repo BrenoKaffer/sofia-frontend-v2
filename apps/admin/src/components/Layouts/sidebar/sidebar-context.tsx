@@ -5,10 +5,11 @@ import { createContext, useContext, useEffect, useState } from "react";
 type SidebarState = "expanded" | "collapsed";
 type SidebarContextType = {
   state: SidebarState;
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
+  isMobileOpen: boolean;
+  setIsMobileOpen: (open: boolean) => void;
   isMobile: boolean;
-  toggleSidebar: () => void;
+  toggleMobile: () => void;
+  toggleCollapse: () => void;
 };
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
@@ -28,33 +29,43 @@ export function SidebarProvider({
   children: React.ReactNode;
   defaultOpen?: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState<boolean>(defaultOpen);
+  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(defaultOpen);
+  const [state, setState] = useState<SidebarState>("expanded");
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (isMobile) {
-      setIsOpen(false);
-    } else {
-      setIsOpen(true);
-    }
+    setIsMobileOpen(false);
   }, [isMobile]);
 
-  function toggleSidebar() {
-    setIsOpen((prev) => !prev);
+  useEffect(() => {
+    const saved = localStorage.getItem("admin-sidebar-state");
+    if (saved === "collapsed" || saved === "expanded") setState(saved);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("admin-sidebar-state", state);
+  }, [state]);
+
+  function toggleMobile() {
+    setIsMobileOpen((prev) => !prev);
+  }
+
+  function toggleCollapse() {
+    setState((prev) => (prev === "expanded" ? "collapsed" : "expanded"));
   }
 
   return (
     <SidebarContext.Provider
       value={{
-        state: isOpen ? "expanded" : "collapsed",
-        isOpen,
-        setIsOpen,
+        state,
+        isMobileOpen,
+        setIsMobileOpen,
         isMobile,
-        toggleSidebar,
+        toggleMobile,
+        toggleCollapse,
       }}
     >
       {children}
     </SidebarContext.Provider>
   );
 }
-
