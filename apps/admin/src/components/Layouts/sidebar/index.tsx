@@ -38,15 +38,15 @@ export function Sidebar() {
         aria-hidden={shouldHide}
         inert={shouldHide}
       >
-        <div className={cn("flex h-full flex-col py-10", isCollapsed ? "px-3" : "px-4")}>
-          <div className={cn("relative flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
+        <div className={cn("flex h-full flex-col", isCollapsed ? "px-3" : "px-4")}>
+          <div className={cn("relative flex h-24 items-center", isCollapsed ? "justify-center" : "justify-center")}>
             <Link
               href={"/dashboard"}
               onClick={() => isMobile && toggleMobile()}
-              className="flex items-center justify-center py-2.5 min-[850px]:py-0"
+              className="flex items-center justify-center"
             >
               <img
-                src={isCollapsed ? "/images/logo/logo-icon.svg" : "/logo_sofia_claro.png"}
+                src={isCollapsed ? "/favicon.svg" : "/logo_sofia_claro.png"}
                 alt="SOFIA"
                 className={cn(isCollapsed ? "h-10 w-10" : "h-12 w-auto")}
               />
@@ -57,7 +57,7 @@ export function Sidebar() {
               type="button"
               onClick={toggleCollapse}
               className={cn(
-                "mt-6 grid size-9 place-items-center rounded-lg border bg-gray-2 text-dark outline-none hover:text-primary focus-visible:border-primary focus-visible:text-primary dark:border-dark-4 dark:bg-dark-3 dark:text-white dark:focus-visible:border-primary",
+                "mt-4 grid size-9 place-items-center rounded-lg border bg-gray-2 text-dark outline-none hover:text-primary focus-visible:border-primary focus-visible:text-primary dark:border-dark-4 dark:bg-dark-3 dark:text-white dark:focus-visible:border-primary",
                 isCollapsed ? "mx-auto" : "",
               )}
             >
@@ -81,7 +81,7 @@ export function Sidebar() {
             </button>
           )}
           <nav
-            className={cn("custom-scrollbar mt-6 flex-1 overflow-y-auto min-[850px]:mt-10", isCollapsed ? "pr-0" : "pr-3")}
+            className={cn("custom-scrollbar mt-6 flex-1 overflow-y-auto pb-8 min-[850px]:mt-10", isCollapsed ? "pr-0" : "pr-3")}
             role="navigation"
             aria-label="Menu"
           >
