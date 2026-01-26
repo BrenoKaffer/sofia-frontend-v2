@@ -12,3 +12,28 @@ export function BellIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function CheckCircleIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={20} height={20} viewBox="0 0 20 20" fill="none" {...props}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M10 1.667a8.333 8.333 0 1 0 0 16.666A8.333 8.333 0 0 0 10 1.667Zm0 1.25a7.083 7.083 0 1 0 0 14.166 7.083 7.083 0 0 0 0-14.166Zm3.21 4.807a.625.625 0 0 1 .066.882l-4.114 4.789a.625.625 0 0 1-.917.043L6.6 11.792a.625.625 0 1 1 .884-.884l1.16 1.16 3.684-4.289a.625.625 0 0 1 .882-.065Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+export function SparklesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width={20} height={20} viewBox="0 0 20 20" fill="none" {...props}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M11.248 1.79a.625.625 0 0 1 1.194 0l.63 2.162a2.5 2.5 0 0 0 1.69 1.69l2.162.63a.625.625 0 0 1 0 1.194l-2.162.63a2.5 2.5 0 0 0-1.69 1.69l-.63 2.162a.625.625 0 0 1-1.194 0l-.63-2.162a2.5 2.5 0 0 0-1.69-1.69l-2.162-.63a.625.625 0 0 1 0-1.194l2.162-.63a2.5 2.5 0 0 0 1.69-1.69l.63-2.162ZM5.015 10.9a.625.625 0 0 1 1.17 0l.275.765c.17.47.54.84 1.01 1.01l.765.275a.625.625 0 0 1 0 1.17l-.765.275c-.47.17-.84.54-1.01 1.01l-.275.765a.625.625 0 0 1-1.17 0l-.275-.765a1.667 1.667 0 0 0-1.01-1.01l-.765-.275a.625.625 0 0 1 0-1.17l.765-.275c.47-.17.84-.54 1.01-1.01l.275-.765Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
