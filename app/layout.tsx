@@ -41,8 +41,15 @@ export const metadata: Metadata = {
   description: 'Inteligência artificial para análise de roleta online com padrões em tempo real',
   keywords: 'roleta, IA, padrões, apostas, análise, tempo real',
   icons: {
-    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
-    shortcut: ['/favicon.svg'],
+    icon: [
+      { url: '/logo_sofia_claro.png', media: '(prefers-color-scheme: light)' },
+      { url: '/logo_sofia.png', media: '(prefers-color-scheme: dark)' },
+    ],
+    apple: [
+      { url: '/logo_sofia_claro.png', media: '(prefers-color-scheme: light)' },
+      { url: '/logo_sofia.png', media: '(prefers-color-scheme: dark)' },
+    ],
+    shortcut: ['/logo_sofia_claro.png', '/logo_sofia.png'],
   },
   authors: [{ name: 'SOFIA Team' }],
   creator: 'SOFIA Team',
