@@ -133,7 +133,7 @@ export function InsightCard({
         </DialogTrigger>
 
         {/* Paywall Modal */}
-        <DialogContent className="sm:max-w-md border-primary/20 bg-background/95 backdrop-blur-xl">
+        <DialogContent className="w-[calc(100%-2rem)] sm:w-full sm:max-w-md rounded-3xl sm:rounded-3xl border-primary/20 bg-background/70 backdrop-blur-2xl shadow-2xl shadow-black/60 ring-1 ring-white/10 max-h-[calc(100vh-2rem)] overflow-y-auto">
           <DialogHeader>
             <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4 w-fit">
               <Lock className="w-8 h-8 text-primary" />
