@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -32,7 +31,6 @@ interface RouletteStatusProps {
 
 export function RouletteStatus({ latestSpin, rouletteHistoryData, activeTableId }: RouletteStatusProps) {
   const { getToken } = useAuth();
-  const searchParams = useSearchParams();
   const [selectedRouletteIndex, setSelectedRouletteIndex] = useState(0);
   const [rouletteTables, setRouletteTables] = useState<RouletteDataDisplay[]>([]);
   const [currentRouletteDisplay, setCurrentRouletteDisplay] = useState<RouletteDataDisplay | null>(null);
@@ -49,10 +47,11 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData, activeTableId 
     'https://n1oyhyi5i6.rziikhgudx.net/gs2c/playGame.do?key=token%3DcugdACaloYKFy5DU%60%7C%60symbol%3D237%60%7C%60technology%3DH5%60%7C%60platform%3DWEB%60%7C%60language%3Dpt%60%7C%60cashierUrl%3Dhttps%3A%2F%2Fgoldebet.bet.br%2Fuser%2Fwallet%2Fdeposit%60%7C%60lobbyUrl%3Dhttps%3A%2F%2Fgoldebet.bet.br%2Fcasino%2Flive&amp;ppkv=2&amp;stylename=cstb_goldebet&amp;rcCloseUrl=https://goldebet.bet.br&amp;isGameUrlApiCalled=true';
 
   useEffect(() => {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
+    const params = new URLSearchParams(window.location.search);
     const fromQuery =
-      String(searchParams.get('affiliate_slug') || searchParams.get('aff') || searchParams.get('affiliate') || '').trim() || null;
+      String(params.get('affiliate_slug') || params.get('aff') || params.get('affiliate') || '').trim() || null;
 
     const readCookie = (name: string): string | null => {
       const entries = String(document.cookie || '')
@@ -80,7 +79,7 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData, activeTableId 
 
     const fromCookie = readCookie(AFFILIATE_COOKIE);
     setAffiliateSlug(fromCookie);
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (!showIframe || !currentRouletteDisplay) return;
