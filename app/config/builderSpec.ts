@@ -253,6 +253,20 @@ export const builderSpec: BuilderSpec = {
               },
               {
                 type: 'condition',
+                subtype: 'fixed-underfrequency-set',
+                label: 'Subfrequência em Conjunto',
+                description: 'Seleciona números com baixa frequência dentro de um conjunto predefinido.',
+                defaultConfig: { janela: 120, multiplier: 0.6, maxNumbers: 6, set: [1, 2, 3, 4, 5, 6] }
+              },
+              {
+                type: 'condition',
+                subtype: 'fibonacci',
+                label: 'Fibonacci',
+                description: 'Seleciona números da sequência de Fibonacci por frequência e dormência.',
+                defaultConfig: { minSpins: 30, janela: 60, maxNumbers: 4, fibonacciNumbers: [1, 2, 3, 5, 8, 13, 21, 34] }
+              },
+              {
+                type: 'condition',
                 subtype: 'ensemble',
                 label: 'Ensemble (Consenso)',
                 description: 'Combina micro-estratégias internas e seleciona números por consenso ponderado.',
@@ -389,6 +403,18 @@ export const builderSpec: BuilderSpec = {
             { label: 'Razão máxima (0–1)', type: 'slider', min: 0, max: 1, step: 0.05, key: 'ratioMax' },
             { label: 'Máximo de números', type: 'number', key: 'maxNumbers' },
             { label: 'Excluir Zero', type: 'checkbox', key: 'excludeZero' }
+          ],
+          'condition:fixed-underfrequency-set': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Multiplicador (0–1)', type: 'slider', min: 0, max: 1, step: 0.05, key: 'multiplier' },
+            { label: 'Máximo de números', type: 'number', key: 'maxNumbers' },
+            { label: 'Conjunto (lista de números)', type: 'array', key: 'set' }
+          ],
+          'condition:fibonacci': [
+            { label: 'Mínimo de spins', type: 'number', key: 'minSpins' },
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Máximo de números', type: 'number', key: 'maxNumbers' },
+            { label: 'Números Fibonacci (lista)', type: 'array', key: 'fibonacciNumbers' }
           ],
           'condition:ensemble': [
             { label: 'Janela (spins)', type: 'number', key: 'janela' },

@@ -352,9 +352,9 @@ class BackendIntegration {
         total_profit: 15420.50,
         avg_confidence: 78.3,
         strategies_performance: [
-          { name: 'Irmãos de Cores', success_rate: 73.2, profit: 4250.30 },
-          { name: 'Terminais Pull', success_rate: 69.8, profit: 3890.20 },
-          { name: 'Espelho', success_rate: 75.1, profit: 4180.75 }
+          { name: 'Irmãos SOFIA', success_rate: 73.2, profit: 4250.30 },
+          { name: 'Puxador de Terminais SOFIA', success_rate: 69.8, profit: 3890.20 },
+          { name: 'Espelhos SOFIA', success_rate: 75.1, profit: 4180.75 }
         ]
       },
       message: 'Dados mock - KPIs'
@@ -561,29 +561,29 @@ class BackendIntegration {
     return {
       success: true,
       data: {
-        'Irmãos de Cores': {
-          description: 'Estratégia baseada na análise de cores consecutivas na roleta',
-          category: 'Cores',
+        'Irmãos SOFIA': {
+          description: 'Estratégia baseada em gatilhos de irmãos (11, 22, 33) e vizinhos na roda',
+          category: 'Números',
           risk: 'Médio',
           chips: '2-5',
           success_rate: 73.2,
-          details: 'Analisa padrões de cores vermelhas e pretas consecutivas para identificar oportunidades'
+          details: 'Ativa quando um número irmão aparece na janela recente e sugere um conjunto derivado'
         },
-        'Terminais Pull': {
-          description: 'Estratégia focada em números terminais que se atraem',
+        'Puxador de Terminais SOFIA': {
+          description: 'Estratégia focada em padrões de terminais (último dígito) em sequência recente',
           category: 'Números',
           risk: 'Alto',
           chips: '3-8',
           success_rate: 69.8,
-          details: 'Identifica números com terminais similares que tendem a aparecer em sequência'
+          details: 'Deriva números por padrões de terminal e pode incluir vizinhos na roda'
         },
-        'Espelho': {
-          description: 'Estratégia baseada em números espelhados na roleta',
+        'Espelhos SOFIA': {
+          description: 'Estratégia baseada no número espelho (oposto diametral) do último giro',
           category: 'Posição',
           risk: 'Baixo',
           chips: '1-3',
           success_rate: 75.1,
-          details: 'Analisa posições opostas na roleta para identificar padrões de espelhamento'
+          details: 'Deriva o espelho do último número e pode incluir vizinhos por raio'
         }
       },
       message: 'Dados mock - Descrições das estratégias'
@@ -600,16 +600,17 @@ class BackendIntegration {
           { id: 'playtech-premium-roulette', name: 'Playtech Premium Roulette', status: 'maintenance' }
         ],
         strategies: [
-          'Irmãos de Cores',
-          'Terminais Pull',
-          'Espelho',
-          'Onda',
-          'As Dúzias (Atrasadas)',
-          'Terminais que se Puxam',
-          'Os Opostos',
-          'Cavalo/Linha',
-          'Sequência de Números',
-          'Padrão Fibonacci'
+          'sofia-conexao-cores-v1',
+          'sofia-irmaos-v1',
+          'sofia-espelhos-v1',
+          'sofia-ondas-v1',
+          'sofia-puxador-terminais-v1',
+          'sofia-duzias-atrasadas-v1',
+          'sofia-terminais-que-se-puxam-v1',
+          'sofia-opostos-v1',
+          'sofia-cavalo-linha-v1',
+          'sofia-sequencia-numeros-v1',
+          'sofia-fibonacci-v1'
         ],
         confidence_levels: [60, 65, 70, 75, 80, 85, 90, 95],
         time_ranges: ['1h', '6h', '12h', '24h', '7d', '30d']

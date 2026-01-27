@@ -384,6 +384,134 @@ async function seedCoreTemplates(supabase: ReturnType<typeof getSupabaseAdmin>) 
         ],
       },
     },
+    {
+      name: 'As Dúzias (Atrasadas) SOFIA',
+      slug: 'sofia-duzias-atrasadas-v1',
+      description: 'Seleciona números das dúzias com baixa frequência recente (atrasadas).',
+      meta: { category: 'dozens_overdue', tags: ['duzias', 'atrasadas', 'frequencia', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 140 }, data: { label: 'Analisar Janela', config: { janela: 120 } } },
+          { id: 'cond_duzia_1', type: 'condition', subtype: 'fixed-underfrequency-set', position: { x: 320, y: 60 }, data: { label: 'Dúzia 1 (1–12) - Atrasadas', conditionType: 'fixed-underfrequency-set', config: { janela: 120, multiplier: 0.6, maxNumbers: 6, set: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] } } },
+          { id: 'cond_duzia_2', type: 'condition', subtype: 'fixed-underfrequency-set', position: { x: 320, y: 160 }, data: { label: 'Dúzia 2 (13–24) - Atrasadas', conditionType: 'fixed-underfrequency-set', config: { janela: 120, multiplier: 0.6, maxNumbers: 6, set: [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24] } } },
+          { id: 'cond_duzia_3', type: 'condition', subtype: 'fixed-underfrequency-set', position: { x: 320, y: 260 }, data: { label: 'Dúzia 3 (25–36) - Atrasadas', conditionType: 'fixed-underfrequency-set', config: { janela: 120, multiplier: 0.6, maxNumbers: 6, set: [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] } } },
+          { id: 'logic_or', type: 'logic', position: { x: 560, y: 170 }, data: { label: 'Qualquer Dúzia Atrasada', config: { operador: 'OR' } } },
+          { id: 'signal_duzias_atrasadas', type: 'signal', position: { x: 820, y: 170 }, data: { label: 'Sinal Dúzias (Atrasadas)', config: { acao: 'emitir_sinal', mensagem: 'Dúzia(s) com baixa frequência detectada(s) na janela recente.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_duzia_1', type: 'success' },
+          { id: 'e2', source: 'trigger_1', target: 'cond_duzia_2', type: 'success' },
+          { id: 'e3', source: 'trigger_1', target: 'cond_duzia_3', type: 'success' },
+          { id: 'e4', source: 'cond_duzia_1', target: 'logic_or', type: 'condition' },
+          { id: 'e5', source: 'cond_duzia_2', target: 'logic_or', type: 'condition' },
+          { id: 'e6', source: 'cond_duzia_3', target: 'logic_or', type: 'condition' },
+          { id: 'e7', source: 'logic_or', target: 'signal_duzias_atrasadas', type: 'success' },
+        ],
+      },
+    },
+    {
+      name: 'Terminais que se Puxam SOFIA',
+      slug: 'sofia-terminais-que-se-puxam-v1',
+      description: 'Deriva números via mapeamento de terminal do último giro.',
+      meta: { category: 'terminal_pull', tags: ['terminais', 'puxam', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 120 }, data: { label: 'Analisar Janela', config: { janela: 10 } } },
+          { id: 'cond_terminal_pull', type: 'condition', subtype: 'terminal-pull', position: { x: 320, y: 120 }, data: { label: 'Terminal Puxa Terminal', conditionType: 'terminal-pull', config: { minSpins: 10, require3ForTerminalToTerminal: true } } },
+          { id: 'signal_terminal_pull', type: 'signal', position: { x: 620, y: 120 }, data: { label: 'Sinal Terminais que se Puxam', config: { acao: 'emitir_sinal', mensagem: 'Mapeamento de terminais aplicado ao último giro.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_terminal_pull', type: 'success' },
+          { id: 'e2', source: 'cond_terminal_pull', target: 'signal_terminal_pull', type: 'success' },
+        ],
+      },
+    },
+    {
+      name: 'Os Opostos SOFIA',
+      slug: 'sofia-opostos-v1',
+      description: 'Deriva o número oposto (espelho diametral) do último giro.',
+      meta: { category: 'opposites', tags: ['opostos', 'espelho', 'roda', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 120 }, data: { label: 'Analisar Janela', config: { janela: 10 } } },
+          { id: 'cond_oposto', type: 'condition', subtype: 'mirror', position: { x: 320, y: 120 }, data: { label: 'Oposto do Último Número', conditionType: 'mirror', config: { raio: 0, includeZero: false } } },
+          { id: 'signal_oposto', type: 'signal', position: { x: 620, y: 120 }, data: { label: 'Sinal Os Opostos', config: { acao: 'emitir_sinal', mensagem: 'Número oposto (espelho) do último giro derivado.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_oposto', type: 'success' },
+          { id: 'e2', source: 'cond_oposto', target: 'signal_oposto', type: 'success' },
+        ],
+      },
+    },
+    {
+      name: 'Cavalo/Linha SOFIA',
+      slug: 'sofia-cavalo-linha-v1',
+      description: 'Ativa quando ocorre um par adjacente na roda europeia em sequência.',
+      meta: { category: 'wheel_adjacent', tags: ['cavalo', 'linha', 'adjacente', 'roda', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 120 }, data: { label: 'Analisar Janela', config: { janela: 12 } } },
+          { id: 'cond_adj_wheel', type: 'condition', subtype: 'adjacent-in-list', position: { x: 320, y: 120 }, data: { label: 'Adjacente na Roda (EU)', conditionType: 'adjacent-in-list', config: { janela: 12, list: [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26], circular: true, outputNumbers: [] } } },
+          { id: 'signal_cavalo_linha', type: 'signal', position: { x: 640, y: 120 }, data: { label: 'Sinal Cavalo/Linha', config: { acao: 'emitir_sinal', mensagem: 'Par adjacente na roda detectado em sequência recente.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_adj_wheel', type: 'success' },
+          { id: 'e2', source: 'cond_adj_wheel', target: 'signal_cavalo_linha', type: 'success' },
+        ],
+      },
+    },
+    {
+      name: 'Sequência de Números SOFIA',
+      slug: 'sofia-sequencia-numeros-v1',
+      description: 'Ativa quando ocorre um par de números adjacentes (ordem numérica) em sequência.',
+      meta: { category: 'numeric_adjacent', tags: ['sequencia', 'numeros', 'adjacente', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 120 }, data: { label: 'Analisar Janela', config: { janela: 12 } } },
+          { id: 'cond_adj_numeric', type: 'condition', subtype: 'adjacent-in-list', position: { x: 320, y: 120 }, data: { label: 'Adjacente Numérico (0–36)', conditionType: 'adjacent-in-list', config: { janela: 12, list: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36], circular: false, outputNumbers: [] } } },
+          { id: 'signal_sequencia', type: 'signal', position: { x: 640, y: 120 }, data: { label: 'Sinal Sequência de Números', config: { acao: 'emitir_sinal', mensagem: 'Par adjacente (ordem numérica) detectado em sequência recente.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_adj_numeric', type: 'success' },
+          { id: 'e2', source: 'cond_adj_numeric', target: 'signal_sequencia', type: 'success' },
+        ],
+      },
+    },
+    {
+      name: 'Padrão Fibonacci SOFIA',
+      slug: 'sofia-fibonacci-v1',
+      description: 'Seleciona números da sequência de Fibonacci mais promissores por frequência e dormência.',
+      meta: { category: 'fibonacci', tags: ['fibonacci', 'sequencia', 'frequencia', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 120 }, data: { label: 'Analisar Janela', config: { janela: 60 } } },
+          { id: 'cond_fib', type: 'condition', subtype: 'fibonacci', position: { x: 320, y: 120 }, data: { label: 'Fibonacci', conditionType: 'fibonacci', config: { minSpins: 30, janela: 60, maxNumbers: 4, fibonacciNumbers: [1, 2, 3, 5, 8, 13, 21, 34] } } },
+          { id: 'signal_fib', type: 'signal', position: { x: 600, y: 120 }, data: { label: 'Sinal Fibonacci', config: { acao: 'emitir_sinal', mensagem: 'Padrão Fibonacci ativado com base no histórico recente.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_fib', type: 'success' },
+          { id: 'e2', source: 'cond_fib', target: 'signal_fib', type: 'success' },
+        ],
+      },
+    },
   ]
 
   const core = OFFICIAL_SEEDS.map(seed => {
@@ -409,6 +537,12 @@ async function seedCoreTemplates(supabase: ReturnType<typeof getSupabaseAdmin>) 
     'puxador-de-terminais': 'sofia-puxador-terminais-v1',
     'estrategia-de-irmaos': 'sofia-irmaos-v1',
     'estrategia-de-espelho': 'sofia-espelhos-v1',
+    'as-duzias-atrasadas': 'sofia-duzias-atrasadas-v1',
+    'terminais-que-se-puxam': 'sofia-terminais-que-se-puxam-v1',
+    'os-opostos': 'sofia-opostos-v1',
+    'cavalo-linha': 'sofia-cavalo-linha-v1',
+    'sequencia-de-numeros': 'sofia-sequencia-numeros-v1',
+    'padrao-fibonacci': 'sofia-fibonacci-v1',
   }
 
   const slugListForLookup = Array.from(new Set([...slugs, ...Object.keys(legacySlugToNew)]))
