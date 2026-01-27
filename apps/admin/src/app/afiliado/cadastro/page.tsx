@@ -199,11 +199,12 @@ export default function CadastroParceiroPage() {
         if (!String(phoneDdd || "").trim()) return "Informe o DDD.";
         if (sanitizeDigits(phoneDdd).length !== 2) return "DDD inválido.";
         return null;
-      case "phoneNumber":
+      case "phoneNumber": {
         if (!String(phoneNumber || "").trim()) return "Informe seu telefone.";
-        if (sanitizeDigits(phoneNumber).length < 8) return "Telefone inválido.";
-        if (sanitizeDigits(phoneNumber).length > 9) return "Informe apenas o número, sem DDD.";
+        const len = sanitizeDigits(phoneNumber).length;
+        if (len !== 9) return "Informe o número do celular com 9 dígitos (sem DDD).";
         return null;
+      }
       case "zipCode":
         if (!String(zipCode || "").trim()) return "Informe seu CEP.";
         if (sanitizeDigits(zipCode).length !== 8) return "CEP inválido.";

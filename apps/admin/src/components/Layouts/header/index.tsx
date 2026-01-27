@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SearchIcon, MenuIcon } from "./icons";
 import { Notification } from "./notification";
@@ -8,7 +7,7 @@ import { UserInfo } from "./user-info";
 import { useAuth } from "@/contexts/auth-context";
 
 export function Header() {
-  const { toggleMobile, isMobile } = useSidebarContext();
+  const { toggleMobile } = useSidebarContext();
   const pathname = usePathname();
   const { partner } = useAuth();
   if (pathname.startsWith("/auth")) return null;
@@ -27,13 +26,6 @@ export function Header() {
         <MenuIcon />
         <span className="sr-only">Alternar Sidebar</span>
       </button>
-      {isMobile && (
-        <Link href={"/"} className="ml-2 max-[430px]:hidden min-[375px]:ml-4">
-          <div className="rounded-[5px] bg-black p-1">
-            <img src="/logo_sofia.png" alt="SOFIA" className="h-6 w-auto" />
-          </div>
-        </Link>
-      )}
       <div className="hidden md:block">
         <div className="text-sm font-semibold text-dark dark:text-white">
           {firstName ? `Olá, ${firstName}!` : "Olá!"} Bem-vindo(a) ao portal do parceiro SOFIA.
