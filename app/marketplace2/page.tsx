@@ -301,45 +301,47 @@ const StrategyTemplateGrid = ({ title, cards, onOpen }: { title: string; cards: 
   }
 
   return (
-    <section className="w-full max-w-6xl mx-auto py-12 px-4 md:px-6 bg-background text-foreground">
-      <h2 className="text-3xl font-bold tracking-tight mb-8">{title}</h2>
+    <section className="w-full bg-white text-black">
+      <div className="w-full max-w-6xl mx-auto py-12 px-4 md:px-6">
+        <h2 className="text-3xl font-bold tracking-tight mb-8">{title}</h2>
 
-      <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
-        {cards.map((card) => (
-          <motion.button
-            key={card.id}
-            type="button"
-            onClick={() => onOpen(card)}
-            className="group text-left rounded-2xl border bg-card p-6 hover:border-primary/50 transition-colors"
-            variants={itemVariants}
-            whileHover={{ y: -6 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            <div className="flex items-start gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={card.authorAvatarUrl || undefined} alt={card.authorName} />
-                <AvatarFallback>{safeInitials(card.authorName)}</AvatarFallback>
-              </Avatar>
+        <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
+          {cards.map((card) => (
+            <motion.button
+              key={card.id}
+              type="button"
+              onClick={() => onOpen(card)}
+              className="group text-left rounded-2xl border bg-card p-6 hover:border-primary/50 transition-colors"
+              variants={itemVariants}
+              whileHover={{ y: -6 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="flex items-start gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={card.authorAvatarUrl || undefined} alt={card.authorName} />
+                  <AvatarFallback>{safeInitials(card.authorName)}</AvatarFallback>
+                </Avatar>
 
-              <div className="min-w-0 flex-1">
-                <div className="text-lg font-semibold text-card-foreground truncate">{card.title}</div>
-                <div className="text-sm text-muted-foreground truncate">por {card.authorName}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-lg font-semibold text-card-foreground truncate">{card.title}</div>
+                  <div className="text-sm text-muted-foreground truncate">por {card.authorName}</div>
+                </div>
               </div>
-            </div>
 
-            {card.description ? (
-              <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{card.description}</p>
-            ) : (
-              <p className="mt-4 text-sm text-muted-foreground">Sem descrição</p>
-            )}
+              {card.description ? (
+                <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{card.description}</p>
+              ) : (
+                <p className="mt-4 text-sm text-muted-foreground">Sem descrição</p>
+              )}
 
-            <div className="mt-6 flex items-center text-sm font-medium text-primary">
-              Abrir detalhes
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </div>
-          </motion.button>
-        ))}
-      </motion.div>
+              <div className="mt-6 flex items-center text-sm font-medium text-primary">
+                Abrir detalhes
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+              </div>
+            </motion.button>
+          ))}
+        </motion.div>
+      </div>
     </section>
   )
 }
