@@ -229,6 +229,34 @@ export const builderSpec: BuilderSpec = {
                 label: 'Padrão de Terminais',
                 description: 'Detecta padrões no último dígito (terminal) e pode incluir vizinhos na roda.',
                 defaultConfig: { janela: 6, padrao: 'any', minStrength: 1, includeNeighbors: true, neighborRadius: 2, includeZero: true }
+              },
+              {
+                type: 'condition',
+                subtype: 'terminal-pull',
+                label: 'Terminal Puxa Terminal',
+                description: 'Deriva números a partir de um mapeamento de terminal do último número.',
+                defaultConfig: { minSpins: 1, require3ForTerminalToTerminal: true }
+              },
+              {
+                type: 'condition',
+                subtype: 'terminal-frequency',
+                label: 'Frequência de Terminais',
+                description: 'Escolhe terminais quentes/frios por desequilíbrio de frequência na janela.',
+                defaultConfig: { janela: 15, imbalanceMin: 3, topTerminals: 3, hotContinuityMin: 3, mode: 'auto' }
+              },
+              {
+                type: 'condition',
+                subtype: 'coldnumbers',
+                label: 'Números Frios',
+                description: 'Seleciona números com baixa frequência e alto gap na janela.',
+                defaultConfig: { janela: 100, ratioMax: 0.4, maxNumbers: 8, excludeZero: false }
+              },
+              {
+                type: 'condition',
+                subtype: 'ensemble',
+                label: 'Ensemble (Consenso)',
+                description: 'Combina micro-estratégias internas e seleciona números por consenso ponderado.',
+                defaultConfig: { janela: 60, maxNumbers: 12, minStrategies: 2, consensusThreshold: 0.4, includeNeighbors: true, neighborRadius: 2, includeZero: true, excludeZero: false, useTerminalPull: true, useTerminalPattern: true, useColdNumbers: true, useTerminalFrequency: true }
               }
             ]
           },
@@ -344,6 +372,37 @@ export const builderSpec: BuilderSpec = {
             { label: 'Incluir vizinhos', type: 'checkbox', key: 'includeNeighbors' },
             { label: 'Raio dos vizinhos', type: 'number', key: 'neighborRadius' },
             { label: 'Incluir Zero', type: 'checkbox', key: 'includeZero' }
+          ],
+          'condition:terminal-pull': [
+            { label: 'Mínimo de spins', type: 'number', key: 'minSpins' },
+            { label: 'Exigir 3 spins p/ Terminal→Terminal', type: 'checkbox', key: 'require3ForTerminalToTerminal' }
+          ],
+          'condition:terminal-frequency': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Desequilíbrio mínimo', type: 'number', key: 'imbalanceMin' },
+            { label: 'Top terminais', type: 'number', key: 'topTerminals' },
+            { label: 'Continuidade quente mínima', type: 'number', key: 'hotContinuityMin' },
+            { label: 'Modo', type: 'select', options: ['auto', 'hot', 'cold'], key: 'mode' }
+          ],
+          'condition:coldnumbers': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Razão máxima (0–1)', type: 'slider', min: 0, max: 1, step: 0.05, key: 'ratioMax' },
+            { label: 'Máximo de números', type: 'number', key: 'maxNumbers' },
+            { label: 'Excluir Zero', type: 'checkbox', key: 'excludeZero' }
+          ],
+          'condition:ensemble': [
+            { label: 'Janela (spins)', type: 'number', key: 'janela' },
+            { label: 'Máximo de números', type: 'number', key: 'maxNumbers' },
+            { label: 'Mínimo de micro-estratégias', type: 'number', key: 'minStrategies' },
+            { label: 'Threshold de consenso (0–1)', type: 'slider', min: 0, max: 1, step: 0.05, key: 'consensusThreshold' },
+            { label: 'Incluir vizinhos', type: 'checkbox', key: 'includeNeighbors' },
+            { label: 'Raio dos vizinhos', type: 'number', key: 'neighborRadius' },
+            { label: 'Incluir Zero', type: 'checkbox', key: 'includeZero' },
+            { label: 'Excluir Zero', type: 'checkbox', key: 'excludeZero' },
+            { label: 'Usar Terminal Puxa Terminal', type: 'checkbox', key: 'useTerminalPull' },
+            { label: 'Usar Padrão de Terminais', type: 'checkbox', key: 'useTerminalPattern' },
+            { label: 'Usar Números Frios', type: 'checkbox', key: 'useColdNumbers' },
+            { label: 'Usar Frequência de Terminais', type: 'checkbox', key: 'useTerminalFrequency' }
           ],
           'logic': [
             { label: 'Operador', type: 'select', options: ['AND', 'OR', 'NOT'], key: 'operador' }

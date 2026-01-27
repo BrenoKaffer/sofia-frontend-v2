@@ -324,6 +324,66 @@ async function seedCoreTemplates(supabase: ReturnType<typeof getSupabaseAdmin>) 
         ],
       },
     },
+    {
+      name: 'Hot Numbers Adaptive SOFIA',
+      slug: 'sofia-hot-numbers-adaptive-v1',
+      description: 'Identifica números quentes por frequência recente e números devidos por gap.',
+      meta: { category: 'hotnumbers', tags: ['hotnumbers', 'frequencia', 'gap', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 120 }, data: { label: 'Analisar Janela', config: { janela: 200 } } },
+          { id: 'cond_hotnumbers', type: 'condition', subtype: 'hotNumbers', position: { x: 320, y: 120 }, data: { label: 'Números Quentes', conditionType: 'hotNumbers', config: { janela: 200, hotThreshold: 1.4, minOccurrences: 3, maxNumbers: 8, includeDue: true, dueGapMin: 50, dueMaxNumbers: 3, excludeZero: false } } },
+          { id: 'signal_hotnumbers', type: 'signal', position: { x: 640, y: 120 }, data: { label: 'Sinal Hot Numbers Adaptive', config: { acao: 'emitir_sinal', mensagem: 'Números quentes (e/ou devidos) detectados na janela recente.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_hotnumbers', type: 'success' },
+          { id: 'e2', source: 'cond_hotnumbers', target: 'signal_hotnumbers', type: 'success' },
+        ],
+      },
+    },
+    {
+      name: 'Sofia ML Pattern Intelligence',
+      slug: 'sofia-ml-pattern-intelligence-v1',
+      description: 'Combina padrões de sequência de cores e números quentes a partir do histórico recente.',
+      meta: { category: 'mlpattern', tags: ['mlpattern', 'sequencia', 'cores', 'hotnumbers', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 120 }, data: { label: 'Analisar Janela', config: { janela: 200 } } },
+          { id: 'cond_mlpattern', type: 'condition', subtype: 'mlPattern', position: { x: 320, y: 120 }, data: { label: 'ML Pattern', conditionType: 'mlPattern', config: { mode: 'auto', janela: 200, minConfidence: 0.45, minOccurrencesPattern: 3, minLength: 3, maxLength: 6, hotThreshold: 1.3, minOccurrences: 3, maxNumbers: 8 } } },
+          { id: 'signal_mlpattern', type: 'signal', position: { x: 640, y: 120 }, data: { label: 'Sinal ML Pattern Intelligence', config: { acao: 'emitir_sinal', mensagem: 'Padrão detectado por sequência de cores e/ou números quentes.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_mlpattern', type: 'success' },
+          { id: 'e2', source: 'cond_mlpattern', target: 'signal_mlpattern', type: 'success' },
+        ],
+      },
+    },
+    {
+      name: 'Ensemble (Consenso) SOFIA',
+      slug: 'sofia-ensemble-consenso-v1',
+      description: 'Combina micro-estratégias internas e sugere números por consenso ponderado.',
+      meta: { category: 'ensemble', tags: ['ensemble', 'consenso', 'terminais', 'frios', 'builder'] },
+      graph: {
+        schemaVersion: '1.0.0',
+        selectionMode: 'automatic',
+        gating: { enabled: false },
+        nodes: [
+          { id: 'trigger_1', type: 'trigger', position: { x: 80, y: 120 }, data: { label: 'Analisar Janela', config: { janela: 60 } } },
+          { id: 'cond_ensemble', type: 'condition', subtype: 'ensemble', position: { x: 320, y: 120 }, data: { label: 'Ensemble (Consenso)', conditionType: 'ensemble', config: { janela: 60, maxNumbers: 12, minStrategies: 2, consensusThreshold: 0.4, includeNeighbors: true, neighborRadius: 2, includeZero: true, excludeZero: false, useTerminalPull: true, useTerminalPattern: true, useColdNumbers: true, useTerminalFrequency: true } } },
+          { id: 'signal_ensemble', type: 'signal', position: { x: 640, y: 120 }, data: { label: 'Sinal Ensemble', config: { acao: 'emitir_sinal', mensagem: 'Ensemble (consenso) ativado a partir do histórico recente.', prioridade: 'normal', selectionMode: 'automatic', numeros: [], stake: 1.0 } } },
+        ],
+        connections: [
+          { id: 'e1', source: 'trigger_1', target: 'cond_ensemble', type: 'success' },
+          { id: 'e2', source: 'cond_ensemble', target: 'signal_ensemble', type: 'success' },
+        ],
+      },
+    },
   ]
 
   const core = OFFICIAL_SEEDS.map(seed => {

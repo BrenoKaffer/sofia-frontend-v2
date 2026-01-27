@@ -7,10 +7,10 @@ import { NetflixTopBar } from "@/components/layout/netflix-top-bar";
 import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfileCard } from "@/components/profile-card";
 
 // Props interface for the component
 interface AnimatedMarqueeHeroProps {
@@ -172,6 +172,10 @@ type MarketplaceCard = {
   authorAvatarUrl?: string | null
   templateId?: string
   template?: TemplateRow | null
+  imageUrl?: string
+  isVerified?: boolean
+  followers?: number
+  following?: number
 }
 
 function safeInitials(value: string): string {
@@ -307,38 +311,37 @@ const StrategyTemplateGrid = ({ title, cards, onOpen }: { title: string; cards: 
 
         <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
           {cards.map((card) => (
-            <motion.button
+            <motion.div
               key={card.id}
-              type="button"
               onClick={() => onOpen(card)}
-              className="group text-left rounded-2xl border bg-card p-6 hover:border-primary/50 transition-colors"
+              className="w-full"
               variants={itemVariants}
               whileHover={{ y: -6 }}
               transition={{ type: "spring", stiffness: 300 }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onOpen(card)
+                }
+              }}
+              aria-label={`Abrir detalhes: ${card.title}`}
             >
-              <div className="flex items-start gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={card.authorAvatarUrl || undefined} alt={card.authorName} />
-                  <AvatarFallback>{safeInitials(card.authorName)}</AvatarFallback>
-                </Avatar>
-
-                <div className="min-w-0 flex-1">
-                  <div className="text-lg font-semibold text-card-foreground truncate">{card.title}</div>
-                  <div className="text-sm text-muted-foreground truncate">por {card.authorName}</div>
-                </div>
+              <div className="w-full flex justify-center">
+                <ProfileCard
+                  name={card.title}
+                  description={card.description || `por ${card.authorName}`}
+                  image={card.imageUrl}
+                  isVerified={card.isVerified}
+                  followers={card.followers}
+                  following={card.following}
+                  showActionButton
+                  actionText="Abrir"
+                  onActionClick={() => onOpen(card)}
+                />
               </div>
-
-              {card.description ? (
-                <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{card.description}</p>
-              ) : (
-                <p className="mt-4 text-sm text-muted-foreground">Sem descrição</p>
-              )}
-
-              <div className="mt-6 flex items-center text-sm font-medium text-primary">
-                Abrir detalhes
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-              </div>
-            </motion.button>
+            </motion.div>
           ))}
         </motion.div>
       </div>
@@ -418,6 +421,7 @@ export default function Marketplace2Page() {
       const authorName = String(t?.user_id || "") === "system"
         ? "SOFIA"
         : (displayName || String(t?.author_profile?.full_name || "").trim() || "Autor")
+      const seed = sigFromString(String(t?.id || t?.name || "sofia"))
 
       return {
         id: t.id,
@@ -427,6 +431,10 @@ export default function Marketplace2Page() {
         authorAvatarUrl: t?.author_profile?.avatar_url || null,
         templateId: t.id,
         template: t,
+        imageUrl: getTemplateImage(t),
+        isVerified: true,
+        followers: 120 + (seed % 900),
+        following: 20 + (seed % 180),
       }
     })
 
@@ -441,15 +449,23 @@ export default function Marketplace2Page() {
       { title: "Setor Dominante" },
     ]
 
-    return base.map((b, idx) => ({
-      id: `mock-${idx + 1}`,
-      title: b.title,
-      description: "Em breve no marketplace.",
-      authorName: "SOFIA",
-      authorAvatarUrl: null,
-      templateId: undefined,
-      template: null,
-    }))
+    return base.map((b, idx) => {
+      const id = `mock-${idx + 1}`
+      const seed = sigFromString(id)
+      return {
+        id,
+        title: b.title,
+        description: "Em breve no marketplace.",
+        authorName: "SOFIA",
+        authorAvatarUrl: null,
+        templateId: undefined,
+        template: null,
+        imageUrl: picsumPhotoUrl({ width: 800, height: 800, seed }),
+        isVerified: false,
+        followers: 60 + (seed % 500),
+        following: 10 + (seed % 120),
+      }
+    })
   }, [templates])
 
   const heroImages = useMemo(

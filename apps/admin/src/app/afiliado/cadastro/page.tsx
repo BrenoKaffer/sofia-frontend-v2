@@ -382,8 +382,43 @@ export default function CadastroParceiroPage() {
 
       if (!res?.success) {
         const err = (res as any)?.error;
-        const message = typeof err === "string" ? err : (err?.message || JSON.stringify(err) || "Falha ao registrar afiliado");
-        setError(message);
+        const debugId = (res as any)?.debug_id;
+        const pagarmeRequestId = (res as any)?.pagarme_request_id;
+        const pagarmeError = (res as any)?.pagarme_error;
+
+        const lines: string[] = [];
+        if (typeof err === "string" && err.trim()) {
+          lines.push(err.trim());
+        } else if (typeof err?.message === "string" && err.message.trim()) {
+          lines.push(err.message.trim());
+        } else {
+          lines.push("Falha ao registrar afiliado");
+        }
+
+        if (debugId) lines.push(`debug_id: ${String(debugId)}`);
+        if (pagarmeRequestId) lines.push(`pagarme_request_id: ${String(pagarmeRequestId)}`);
+
+        if (pagarmeError) {
+          if (typeof pagarmeError === "string") {
+            lines.push(`pagarme_error: ${pagarmeError}`);
+          } else if (typeof pagarmeError?.message === "string" && pagarmeError.message.trim()) {
+            lines.push(`pagarme_error: ${pagarmeError.message.trim()}`);
+          }
+
+          const errs = Array.isArray(pagarmeError?.errors) ? pagarmeError.errors : [];
+          if (errs.length > 0) {
+            for (const e of errs) {
+              const field = typeof e?.parameter_name === "string" ? e.parameter_name : "";
+              const msg = typeof e?.message === "string" ? e.message : "";
+              const code = typeof e?.code === "string" ? e.code : "";
+              const type = typeof e?.type === "string" ? e.type : "";
+              const parts = [msg, code, type].filter(Boolean).join(" / ");
+              if (field || parts) lines.push(`${field || "campo"}: ${parts || "inválido"}`);
+            }
+          }
+        }
+
+        setError(lines.join("\n"));
         setSuccess(false);
         return;
       }
@@ -445,7 +480,7 @@ export default function CadastroParceiroPage() {
             </div>
 
             {(validationError || error) && (
-              <div className="rounded-lg border bg-gray-2 p-3 text-sm text-red-600 dark:border-dark-3 dark:bg-dark-2">
+              <div className="whitespace-pre-wrap break-words rounded-lg border bg-gray-2 p-3 text-sm text-red-600 dark:border-dark-3 dark:bg-dark-2">
                 {validationError || error}
               </div>
             )}

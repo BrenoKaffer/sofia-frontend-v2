@@ -112,6 +112,37 @@ const TERMINAL_NUMBERS_MAP = {
   9: [9, 19, 29]
 };
 
+const TERMINALS_PULL_DIRECT_MAP = {
+  0: [5, 6, 9, 0],
+  1: [1, 4, 7, 5],
+  2: [2, 5, 6, 4],
+  3: [3, 6, 8, 9],
+  4: [1, 4, 7, 8],
+  5: [0, 5, 7, 2],
+  6: [0, 3, 6, 9, 2],
+  7: [1, 4, 7, 3],
+  8: [3, 4, 8],
+  9: [0, 3, 6, 9, 4]
+};
+
+const TERMINALS_PULL_TERMINAL_MAP = {
+  3: 2,
+  5: 2,
+  6: 4,
+  7: 7,
+  8: 5,
+  9: 3
+};
+
+function digitSum(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+  if (n === 0) return 0;
+  const s = String(Math.abs(Math.trunc(n)));
+  let sum = 0;
+  for (let i = 0; i < s.length; i++) sum += Number(s[i] || 0);
+  return sum;
+}
+
 function analyzeTerminalPattern(numbers, cfg = {}) {
   const janela = Math.max(2, Number(cfg.janela ?? cfg.window ?? 6));
   const padrao = String(cfg.padrao ?? 'any').toLowerCase();
@@ -159,7 +190,7 @@ const METADATA = {
   priority: ${JSON.stringify(priority)},
   selectionMode: ${JSON.stringify(selectionMode)},
   gating: ${JSON.stringify(gating)},
-  schemaVersion: ${JSON.stringify(payload?.schemaVersion || 'v1')}
+  schemaVersion: ${JSON.stringify(payload?.schemaVersion || '1.0.0')}
 };
 
 // Grafo do Builder
@@ -467,6 +498,334 @@ function deriveFromGraph(historyRaw, ctx = {}) {
         telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'adjacent-in-list', params: { janela, listSize: list.length, circular, hit: hitPair, added: toAdd.length } });
       }
     }
+    if (subtype === 'hotnumbers' || subtype === 'hot_numbers') {
+      const janela = Math.max(10, Number(c?.janela ?? c?.window ?? 200));
+      const ratioMin = Math.max(1, Number(c?.hotThreshold ?? c?.threshold ?? 1.4));
+      const minOccurrences = Math.max(1, Number(c?.minOccurrences ?? c?.min_occur ?? 3));
+      const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? c?.max_numbers ?? 8)));
+      const includeDue = Boolean(c?.includeDue ?? c?.include_due ?? false);
+      const dueGapMin = Math.max(1, Number(c?.dueGapMin ?? c?.due_gap_min ?? 50));
+      const excludeZero = Boolean(c?.excludeZero ?? c?.exclude_zero ?? false);
+      const dueMaxNumbers = Math.max(0, Math.min(36, Number(c?.dueMaxNumbers ?? c?.due_max_numbers ?? 0)));
+      const nums = history.slice(-janela).filter(t => typeof t === 'number');
+      if (nums.length >= 10) {
+        const freq = {};
+        const lastPos = {};
+        for (let n = 0; n <= 36; n++) { freq[n] = 0; lastPos[n] = -1; }
+        nums.forEach((n, i) => { if (n >= 0 && n <= 36) { freq[n]++; lastPos[n] = i; } });
+        const expected = nums.length / 37;
+        const hot = [];
+        const due = [];
+        for (let n = 0; n <= 36; n++) {
+          if (excludeZero && n === 0) continue;
+          const f = freq[n] || 0;
+          const ratio = expected > 0 ? (f / expected) : 0;
+          const gap = lastPos[n] === -1 ? nums.length : (nums.length - lastPos[n] - 1);
+          if (f >= minOccurrences && ratio >= ratioMin) hot.push({ n, f, ratio, gap });
+          if (includeDue && gap >= dueGapMin) due.push({ n, f, ratio, gap });
+        }
+        hot.sort((a, b) => (b.ratio - a.ratio) || (b.f - a.f) || (b.gap - a.gap));
+        const selectedHot = hot.slice(0, maxNumbers);
+        selectedHot.forEach(x => { derived.add(x.n); produced++; });
+        if (selectedHot.length) {
+          telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'hotnumbers', params: { janela, ratioMin, minOccurrences, selected: selectedHot.map(x => ({ n: x.n, ratio: Number(x.ratio.toFixed(2)), f: x.f, gap: x.gap })) } });
+        }
+        if (includeDue && dueMaxNumbers > 0) {
+          due.sort((a, b) => (b.gap - a.gap) || (a.ratio - b.ratio));
+          const selectedDue = due.slice(0, dueMaxNumbers);
+          selectedDue.forEach(x => { derived.add(x.n); produced++; });
+          if (selectedDue.length) {
+            telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'hotnumbers-due', params: { dueGapMin, dueMaxNumbers, selected: selectedDue.map(x => ({ n: x.n, gap: x.gap, ratio: Number(x.ratio.toFixed(2)), f: x.f })) } });
+          }
+        }
+      }
+    }
+    if (subtype === 'mlpattern' || subtype === 'ml_pattern') {
+      const mode = String(c?.mode ?? c?.tipo ?? 'auto').toLowerCase();
+      const minConfidence = Math.max(0, Math.min(1, Number(c?.minConfidence ?? c?.min_confidence ?? 0.45)));
+      const colors = history.map(t => {
+        if (typeof t === 'number') return t === 0 ? 'G' : (RED_NUMBERS.includes(t) ? 'R' : 'B');
+        const s = String(t).toLowerCase();
+        if (s === 'vermelho' || s === 'red') return 'R';
+        if (s === 'preto' || s === 'black') return 'B';
+        if (s === 'zero' || s === '0' || s === 'green' || s === 'verde') return 'G';
+        return null;
+      }).filter(Boolean);
+      const tryColorSequence = () => {
+        const janela = Math.max(20, Number(c?.janelaSeq ?? c?.janela ?? c?.window ?? 200));
+        const slice = colors.slice(-janela);
+        const minLen = Math.max(3, Math.min(6, Number(c?.minLength ?? c?.min_length ?? 3)));
+        const maxLen = Math.max(minLen, Math.min(6, Number(c?.maxLength ?? c?.max_length ?? 6)));
+        const minOccurrencesPattern = Math.max(1, Number(c?.minOccurrencesPattern ?? c?.min_occurrences_pattern ?? 3));
+        const fixedPattern = String(c?.pattern ?? c?.sequencia ?? '').toUpperCase().replace(/[^RBG]/g, '');
+        const fixedPredRaw = String(c?.predicted ?? c?.previsto ?? c?.predictedColor ?? c?.corPrevista ?? '').toUpperCase().trim();
+        const fixedPred = fixedPredRaw === 'R' || fixedPredRaw === 'B' || fixedPredRaw === 'G' ? fixedPredRaw : null;
+        if (slice.length < minLen + 1) return false;
+
+        const stats = {};
+        for (let len = minLen; len <= maxLen; len++) {
+          for (let i = 0; i <= slice.length - len - 1; i++) {
+            const seq = slice.slice(i, i + len).join('');
+            const next = slice[i + len];
+            if (!seq || !next) continue;
+            if (!stats[seq]) stats[seq] = { R: 0, B: 0, G: 0, total: 0, len };
+            stats[seq][next] = (stats[seq][next] || 0) + 1;
+            stats[seq].total++;
+          }
+        }
+
+        const selectPrediction = (seq) => {
+          const st = stats[seq];
+          if (!st || st.total < minOccurrencesPattern) return null;
+          const pR = st.R / st.total;
+          const pB = st.B / st.total;
+          const pG = st.G / st.total;
+          const bestProb = Math.max(pR, pB, pG);
+          if (bestProb < minConfidence) return null;
+          const predicted = pR === bestProb ? 'R' : (pB === bestProb ? 'B' : 'G');
+          return { predicted, confidence: bestProb, occurrences: st.total, len: st.len };
+        };
+
+        let pattern = fixedPattern || '';
+        let predicted = fixedPred;
+        let confidence = 0;
+        let occurrences = 0;
+        if (pattern) {
+          if (slice.length < pattern.length) return false;
+          const recent = slice.slice(-pattern.length).join('');
+          if (recent !== pattern) return false;
+          const auto = selectPrediction(pattern);
+          if (!predicted) predicted = auto?.predicted || null;
+          confidence = auto?.confidence || Math.max(minConfidence, 0.5);
+          occurrences = auto?.occurrences || 0;
+        } else {
+          let best = null;
+          for (let len = maxLen; len >= minLen; len--) {
+            const seq = slice.slice(-len).join('');
+            const auto = selectPrediction(seq);
+            if (!auto) continue;
+            if (!best) { best = { seq, ...auto }; continue; }
+            if (auto.confidence > best.confidence) { best = { seq, ...auto }; continue; }
+            if (auto.confidence === best.confidence && auto.occurrences > best.occurrences) { best = { seq, ...auto }; continue; }
+          }
+          if (!best) return false;
+          pattern = best.seq;
+          predicted = best.predicted;
+          confidence = best.confidence;
+          occurrences = best.occurrences;
+        }
+
+        if (!predicted) return false;
+        const set = predicted === 'R' ? RED_NUMBERS : predicted === 'B' ? BLACK_NUMBERS : GREEN_NUMBERS;
+        set.forEach(n => { derived.add(n); produced++; });
+        telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'mlpattern-color-sequence', params: { pattern, predicted, minConfidence, confidence: Number(confidence.toFixed(2)), occurrences } });
+        return true;
+      };
+      const tryHotNumbers = () => {
+        const janela = Math.max(10, Number(c?.janela ?? c?.window ?? 200));
+        const ratioMin = Math.max(1, Number(c?.hotThreshold ?? c?.threshold ?? 1.3));
+        const minOccurrences = Math.max(1, Number(c?.minOccurrences ?? c?.min_occur ?? 3));
+        const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? c?.max_numbers ?? 8)));
+        const excludeZero = Boolean(c?.excludeZero ?? c?.exclude_zero ?? false);
+        const nums = history.slice(-janela).filter(t => typeof t === 'number');
+        if (nums.length < 10) return false;
+        const freq = {};
+        for (let n = 0; n <= 36; n++) freq[n] = 0;
+        nums.forEach(n => { if (n >= 0 && n <= 36) freq[n]++; });
+        const expected = nums.length / 37;
+        const hot = [];
+        for (let n = 0; n <= 36; n++) {
+          if (excludeZero && n === 0) continue;
+          const f = freq[n] || 0;
+          const ratio = expected > 0 ? (f / expected) : 0;
+          if (f >= minOccurrences && ratio >= ratioMin) hot.push({ n, f, ratio });
+        }
+        hot.sort((a, b) => (b.ratio - a.ratio) || (b.f - a.f));
+        const selected = hot.slice(0, maxNumbers);
+        if (!selected.length) return false;
+        selected.forEach(x => { derived.add(x.n); produced++; });
+        const confidence = Math.max(minConfidence, Math.min(0.75, selected[0].ratio / 3));
+        telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'mlpattern-hot-numbers', params: { janela, ratioMin, minOccurrences, confidence: Number(confidence.toFixed(2)), selected: selected.map(x => ({ n: x.n, ratio: Number(x.ratio.toFixed(2)), f: x.f })) } });
+        return true;
+      };
+      const tryTiming = () => {
+        const hours = Array.isArray(c?.hours) ? c.hours.map(h => Number(h)).filter(h => Number.isFinite(h) && h >= 0 && h <= 23) : [];
+        const hour = Number(c?.hour);
+        const effectiveHours = hours.length ? hours : (Number.isFinite(hour) ? [hour] : []);
+        const predictedRaw = String(c?.predicted ?? c?.dominantColor ?? c?.corDominante ?? '').toUpperCase().trim();
+        const predicted = predictedRaw === 'R' || predictedRaw === 'B' || predictedRaw === 'G' ? predictedRaw : null;
+        if (!effectiveHours.length || !predicted) return false;
+        const nowHour = new Date().getHours();
+        if (!effectiveHours.includes(nowHour)) return false;
+        const set = predicted === 'R' ? RED_NUMBERS : predicted === 'B' ? BLACK_NUMBERS : GREEN_NUMBERS;
+        set.forEach(n => { derived.add(n); produced++; });
+        telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'mlpattern-timing', params: { hours: effectiveHours, nowHour, predicted, confidence: Math.max(minConfidence, 0.5) } });
+        return true;
+      };
+      let ok = false;
+      if (mode === 'color_sequence') ok = tryColorSequence();
+      else if (mode === 'hot_numbers') ok = tryHotNumbers();
+      else if (mode === 'timing') ok = tryTiming();
+      else {
+        ok = tryColorSequence() || tryHotNumbers() || tryTiming();
+      }
+      if (!ok) {
+        const outputNumbers = Array.isArray(c?.outputNumbers) ? c.outputNumbers.filter(n => typeof n === 'number' && n >= 0 && n <= 36) : [];
+        if (outputNumbers.length) {
+          outputNumbers.forEach(n => { derived.add(n); produced++; });
+          telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'mlpattern-fallback-outputNumbers', params: { added: outputNumbers.length } });
+        }
+      }
+    }
+    if (subtype === 'ensemble') {
+      const janela = Math.max(10, Number(c?.janela ?? c?.window ?? 60));
+      const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? 12)));
+      const minStrategies = Math.max(1, Number(c?.minStrategies ?? 2));
+      const consensusThreshold = Math.max(0, Math.min(1, Number(c?.consensusThreshold ?? c?.threshold ?? 0.4)));
+      const includeNeighbors = Boolean(c?.includeNeighbors ?? true);
+      const neighborRadius = Math.max(0, Number(c?.neighborRadius ?? c?.raio ?? 2));
+      const includeZero = Boolean(c?.includeZero ?? true);
+      const excludeZero = Boolean(c?.excludeZero ?? false);
+
+      const microSignals = [];
+      const pushSignal = (name, weight, bets, meta = {}) => {
+        const clean = Array.isArray(bets) ? bets.filter(n => typeof n === 'number' && n >= 0 && n <= 36) : [];
+        const uniq = Array.from(new Set(clean));
+        if (uniq.length) microSignals.push({ name, weight, bets: uniq, meta });
+      };
+
+      if (Boolean(c?.useTerminalPull ?? true)) {
+        const minSpins = Math.max(1, Number(c?.minSpins ?? 1));
+        const require3ForTerminalToTerminal = Boolean(c?.require3ForTerminalToTerminal ?? true);
+        if (history.length >= minSpins) {
+          const lastNum = history.slice().reverse().find(t => typeof t === 'number');
+          if (typeof lastNum === 'number') {
+            const lastTerminal = numberTerminal(lastNum);
+            const directMap = (c?.pullMap && typeof c.pullMap === 'object') ? c.pullMap : TERMINALS_PULL_DIRECT_MAP;
+            const terminalToTerminal = (c?.terminalToTerminalMap && typeof c.terminalToTerminalMap === 'object') ? c.terminalToTerminalMap : TERMINALS_PULL_TERMINAL_MAP;
+            const allowT2T = !require3ForTerminalToTerminal || history.length >= 3;
+            const mappedTerminal = allowT2T ? Number(terminalToTerminal[lastTerminal]) : NaN;
+            if (Number.isFinite(mappedTerminal)) {
+              const base = TERMINAL_NUMBERS_MAP[mappedTerminal] || [];
+              pushSignal('terminal-pull-terminal', 0.3, base, { lastTerminal, mappedTerminal, added: base.length });
+            } else {
+              const list = Array.isArray(directMap[lastTerminal]) ? directMap[lastTerminal] : [];
+              pushSignal('terminal-pull-direct', 0.3, list, { lastTerminal, added: list.length });
+            }
+          }
+        }
+      }
+
+      if (Boolean(c?.useTerminalPattern ?? true)) {
+        const nums = history.slice(-Math.max(2, Math.min(janela, 200))).filter(t => typeof t === 'number');
+        const best = analyzeTerminalPattern(nums, c);
+        if (best && typeof best.terminal === 'number') {
+          const base = TERMINAL_NUMBERS_MAP[best.terminal] || [];
+          let out = base.slice();
+          if (includeNeighbors && neighborRadius > 0) {
+            base.forEach(ref => {
+              EUROPEAN_WHEEL.forEach(n => { if (circularDistance(n, ref) <= neighborRadius) out.push(n); });
+            });
+          }
+          if (includeZero) out.push(0);
+          if (excludeZero) out = out.filter(n => n !== 0);
+          pushSignal('terminal-pattern', 0.25, out, { best, includeNeighbors, neighborRadius, includeZero, excludeZero });
+        }
+      }
+
+      if (Boolean(c?.useColdNumbers ?? true)) {
+        const ratioMax = Math.max(0, Math.min(1, Number(c?.ratioMax ?? c?.coldThreshold ?? 0.4)));
+        const maxLocal = Math.max(1, Math.min(36, Number(c?.coldMaxNumbers ?? c?.maxNumbersCold ?? 10)));
+        const slice = history.slice(-janela).filter(t => typeof t === 'number');
+        if (slice.length >= Math.min(janela, 10)) {
+          const freq = {};
+          const lastPos = {};
+          for (let n = 0; n <= 36; n++) { freq[n] = 0; lastPos[n] = -1; }
+          slice.forEach((n, i) => { if (n >= 0 && n <= 36) { freq[n]++; lastPos[n] = i; } });
+          const expected = slice.length / (excludeZero ? 36 : 37);
+          const candidates = [];
+          for (let n = 0; n <= 36; n++) {
+            if (excludeZero && n === 0) continue;
+            const f = freq[n] || 0;
+            const ratio = expected > 0 ? f / expected : 1;
+            if (ratio <= ratioMax) {
+              const gap = lastPos[n] === -1 ? slice.length : (slice.length - lastPos[n] - 1);
+              const score = gap + (expected - f) * 2;
+              candidates.push({ n, f, ratio, gap, score });
+            }
+          }
+          candidates.sort((a, b) => (b.score - a.score) || (a.ratio - b.ratio) || (a.f - b.f));
+          const selected = candidates.slice(0, maxLocal).map(x => x.n);
+          pushSignal('coldnumbers', 0.25, selected, { janela, ratioMax, selectedCount: selected.length });
+        }
+      }
+
+      if (Boolean(c?.useTerminalFrequency ?? true)) {
+        const imbalanceMin = Math.max(1, Number(c?.imbalanceMin ?? 3));
+        const topTerminals = Math.max(1, Math.min(5, Number(c?.topTerminals ?? 3)));
+        const hotContinuityMin = Math.max(1, Math.min(5, Number(c?.hotContinuityMin ?? 3)));
+        const slice = history.slice(-Math.max(5, Math.min(janela, 500))).filter(t => typeof t === 'number');
+        if (slice.length >= 5) {
+          const freq = {};
+          for (let t = 0; t <= 9; t++) freq[t] = 0;
+          slice.forEach(n => { freq[numberTerminal(n)] = (freq[numberTerminal(n)] || 0) + 1; });
+          const values = Object.values(freq);
+          const maxFreq = Math.max(...values);
+          const minFreq = Math.min(...values);
+          if ((maxFreq - minFreq) >= imbalanceMin) {
+            const sorted = Object.entries(freq).map(([t, f]) => ({ t: Number(t), f: Number(f) })).sort((a, b) => b.f - a.f);
+            const last5 = slice.slice(-5).map(n => numberTerminal(n));
+            let hotContinuity = 0;
+            last5.forEach(t => { if ((freq[t] || 0) >= 3) hotContinuity++; });
+            const mode = String(c?.mode ?? 'auto').toLowerCase();
+            const useHot = mode === 'hot' ? true : mode === 'cold' ? false : hotContinuity >= hotContinuityMin;
+            const selectedTerminals = useHot ? sorted.slice(0, topTerminals) : sorted.slice(-topTerminals);
+            const bets = [];
+            selectedTerminals.forEach(({ t }) => {
+              const base = TERMINAL_NUMBERS_MAP[t] || [];
+              base.forEach(n => bets.push(n));
+            });
+            if (excludeZero) {
+              pushSignal('terminal-frequency', 0.2, bets.filter(n => n !== 0), { janela, imbalanceMin, topTerminals, mode, useHot, hotContinuity, selectedTerminals });
+            } else {
+              pushSignal('terminal-frequency', 0.2, bets, { janela, imbalanceMin, topTerminals, mode, useHot, hotContinuity, selectedTerminals });
+            }
+          }
+        }
+      }
+
+      if (microSignals.length >= minStrategies) {
+        const totalWeight = microSignals.reduce((sum, s) => sum + (Number(s.weight) || 0), 0) || 1;
+        const betWeight = {};
+        microSignals.forEach(s => {
+          s.bets.forEach(b => {
+            betWeight[b] = (betWeight[b] || 0) + (Number(s.weight) || 0);
+          });
+        });
+        const consensusBets = Object.entries(betWeight)
+          .filter(([, w]) => (Number(w) / totalWeight) >= consensusThreshold)
+          .map(([b]) => Number(b))
+          .filter(n => Number.isFinite(n) && n >= 0 && n <= 36)
+          .sort((a, b) => a - b);
+        const selected = consensusBets.slice(0, maxNumbers);
+        if (selected.length) {
+          selected.forEach(n => { derived.add(n); produced++; });
+          telemetry.derivedBy.push({
+            nodeId: node.id,
+            subtype,
+            reason: 'ensemble-consensus',
+            params: {
+              janela,
+              maxNumbers,
+              minStrategies,
+              consensusThreshold,
+              signals: microSignals.map(s => ({ name: s.name, weight: s.weight, betsCount: s.bets.length })),
+              selected
+            }
+          });
+        }
+      }
+    }
     if (subtype === 'terminal-pattern') {
       const janela = Math.max(2, Number(c?.janela ?? c?.window ?? 6));
       const includeNeighbors = Boolean(c?.includeNeighbors ?? false);
@@ -484,6 +843,253 @@ function deriveFromGraph(historyRaw, ctx = {}) {
         }
         if (includeZero) { derived.add(0); produced++; }
         telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'terminal-pattern', params: { janela, best, includeNeighbors, neighborRadius, includeZero } });
+      }
+    }
+
+    if (subtype === 'terminal-pull') {
+      const minSpins = Math.max(1, Number(c?.minSpins ?? 1));
+      const require3ForTerminalToTerminal = Boolean(c?.require3ForTerminalToTerminal ?? true);
+      if (history.length >= minSpins) {
+        const lastNum = history.slice().reverse().find(t => typeof t === 'number');
+        if (typeof lastNum === 'number') {
+          const lastTerminal = numberTerminal(lastNum);
+          const directMap = (c?.pullMap && typeof c.pullMap === 'object') ? c.pullMap : TERMINALS_PULL_DIRECT_MAP;
+          const terminalToTerminal = (c?.terminalToTerminalMap && typeof c.terminalToTerminalMap === 'object') ? c.terminalToTerminalMap : TERMINALS_PULL_TERMINAL_MAP;
+          const allowT2T = !require3ForTerminalToTerminal || history.length >= 3;
+          const mappedTerminal = allowT2T ? Number(terminalToTerminal[lastTerminal]) : NaN;
+          if (Number.isFinite(mappedTerminal)) {
+            const base = TERMINAL_NUMBERS_MAP[mappedTerminal] || [];
+            base.forEach(n => { derived.add(n); produced++; });
+            telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'terminal-pull-terminal', params: { lastTerminal, mappedTerminal, added: base.length } });
+          } else {
+            const list = Array.isArray(directMap[lastTerminal]) ? directMap[lastTerminal] : [];
+            list.filter(n => typeof n === 'number' && n >= 0 && n <= 36).forEach(n => { derived.add(n); produced++; });
+            telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'terminal-pull-direct', params: { lastTerminal, added: list.length } });
+          }
+        }
+      }
+    }
+
+    if (subtype === 'terminal-frequency') {
+      const janela = Math.max(5, Number(c?.janela ?? 15));
+      const imbalanceMin = Math.max(1, Number(c?.imbalanceMin ?? 3));
+      const topTerminals = Math.max(1, Math.min(5, Number(c?.topTerminals ?? 3)));
+      const hotContinuityMin = Math.max(1, Math.min(5, Number(c?.hotContinuityMin ?? 3)));
+      const slice = history.slice(-janela).filter(t => typeof t === 'number');
+      if (slice.length >= janela) {
+        const freq = {};
+        for (let t = 0; t <= 9; t++) freq[t] = 0;
+        slice.forEach(n => { freq[numberTerminal(n)] = (freq[numberTerminal(n)] || 0) + 1; });
+        const values = Object.values(freq);
+        const maxFreq = Math.max(...values);
+        const minFreq = Math.min(...values);
+        if ((maxFreq - minFreq) >= imbalanceMin) {
+          const sorted = Object.entries(freq).map(([t, f]) => ({ t: Number(t), f: Number(f) })).sort((a, b) => b.f - a.f);
+          const last5 = slice.slice(-5).map(n => numberTerminal(n));
+          let hotContinuity = 0;
+          last5.forEach(t => { if ((freq[t] || 0) >= 3) hotContinuity++; });
+          const mode = String(c?.mode ?? 'auto').toLowerCase();
+          const useHot = mode === 'hot' ? true : mode === 'cold' ? false : hotContinuity >= hotContinuityMin;
+          const selectedTerminals = useHot ? sorted.slice(0, topTerminals) : sorted.slice(-topTerminals);
+          selectedTerminals.forEach(({ t }) => {
+            const base = TERMINAL_NUMBERS_MAP[t] || [];
+            base.forEach(n => { derived.add(n); produced++; });
+          });
+          telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'terminal-frequency', params: { janela, imbalanceMin, topTerminals, mode, useHot, hotContinuity, selectedTerminals } });
+        }
+      }
+    }
+
+    if (subtype === 'fixed-frequency-set') {
+      const janela = Math.max(1, Number(c?.janela ?? 50));
+      const minCount = Math.max(1, Number(c?.minCount ?? 2));
+      const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? 6)));
+      const set = Array.isArray(c?.set) ? c.set.filter(n => typeof n === 'number' && n >= 0 && n <= 36) : [];
+      const slice = history.slice(-janela).filter(t => typeof t === 'number');
+      if (set.length && slice.length >= Math.min(janela, 1)) {
+        const counts = {};
+        set.forEach(n => { counts[n] = 0; });
+        slice.forEach(n => { if (counts[n] !== undefined) counts[n]++; });
+        const selected = Object.entries(counts)
+          .map(([n, c]) => ({ n: Number(n), c: Number(c) }))
+          .filter(x => x.c >= minCount)
+          .sort((a, b) => (b.c - a.c) || (a.n - b.n))
+          .slice(0, maxNumbers);
+        selected.forEach(x => { derived.add(x.n); produced++; });
+        if (selected.length) telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'fixed-frequency-set', params: { janela, minCount, maxNumbers, selected } });
+      }
+    }
+
+    if (subtype === 'fixed-underfrequency-set') {
+      const janela = Math.max(10, Number(c?.janela ?? 100));
+      const multiplier = Math.max(0, Math.min(1, Number(c?.multiplier ?? 0.5)));
+      const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? 8)));
+      const set = Array.isArray(c?.set) ? c.set.filter(n => typeof n === 'number' && n >= 0 && n <= 36) : [];
+      const slice = history.slice(-janela).filter(t => typeof t === 'number');
+      if (set.length && slice.length >= Math.min(janela, 10)) {
+        const counts = {};
+        set.forEach(n => { counts[n] = 0; });
+        slice.forEach(n => { if (counts[n] !== undefined) counts[n]++; });
+        const expected = slice.length / (excludeZero ? 36 : 37);
+        const threshold = expected * multiplier;
+        const selected = Object.entries(counts)
+          .map(([n, c]) => ({ n: Number(n), c: Number(c) }))
+          .filter(x => x.c <= threshold)
+          .sort((a, b) => (a.c - b.c) || (a.n - b.n))
+          .slice(0, maxNumbers);
+        selected.forEach(x => { derived.add(x.n); produced++; });
+        if (selected.length) telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'fixed-underfrequency-set', params: { janela, multiplier, threshold: Number(threshold.toFixed(2)), maxNumbers, selected } });
+      }
+    }
+
+    if (subtype === 'gap-tracking') {
+      const janela = Math.max(5, Number(c?.janela ?? 25));
+      const gapMin = Math.max(1, Number(c?.gapMin ?? 15));
+      const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? 2)));
+      const targets = Array.isArray(c?.targets) ? c.targets.filter(n => typeof n === 'number' && n >= 0 && n <= 36) : [];
+      const slice = history.slice(-janela).filter(t => typeof t === 'number');
+      if (targets.length && slice.length >= Math.min(janela, 5)) {
+        const gaps = targets.map(target => {
+          let gap = 0;
+          for (let i = slice.length - 1; i >= 0; i--) {
+            if (slice[i] === target) break;
+            gap++;
+          }
+          return { n: target, gap };
+        });
+        const dormant = gaps.filter(x => x.gap >= gapMin).sort((a, b) => b.gap - a.gap);
+        if (dormant.length) {
+          const selected = dormant.slice(0, maxNumbers);
+          selected.forEach(x => { derived.add(x.n); produced++; });
+          telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'gap-tracking', params: { janela, gapMin, maxNumbers, gaps, selected } });
+        }
+      }
+    }
+
+    if (subtype === 'coldnumbers' || subtype === 'cold_numbers') {
+      const janela = Math.max(10, Number(c?.janela ?? c?.window ?? 100));
+      const ratioMax = Math.max(0, Math.min(1, Number(c?.ratioMax ?? c?.coldThreshold ?? 0.4)));
+      const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? c?.max_numbers ?? 8)));
+      const excludeZero = Boolean(c?.excludeZero ?? c?.exclude_zero ?? false);
+      const slice = history.slice(-janela).filter(t => typeof t === 'number');
+      if (slice.length >= Math.min(janela, 10)) {
+        const freq = {};
+        const lastPos = {};
+        for (let n = 0; n <= 36; n++) { freq[n] = 0; lastPos[n] = -1; }
+        slice.forEach((n, i) => { if (n >= 0 && n <= 36) { freq[n]++; lastPos[n] = i; } });
+        const expected = slice.length / 37;
+        const candidates = [];
+        for (let n = 0; n <= 36; n++) {
+          if (excludeZero && n === 0) continue;
+          const f = freq[n] || 0;
+          const ratio = expected > 0 ? f / expected : 1;
+          if (ratio <= ratioMax) {
+            const gap = lastPos[n] === -1 ? slice.length : (slice.length - lastPos[n] - 1);
+            const score = gap + (expected - f) * 2;
+            candidates.push({ n, f, ratio: Number(ratio.toFixed(3)), gap, score: Number(score.toFixed(2)) });
+          }
+        }
+        candidates.sort((a, b) => (b.score - a.score) || (a.ratio - b.ratio) || (a.f - b.f));
+        const selected = candidates.slice(0, maxNumbers);
+        selected.forEach(x => { derived.add(x.n); produced++; });
+        if (selected.length) telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'coldnumbers', params: { janela, ratioMax, maxNumbers, selected } });
+      }
+    }
+
+    if (subtype === 'fibonacci') {
+      const fibNumbers = Array.isArray(c?.fibonacciNumbers) ? c.fibonacciNumbers.filter(n => typeof n === 'number' && n >= 0 && n <= 36) : [1, 2, 3, 5, 8, 13, 21, 34];
+      const minSpins = Math.max(1, Number(c?.minSpins ?? 30));
+      const window = Math.max(10, Number(c?.janela ?? c?.window ?? 50));
+      const maxNumbers = Math.max(1, Math.min(fibNumbers.length, Number(c?.maxNumbers ?? 4)));
+      if (history.length >= minSpins) {
+        const recent = history.slice(-window).filter(t => typeof t === 'number');
+        const counts = {};
+        fibNumbers.forEach(n => { counts[n] = 0; });
+        recent.forEach(n => { if (counts[n] !== undefined) counts[n]++; });
+        let fibStreak = 0;
+        for (let i = history.length - 1; i >= 0 && fibStreak < 10; i--) {
+          const t = history[i];
+          if (typeof t === 'number' && fibNumbers.includes(t)) fibStreak++; else break;
+        }
+        const dormancy = (target) => {
+          for (let i = history.length - 1; i >= 0; i--) {
+            if (history[i] === target) return history.length - 1 - i;
+          }
+          return history.length;
+        };
+        const analysis = fibNumbers.map((n) => {
+          const f = counts[n] || 0;
+          const d = dormancy(n);
+          const pos = fibNumbers.indexOf(n);
+          const score = (5 - f) * 2 + Math.min(d / 5, 10) + (fibNumbers.length - pos);
+          return { n, f, d, pos, score: Number(score.toFixed(2)) };
+        }).sort((a, b) => (b.score - a.score) || (b.d - a.d));
+        const selected = analysis.slice(0, maxNumbers);
+        selected.forEach(x => { derived.add(x.n); produced++; });
+        if (selected.length) telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'fibonacci', params: { minSpins, window, maxNumbers, fibStreak, selected } });
+      }
+    }
+
+    if (subtype === 'digit-sum' || subtype === 'digitsum' || subtype === 'digit_sum') {
+      const minSpins = Math.max(1, Number(c?.minSpins ?? 40));
+      const window = Math.max(10, Number(c?.janela ?? c?.window ?? 30));
+      const underMultiplier = Math.max(0, Math.min(1, Number(c?.underMultiplier ?? 0.7)));
+      const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? 6)));
+      if (history.length >= minSpins) {
+        const recent = history.slice(-window).filter(t => typeof t === 'number');
+        const counts = {};
+        for (let s = 0; s <= 18; s++) counts[s] = 0;
+        recent.forEach(n => {
+          const sum = digitSum(n);
+          if (typeof sum === 'number' && counts[sum] !== undefined) counts[sum]++;
+        });
+        const avg = recent.length / 19;
+        const under = [];
+        for (let s = 1; s <= 18; s++) {
+          if (counts[s] < avg * underMultiplier) under.push(s);
+        }
+        if (under.length) {
+          const selected = [];
+          for (let i = 1; i <= 36 && selected.length < maxNumbers; i++) {
+            const s = digitSum(i);
+            if (typeof s === 'number' && under.includes(s)) selected.push(i);
+          }
+          selected.slice(0, maxNumbers).forEach(n => { derived.add(n); produced++; });
+          if (selected.length) telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'digit-sum', params: { minSpins, window, underMultiplier, under, maxNumbers, added: Math.min(selected.length, maxNumbers) } });
+        }
+      }
+    }
+
+    if (subtype === 'wheel-neighbors-hot' || subtype === 'wheelneighborshot') {
+      const minSpins = Math.max(1, Number(c?.minSpins ?? 40));
+      const window = Math.max(10, Number(c?.janela ?? c?.window ?? 25));
+      const topN = Math.max(1, Math.min(10, Number(c?.topN ?? 5)));
+      const radius = Math.max(1, Math.min(6, Number(c?.radius ?? 2)));
+      const maxNumbers = Math.max(1, Math.min(36, Number(c?.maxNumbers ?? 7)));
+      if (history.length >= minSpins) {
+        const recent = history.slice(-window).filter(t => typeof t === 'number');
+        const numberCounts = {};
+        for (let i = 0; i <= 36; i++) numberCounts[i] = 0;
+        recent.forEach(n => { if (n >= 0 && n <= 36) numberCounts[n]++; });
+        const top = Object.entries(numberCounts)
+          .map(([n, c]) => ({ n: Number(n), c: Number(c) }))
+          .sort((a, b) => (b.c - a.c) || (a.n - b.n))
+          .slice(0, topN);
+        const neighbors = new Set();
+        top.forEach(({ n, c }) => {
+          if (c <= 0) return;
+          const idx = EUROPEAN_WHEEL.indexOf(n);
+          if (idx < 0) return;
+          for (let off = -radius; off <= radius; off++) {
+            if (off === 0) continue;
+            const pos = (idx + off + EUROPEAN_WHEEL.length) % EUROPEAN_WHEEL.length;
+            const neigh = EUROPEAN_WHEEL[pos];
+            if ((numberCounts[neigh] || 0) <= 1) neighbors.add(neigh);
+          }
+        });
+        const selected = Array.from(neighbors).slice(0, maxNumbers);
+        selected.forEach(n => { derived.add(n); produced++; });
+        if (selected.length) telemetry.derivedBy.push({ nodeId: node.id, subtype, reason: 'wheel-neighbors-hot', params: { minSpins, window, topN, radius, maxNumbers, top, selected } });
       }
     }
     condBool[node.id] = produced > 0;

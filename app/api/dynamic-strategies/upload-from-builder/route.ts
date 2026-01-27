@@ -3,7 +3,8 @@ import { compileBuilderToJS } from '@/lib/builder-compiler'
 import { auth } from '@/lib/auth-server'
 
 export const runtime = 'nodejs'
-const CURRENT_SCHEMA_VERSION = 'v1'
+const CURRENT_SCHEMA_VERSION = '1.0.0'
+const ACCEPTED_SCHEMA_VERSIONS = new Set(['v1', '1.0.0'])
 
 const BACKEND_BASE = process.env.SOFIA_BACKEND_URL || 'http://localhost:3001/api'
 
@@ -57,11 +58,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar schemaVersion
-    if (!payload.schemaVersion || payload.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+    const schemaVersion = String(payload.schemaVersion || '').trim()
+    if (!schemaVersion || !ACCEPTED_SCHEMA_VERSIONS.has(schemaVersion)) {
       return NextResponse.json({
         success: false,
         error: 'schemaVersion incompatível',
-        details: `Esperado ${CURRENT_SCHEMA_VERSION}, recebido ${payload.schemaVersion || 'undefined'}`
+        details: `Esperado um de: ${Array.from(ACCEPTED_SCHEMA_VERSIONS).join(', ')}, recebido ${schemaVersion || 'undefined'}`
       }, { status: 400 })
     }
 

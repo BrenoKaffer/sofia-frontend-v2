@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -31,11 +32,105 @@ interface RouletteStatusProps {
 
 export function RouletteStatus({ latestSpin, rouletteHistoryData, activeTableId }: RouletteStatusProps) {
   const { getToken } = useAuth();
+  const searchParams = useSearchParams();
   const [selectedRouletteIndex, setSelectedRouletteIndex] = useState(0);
   const [rouletteTables, setRouletteTables] = useState<RouletteDataDisplay[]>([]);
   const [currentRouletteDisplay, setCurrentRouletteDisplay] = useState<RouletteDataDisplay | null>(null);
   const [loading, setLoading] = useState(true);
   const [showIframe, setShowIframe] = useState(false);
+  const [affiliateSlug, setAffiliateSlug] = useState<string | null>(null);
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
+  const [iframeFetching, setIframeFetching] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [iframeError, setIframeError] = useState<string | null>(null);
+
+  const AFFILIATE_COOKIE = 'sofia_affiliate_slug';
+  const FALLBACK_IFRAME_URL =
+    'https://n1oyhyi5i6.rziikhgudx.net/gs2c/playGame.do?key=token%3DcugdACaloYKFy5DU%60%7C%60symbol%3D237%60%7C%60technology%3DH5%60%7C%60platform%3DWEB%60%7C%60language%3Dpt%60%7C%60cashierUrl%3Dhttps%3A%2F%2Fgoldebet.bet.br%2Fuser%2Fwallet%2Fdeposit%60%7C%60lobbyUrl%3Dhttps%3A%2F%2Fgoldebet.bet.br%2Fcasino%2Flive&amp;ppkv=2&amp;stylename=cstb_goldebet&amp;rcCloseUrl=https://goldebet.bet.br&amp;isGameUrlApiCalled=true';
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const fromQuery =
+      String(searchParams.get('affiliate_slug') || searchParams.get('aff') || searchParams.get('affiliate') || '').trim() || null;
+
+    const readCookie = (name: string): string | null => {
+      const entries = String(document.cookie || '')
+        .split(';')
+        .map((c) => c.trim())
+        .filter(Boolean);
+      for (const c of entries) {
+        if (!c.startsWith(`${name}=`)) continue;
+        const raw = c.slice(name.length + 1);
+        try {
+          const decoded = decodeURIComponent(raw);
+          return decoded.trim() ? decoded.trim() : null;
+        } catch {
+          return raw.trim() ? raw.trim() : null;
+        }
+      }
+      return null;
+    };
+
+    if (fromQuery) {
+      document.cookie = `${AFFILIATE_COOKIE}=${encodeURIComponent(fromQuery)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      setAffiliateSlug(fromQuery);
+      return;
+    }
+
+    const fromCookie = readCookie(AFFILIATE_COOKIE);
+    setAffiliateSlug(fromCookie);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!showIframe || !currentRouletteDisplay) return;
+
+    setIframeLoaded(false);
+    setIframeError(null);
+
+    if (!affiliateSlug) {
+      setIframeUrl(null);
+      return;
+    }
+
+    let active = true;
+    setIframeFetching(true);
+
+    const url = `/api/public/partner-table-links?${new URLSearchParams({
+      affiliate_slug: affiliateSlug,
+      table_id: currentRouletteDisplay.id,
+    }).toString()}`;
+
+    fetch(url, { cache: 'no-store' })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const err = typeof (json as any)?.error === 'string' ? (json as any).error : 'Falha ao carregar link';
+          throw new Error(err);
+        }
+        const nextUrl = String((json as any)?.iframe_url || '').trim();
+        if (!active) return;
+        if (!nextUrl) {
+          setIframeUrl(null);
+          setIframeError('Link não configurado para esta mesa.');
+          return;
+        }
+        setIframeUrl(nextUrl);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setIframeUrl(null);
+        setIframeError(err instanceof Error ? err.message : 'Falha ao carregar link');
+      })
+      .finally(() => {
+        if (!active) return;
+        setIframeFetching(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [affiliateSlug, currentRouletteDisplay?.id, showIframe]);
 
   // Buscar roletas monitoradas da API (já filtradas no backend)
   useEffect(() => {
@@ -231,21 +326,45 @@ export function RouletteStatus({ latestSpin, rouletteHistoryData, activeTableId 
         {showIframe && currentRouletteDisplay ? (
           <div className="relative aspect-video w-full border border-border bg-black rounded-lg overflow-hidden shadow-2xl" id="game">
               {/* Loading Spinner */}
-              <div className="absolute z-10 inset-0 flex items-center justify-center bg-black/50">
-                <Activity className="w-10 h-10 text-primary animate-spin" />
-              </div>
+              {(iframeFetching || (!iframeLoaded && (!affiliateSlug || Boolean(iframeUrl)))) && (
+                <div className="absolute z-10 inset-0 flex items-center justify-center bg-black/50">
+                  <Activity className="w-10 h-10 text-primary animate-spin" />
+                </div>
+              )}
               
               {/* Game Iframe */}
-              <iframe 
-                src="https://n1oyhyi5i6.rziikhgudx.net/gs2c/playGame.do?key=token%3DcugdACaloYKFy5DU%60%7C%60symbol%3D237%60%7C%60technology%3DH5%60%7C%60platform%3DWEB%60%7C%60language%3Dpt%60%7C%60cashierUrl%3Dhttps%3A%2F%2Fgoldebet.bet.br%2Fuser%2Fwallet%2Fdeposit%60%7C%60lobbyUrl%3Dhttps%3A%2F%2Fgoldebet.bet.br%2Fcasino%2Flive&amp;ppkv=2&amp;stylename=cstb_goldebet&amp;rcCloseUrl=https://goldebet.bet.br&amp;isGameUrlApiCalled=true" 
-                className="relative z-20 h-full w-full"
-                allowFullScreen
-                allow="autoplay; fullscreen"
-              />
+              {(() => {
+                const src = affiliateSlug ? iframeUrl : FALLBACK_IFRAME_URL;
+                if (!src) {
+                  return (
+                    <div className="relative z-20 flex h-full w-full items-center justify-center p-6 text-center text-sm text-white/80">
+                      <div>
+                        <div className="font-semibold">Mesa indisponível</div>
+                        <div className="mt-2">{iframeError || 'Não foi possível carregar o link desta mesa.'}</div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <iframe
+                    src={src}
+                    className="relative z-20 h-full w-full"
+                    allowFullScreen
+                    allow="autoplay; fullscreen"
+                    onLoad={() => setIframeLoaded(true)}
+                  />
+                );
+              })()}
 
               <button 
                 className="absolute top-3 right-3 text-white/50 hover:text-white hover:bg-black/50 p-2 rounded-full transition-all z-30"
-                onClick={() => setShowIframe(false)}
+                onClick={() => {
+                  setShowIframe(false);
+                  setIframeUrl(null);
+                  setIframeLoaded(false);
+                  setIframeError(null);
+                }}
               >
                 <span className="sr-only">Fechar</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>

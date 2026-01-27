@@ -888,6 +888,64 @@ export default function DashboardPage() {
     );
   }
 
+  const dailyWelcome = user ? getDailyWelcomeMessage() : null;
+
+  const dashboardInsight = useSmartMemo(() => {
+    const hasActiveSignal = !!activeSignal && countdown > 0;
+
+    const totalSignals = kpisData.reduce((sum, kpi) => sum + (Number(kpi.total_signals_generated) || 0), 0);
+    const avgAssertiveness = kpisData.length
+      ? kpisData.reduce((sum, kpi) => sum + (Number(kpi.assertiveness_rate_percent) || 0), 0) / kpisData.length
+      : 0;
+    const netProfit = kpisData.reduce((sum, kpi) => sum + (Number(kpi.total_net_profit_loss) || 0), 0);
+
+    const consistencyRaw = activeSignal?.confidence_factors?.consistency;
+    const consistencyPercent = typeof consistencyRaw === 'number'
+      ? (consistencyRaw > 1 ? consistencyRaw : consistencyRaw * 100)
+      : null;
+    const consistencyLevel = consistencyPercent === null
+      ? null
+      : (consistencyPercent >= 80 ? 'alta' : (consistencyPercent >= 60 ? 'media' : 'baixa'));
+
+    let title = 'Resumo do dia';
+    let description = 'Acompanhe sinais, consistência e performance em tempo real.';
+    let tone: 'good' | 'warn' | 'bad' | 'neutral' = 'neutral';
+
+    if (connectionStatus === 'disconnected') {
+      title = 'Conexão instável';
+      description = 'Reconecte para receber sinais em tempo real e evitar atrasos.';
+      tone = 'bad';
+    } else if (connectionStatus === 'reconnecting') {
+      title = 'Reconectando';
+      description = 'Aguardando estabilizar para atualizar os sinais e KPIs.';
+      tone = 'warn';
+    } else if (hasActiveSignal) {
+      title = 'Sinal ativo pronto para execução';
+      description = countdown <= 30
+        ? 'Últimos segundos: priorize a execução agora.'
+        : 'Execute com disciplina e siga o plano de banca.';
+      tone = countdown <= 30 ? 'warn' : 'good';
+    } else {
+      title = 'Aguardando novo sinal';
+      description = 'Sem padrão ativo no momento. Fique atento às próximas oportunidades.';
+      tone = 'neutral';
+    }
+
+    return {
+      hasActiveSignal,
+      totalSignals,
+      avgAssertiveness,
+      netProfit,
+      consistencyPercent,
+      consistencyLevel,
+      title,
+      description,
+      tone,
+    };
+  }, [activeSignal, countdown, connectionStatus, kpisData]);
+
+  const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dashboardInsight.netProfit || 0);
+
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6">
@@ -964,6 +1022,103 @@ export default function DashboardPage() {
 
         {/* Carregamento inicial não bloqueante */}
         <>
+          <Card className="border-border/60 bg-card/60">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <CardTitle className="text-base">
+                    {dailyWelcome?.greeting ?? dashboardInsight.title}
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    {dailyWelcome ? dashboardInsight.description : 'Acompanhe sinais, consistência e performance em tempo real.'}
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Badge
+                    variant="secondary"
+                    className={
+                      dashboardInsight.tone === 'good'
+                        ? 'bg-green-600 text-white border-green-500'
+                        : dashboardInsight.tone === 'warn'
+                          ? 'bg-yellow-600 text-white border-yellow-500'
+                          : dashboardInsight.tone === 'bad'
+                            ? 'bg-red-600 text-white border-red-500'
+                            : 'bg-muted text-foreground'
+                    }
+                  >
+                    {dashboardInsight.hasActiveSignal ? (countdown <= 30 ? 'Urgente' : 'Ativo') : 'Monitorando'}
+                  </Badge>
+                  {dashboardInsight.consistencyPercent !== null && (
+                    <Badge variant="outline" className="border-border/60">
+                      Consistência {dashboardInsight.consistencyLevel === 'alta'
+                        ? 'alta'
+                        : dashboardInsight.consistencyLevel === 'media'
+                          ? 'média'
+                          : 'baixa'} ({dashboardInsight.consistencyPercent.toFixed(0)}%)
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="border-border/60">
+                    {connectionStatus === 'connected'
+                      ? 'Conectado'
+                      : connectionStatus === 'reconnecting'
+                        ? 'Reconectando'
+                        : 'Desconectado'}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+                  <div className="text-xs text-muted-foreground">Sinais</div>
+                  <div className="mt-1 text-lg font-semibold">{dashboardInsight.totalSignals}</div>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+                  <div className="text-xs text-muted-foreground">Assertividade média</div>
+                  <div className="mt-1 text-lg font-semibold">{dashboardInsight.avgAssertiveness.toFixed(1)}%</div>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+                  <div className="text-xs text-muted-foreground">P&amp;L</div>
+                  <div className="mt-1 text-lg font-semibold">{brl}</div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-muted-foreground">
+                  {dashboardInsight.title}
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    className="gap-2"
+                    disabled={connectionStatus !== 'connected' && dashboardInsight.hasActiveSignal}
+                    onClick={() => {
+                      if (dashboardInsight.hasActiveSignal && activeSignal) {
+                        setSelectedActiveTable({
+                          tableId: activeSignal.table_id || 'pragmatic-mega-roulette',
+                          strategyName: activeSignal.strategy_name || activeSignal.strategy_id,
+                          suggestedBets: activeSignal.bet_numbers || [],
+                        });
+                        return;
+                      }
+                      setShowActivateDialog(true);
+                    }}
+                  >
+                    {dashboardInsight.hasActiveSignal ? <Target className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    {dashboardInsight.hasActiveSignal ? 'Ação rápida: entrar' : 'Ação rápida: ativar'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => router.push('/profit')}
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Relatórios
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Informações Dinâmicas */}
             <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
               <CardContent className="p-4">

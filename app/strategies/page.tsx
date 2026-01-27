@@ -18,17 +18,19 @@ interface Strategy {
   id: string
   name: string
   enabled: boolean
-  origin?: 'curated' | 'template'
   status?: 'active' | 'paused' | string
 }
 
 interface TemplateRow {
   id: string
-  user_id?: string
+  user_id: string
   name: string
   description?: string | null
-  is_published?: boolean
+  builder_payload?: any
+  is_published: boolean
   published_strategy_slug?: string | null
+  created_at?: string
+  updated_at?: string
 }
 
 interface StrategyInstance {
@@ -66,12 +68,6 @@ interface RouletteTable {
 interface UserPreferences {
   strategies: string[]
   tables: string[]
-}
-
-interface AvailableOptions {
-  strategies: string[]
-  tables: { id: string; name: string }[]
-  default_preferences: UserPreferences
 }
 
 export default function EstrategiasAtivas() {
@@ -117,8 +113,6 @@ export default function EstrategiasAtivas() {
       let changed = false
 
       const next = prev.map(s => {
-        if (s.origin !== 'template') return s
-
         const enabled = instances.some(i =>
           String(i?.strategy_slug || '').trim() === String(s.id).trim() &&
           Boolean(i?.enabled) &&
@@ -196,101 +190,32 @@ export default function EstrategiasAtivas() {
     try {
       setLoading(true)
       
-      // Buscar opções disponíveis, preferências do usuário, templates e instâncias
-      const [availableResponse, preferencesResponse, templatesResponse, instancesResponse] = await Promise.all([
-        fetch('/api/available-options'),
+      const [preferencesResponse, templatesResponse, instancesResponse, tablesResponse] = await Promise.all([
         fetch('/api/user-preferences'),
         fetch('/api/dynamic-strategies/templates', { cache: 'no-store' }).catch(() => null as any),
-        fetch('/api/strategy-instances', { cache: 'no-store' }).catch(() => null as any)
+        fetch('/api/strategy-instances', { cache: 'no-store' }).catch(() => null as any),
+        fetch('/api/roulette-tables', { cache: 'no-store' }).catch(() => null as any)
       ])
 
-      let availableOptions: AvailableOptions
       let userPreferences: UserPreferences | null = null
 
-      if (availableResponse.ok) {
-        availableOptions = await availableResponse.json()
-      } else {
-        // Fallback para dados padrão se a API não estiver disponível
-        availableOptions = {
-          strategies: [
-            'Irmãos de Cores',
-            'Terminais Pull',
-            'Espelho',
-            'Onda',
-            'As Dúzias (Atrasadas)',
-            'Terminais que se Puxam',
-            'Os Opostos',
-            'Cavalo/Linha',
-            'Sequência de Números',
-            'Padrão Fibonacci'
-          ],
-          tables: [],
-          default_preferences: {
-            strategies: [],
-            tables: []
-          }
-        }
-        
-        // Buscar mesas de roleta da API real
-        try {
-          const tablesResponse = await fetch('/api/roulette-tables')
-          
-          if (tablesResponse.ok) {
-            const tablesData = await tablesResponse.json()
-            availableOptions.tables = tablesData.map((table: any) => ({
-              id: table.id,
-              name: table.name
-            }))
-          }
-        } catch (error) {
-          // Erro silencioso - mesas serão carregadas do fallback
-        }
-      }
-
       if (preferencesResponse.ok) {
-        userPreferences = await preferencesResponse.json()
+        const prefsData = await preferencesResponse.json().catch(() => null)
+        if (prefsData && typeof prefsData === 'object') {
+          const rawStrategies = (prefsData as any).strategies
+          const rawTables = (prefsData as any).tables
+          userPreferences = {
+            strategies: Array.isArray(rawStrategies) ? rawStrategies.map((x: any) => String(x)) : [],
+            tables: Array.isArray(rawTables) ? rawTables.map((x: any) => String(x)) : []
+          }
+        }
       }
-
-      // Se não há preferências do usuário, usar preferências padrão
-      if (!userPreferences) {
-        userPreferences = availableOptions.default_preferences
-      }
-
-      // Configurar estratégias curadas com estado baseado nas preferências
-      const curatedStrategies: Strategy[] = availableOptions.strategies.map(strategyName => ({
-        id: strategyName,
-        name: strategyName,
-        enabled: userPreferences?.strategies.includes(strategyName) ?? true,
-        origin: 'curated',
-        status: (userPreferences?.strategies.includes(strategyName) ? 'active' : 'paused')
-      }))
-
-      // Configurar mesas com estado baseado nas preferências
-      // Mostrar TODAS as mesas disponíveis, não apenas as que estão nas preferências
-      const tablesWithState: RouletteTable[] = availableOptions.tables.map(table => ({
-        id: table.id,
-        name: table.name,
-        enabled: userPreferences?.tables.includes(table.id) ?? false // Padrão false para mostrar que não estão sendo monitoradas
-      }))
-
-      // Ordenar mesas: ativas por padrão primeiro, depois as outras
-      const defaultTables = availableOptions.default_preferences.tables
-      tablesWithState.sort((a, b) => {
-        const aIsDefault = defaultTables.includes(a.id)
-        const bIsDefault = defaultTables.includes(b.id)
-        
-        if (aIsDefault && !bIsDefault) return -1
-        if (!aIsDefault && bIsDefault) return 1
-        return a.name.localeCompare(b.name)
-      })
-
-      const enabledTableIds = new Set(tablesWithState.filter(t => t.enabled).map(t => t.id))
 
       let fetchedTemplates: TemplateRow[] = []
       if (templatesResponse && templatesResponse.ok) {
         const tplData = await templatesResponse.json().catch(() => ({} as any))
-        const list = Array.isArray((tplData as any)?.templates) ? (tplData as any).templates : []
-        fetchedTemplates = list as TemplateRow[]
+        const list = (tplData as any)?.ok && Array.isArray((tplData as any)?.templates) ? (tplData as any).templates : []
+        fetchedTemplates = Array.isArray(list) ? (list as TemplateRow[]) : []
       }
 
       let fetchedInstances: StrategyInstance[] = []
@@ -300,6 +225,81 @@ export default function EstrategiasAtivas() {
         fetchedInstances = list as StrategyInstance[]
       }
       setInstances(fetchedInstances)
+
+      let fetchedTables: { id: string; name: string }[] = []
+      if (tablesResponse && tablesResponse.ok) {
+        const rawTables = await tablesResponse.json().catch(() => null)
+        if (Array.isArray(rawTables)) {
+          fetchedTables = rawTables
+            .map((t: any) => ({ id: String(t?.id || '').trim(), name: String(t?.name || '').trim() }))
+            .filter((t: any) => Boolean(t.id) && Boolean(t.name))
+        }
+      }
+
+      const inferredEnabledTableIds = new Set(
+        fetchedInstances
+          .filter(i => Boolean(i?.enabled))
+          .map(i => String(i?.table_id || '').trim())
+          .filter(Boolean)
+      )
+
+      let defaultTablesFromOptions: { id: string; name: string }[] = []
+      let defaultEnabledTableIdsFromOptions: string[] = []
+      const shouldFetchDefaults =
+        fetchedTables.length === 0 ||
+        (!(userPreferences?.tables && userPreferences.tables.length > 0) && inferredEnabledTableIds.size === 0)
+
+      if (shouldFetchDefaults) {
+        const defaultsResp = await fetch('/api/available-options').catch(() => null as any)
+        if (defaultsResp && defaultsResp.ok) {
+          const rawDefaults = await defaultsResp.json().catch(() => null)
+          if (rawDefaults && typeof rawDefaults === 'object') {
+            const rawTables = (rawDefaults as any).tables
+            if (Array.isArray(rawTables)) {
+              defaultTablesFromOptions = rawTables
+                .map((t: any) => ({ id: String(t?.id || '').trim(), name: String(t?.name || '').trim() }))
+                .filter((t: any) => Boolean(t.id) && Boolean(t.name))
+            }
+
+            const rawDefaultPrefsTables = (rawDefaults as any)?.default_preferences?.tables
+            if (Array.isArray(rawDefaultPrefsTables)) {
+              defaultEnabledTableIdsFromOptions = rawDefaultPrefsTables.map((x: any) => String(x).trim()).filter(Boolean)
+            }
+          }
+        }
+      }
+
+      if (fetchedTables.length === 0 && defaultTablesFromOptions.length > 0) {
+        fetchedTables = defaultTablesFromOptions
+      }
+
+      const enabledTableIdsSeed = (() => {
+        if (userPreferences?.tables && userPreferences.tables.length > 0) return userPreferences.tables
+        if (inferredEnabledTableIds.size > 0) return Array.from(inferredEnabledTableIds)
+        if (defaultEnabledTableIdsFromOptions.length > 0) return defaultEnabledTableIdsFromOptions
+        return []
+      })()
+
+      const initialEnabledTableIds = new Set(
+        enabledTableIdsSeed
+          .map(x => String(x).trim())
+          .filter(Boolean)
+      )
+
+      const tablesWithState: RouletteTable[] = fetchedTables.map(t => ({
+        id: t.id,
+        name: t.name,
+        enabled: initialEnabledTableIds.has(t.id)
+      }))
+
+      tablesWithState.sort((a, b) => {
+        const aEnabled = a.enabled ? 1 : 0
+        const bEnabled = b.enabled ? 1 : 0
+        if (aEnabled !== bEnabled) return bEnabled - aEnabled
+        return a.name.localeCompare(b.name)
+      })
+
+      const enabledTableIds = new Set(tablesWithState.filter(t => t.enabled).map(t => t.id))
 
       const publishedTemplates = fetchedTemplates
         .filter(t => Boolean(t?.is_published) && Boolean(String(t?.published_strategy_slug || '').trim()))
@@ -314,13 +314,11 @@ export default function EstrategiasAtivas() {
             id: slug,
             name: String(t?.name || slug),
             enabled,
-            origin: 'template' as const,
             status: enabled ? 'active' : 'paused'
           } satisfies Strategy
         })
 
-      // Unificar listas (curadas + Templates publicados)
-      setStrategies([...curatedStrategies, ...publishedTemplates])
+      setStrategies(publishedTemplates)
       setTables(tablesWithState)
       setHasChanges(false)
     } catch (error) {
@@ -333,7 +331,6 @@ export default function EstrategiasAtivas() {
   const toggleStrategy = async (strategyId: string) => {
     const current = strategies.find(s => s.id === strategyId)
     const enabling = !(current?.enabled)
-    const origin = current?.origin
 
     setStrategies(prev => 
       prev.map(s => 
@@ -343,65 +340,9 @@ export default function EstrategiasAtivas() {
       )
     )
 
-    if (origin === 'template') {
-      try {
-        const enabledTableIds = tables.filter(t => t.enabled).map(t => t.id)
-        if (enabledTableIds.length === 0) {
-          setStrategies(prev =>
-            prev.map(s =>
-              s.id === strategyId
-                ? { ...s, enabled: Boolean(current?.enabled), status: current?.enabled ? 'active' : 'paused' }
-                : s
-            )
-          )
-          toast.error('Selecione ao menos uma mesa para ativar o template')
-          return
-        }
-
-        const byKey = new Map<string, StrategyInstance>()
-        for (const i of instances) {
-          const k = `${String(i.table_id).trim()}::${String(i.strategy_slug).trim()}`
-          byKey.set(k, i)
-        }
-
-        const ops = enabledTableIds.map(async (tableId) => {
-          const key = `${String(tableId).trim()}::${String(strategyId).trim()}`
-          const existing = byKey.get(key)
-          if (existing) {
-            const resp = await fetch('/api/strategy-instances', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: existing.id, enabled: enabling })
-            })
-            if (!resp.ok) {
-              const data = await resp.json().catch(() => ({}))
-              throw new Error(String((data as any)?.error || resp.statusText))
-            }
-            return
-          }
-
-          if (!enabling) return
-          const resp = await fetch('/api/strategy-instances', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ table_id: tableId, strategy_slug: strategyId, enabled: true })
-          })
-          if (!resp.ok) {
-            const data = await resp.json().catch(() => ({}))
-            throw new Error(String((data as any)?.error || resp.statusText))
-          }
-        })
-        await Promise.all(ops)
-
-        const refreshResp = await fetch('/api/strategy-instances', { cache: 'no-store' })
-        if (refreshResp.ok) {
-          const instData = await refreshResp.json().catch(() => ({} as any))
-          const list = Array.isArray((instData as any)?.instances) ? (instData as any).instances : []
-          setInstances(list as StrategyInstance[])
-        }
-
-        toast.success(enabling ? 'Template ativado.' : 'Template pausado.')
-      } catch (error) {
+    try {
+      const enabledTableIds = tables.filter(t => t.enabled).map(t => t.id)
+      if (enabledTableIds.length === 0) {
         setStrategies(prev =>
           prev.map(s =>
             s.id === strategyId
@@ -409,10 +350,62 @@ export default function EstrategiasAtivas() {
               : s
           )
         )
-        toast.error('Erro ao alternar template')
+        toast.error('Selecione ao menos uma mesa para ativar o template')
+        return
       }
-    } else {
-      setHasChanges(true)
+
+      const byKey = new Map<string, StrategyInstance>()
+      for (const i of instances) {
+        const k = `${String(i.table_id).trim()}::${String(i.strategy_slug).trim()}`
+        byKey.set(k, i)
+      }
+
+      const ops = enabledTableIds.map(async (tableId) => {
+        const key = `${String(tableId).trim()}::${String(strategyId).trim()}`
+        const existing = byKey.get(key)
+        if (existing) {
+          const resp = await fetch('/api/strategy-instances', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: existing.id, enabled: enabling })
+          })
+          if (!resp.ok) {
+            const data = await resp.json().catch(() => ({}))
+            throw new Error(String((data as any)?.error || resp.statusText))
+          }
+          return
+        }
+
+        if (!enabling) return
+        const resp = await fetch('/api/strategy-instances', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table_id: tableId, strategy_slug: strategyId, enabled: true })
+        })
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}))
+          throw new Error(String((data as any)?.error || resp.statusText))
+        }
+      })
+      await Promise.all(ops)
+
+      const refreshResp = await fetch('/api/strategy-instances', { cache: 'no-store' })
+      if (refreshResp.ok) {
+        const instData = await refreshResp.json().catch(() => ({} as any))
+        const list = Array.isArray((instData as any)?.instances) ? (instData as any).instances : []
+        setInstances(list as StrategyInstance[])
+      }
+
+      toast.success(enabling ? 'Template ativado.' : 'Template pausado.')
+    } catch (error) {
+      setStrategies(prev =>
+        prev.map(s =>
+          s.id === strategyId
+            ? { ...s, enabled: Boolean(current?.enabled), status: current?.enabled ? 'active' : 'paused' }
+            : s
+        )
+      )
+      toast.error('Erro ao alternar template')
     }
   }
 
@@ -432,10 +425,7 @@ export default function EstrategiasAtivas() {
       setSaving(true)
       
       const preferences: UserPreferences = {
-        strategies: strategies
-          .filter(s => s.origin !== 'template')
-          .filter(s => s.enabled)
-          .map(s => s.id),
+        strategies: [],
         tables: tables.filter(t => t.enabled).map(t => t.id)
       }
 
@@ -462,32 +452,23 @@ export default function EstrategiasAtivas() {
 
   const resetToDefaults = async () => {
     try {
-      // Buscar preferências padrão curadas da API
       const response = await fetch('/api/available-options')
 
       if (response.ok) {
-        const data = await response.json()
-        const defaultPreferences = data.default_preferences
+        const data = await response.json().catch(() => ({} as any))
+        const defaultTables = Array.isArray((data as any)?.default_preferences?.tables)
+          ? ((data as any).default_preferences.tables as any[]).map((x: any) => String(x))
+          : []
 
-        // Restaurar estratégias baseadas no padrão curado
-        setStrategies(prev => 
-          prev.map(strategy => ({
-            ...strategy,
-            enabled: defaultPreferences.strategies.includes(strategy.id),
-            status: defaultPreferences.strategies.includes(strategy.id) ? 'active' : 'paused'
-          }))
-        )
-
-        // Restaurar mesas baseadas no padrão curado
         setTables(prev => 
           prev.map(table => ({
             ...table,
-            enabled: defaultPreferences.tables.includes(table.id)
+            enabled: defaultTables.includes(table.id)
           }))
         )
 
         setHasChanges(true)
-        toast.info('Configurações restauradas para o padrão curado')
+        toast.info('Mesas restauradas para o padrão')
       } else {
         throw new Error('Falha ao buscar configurações padrão')
       }
@@ -607,7 +588,7 @@ export default function EstrategiasAtivas() {
               Estratégias Disponíveis
             </CardTitle>
             <CardDescription>
-              Selecione quais estratégias você deseja que a SOFIA monitore e analise
+              Selecione quais templates você deseja ativar nas mesas monitoradas
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -626,7 +607,7 @@ export default function EstrategiasAtivas() {
                       <p className="font-medium">{strategy.name}</p>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
-                          {strategy.origin === 'template' ? 'Template' : 'Curada'}
+                          Template
                         </Badge>
                         <Badge variant={strategy.status === 'active' ? "default" : "secondary"} className="text-xs">
                           {strategy.status === 'active' ? "Ativa" : "Pausada"}

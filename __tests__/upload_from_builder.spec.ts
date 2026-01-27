@@ -1,4 +1,5 @@
 import { compileBuilderToJS } from '../lib/builder-compiler'
+import { describe, test, expect } from '@jest/globals'
 
 function loadCompiled(js: string) {
   const transformed = js.replace(/export\s*\{\s*METADATA,\s*checkStrategy,\s*generateSignal\s*\}/, 'return { METADATA, checkStrategy, generateSignal }')
@@ -8,6 +9,31 @@ function loadCompiled(js: string) {
 }
 
 describe('Strategy Builder Upload Compiler (Fase 3)', () => {
+  test('ensemble consensus derives numbers from micro-strategies and activates', () => {
+    const payload = {
+      name: 'EnsembleConsensus',
+      selectionMode: 'automatic',
+      nodes: [
+        { id: 'c1', type: 'condition', subtype: 'ensemble', data: { config: { janela: 60, maxNumbers: 12, minStrategies: 2, consensusThreshold: 0.4, includeNeighbors: true, neighborRadius: 2, includeZero: true, excludeZero: false, useTerminalPull: true, useTerminalPattern: true, useColdNumbers: false, useTerminalFrequency: false } } },
+        { id: 's1', type: 'signal', data: { config: {} } }
+      ],
+      connections: [
+        { id: 'e1', source: 'c1', target: 's1', type: 'success' }
+      ],
+      min_spins: 1,
+      gating: { excludeZero: true }
+    }
+    const js = compileBuilderToJS(payload)
+    const mod = loadCompiled(js)
+    const history = [7, 17]
+    const res = mod.checkStrategy(history, {})
+    expect(res.shouldActivate).toBe(true)
+    const sig = mod.generateSignal(history, {})
+    expect(Array.isArray(sig.numbers)).toBe(true)
+    expect(sig.numbers.length).toBeGreaterThan(0)
+    expect(sig.numbers.every((n: number) => n !== 0)).toBe(true)
+  })
+
   test('neighbors + signal logic should activate and derive numbers', () => {
     const payload = {
       name: 'NeighborsTest',

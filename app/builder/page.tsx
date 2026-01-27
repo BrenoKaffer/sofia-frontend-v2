@@ -111,7 +111,8 @@ const SELECT_LABELS_PT: Record<string, Record<string, string>> = {
   selectionMode: { automatic: 'automático', hybrid: 'híbrido', manual: 'manual' },
   operador: { AND: 'E', OR: 'OU', NOT: 'NÃO' },
   acao: { emitir_sinal: 'emitir sinal' },
-  prioridade: { normal: 'normal' }
+  prioridade: { normal: 'normal' },
+  mode: { auto: 'auto', hot: 'quentes', cold: 'frios' }
 }
 
 // Mapeamento de cores reais da roleta europeia
