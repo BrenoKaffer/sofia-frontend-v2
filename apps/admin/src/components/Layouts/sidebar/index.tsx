@@ -3,11 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useSidebarContext } from "./sidebar-context";
-import { DashboardIcon, LinkIcon, ShoppingBagIcon, UsersIcon, WalletIcon } from "../header/icons";
+import { DashboardIcon, LinkIcon, ShoppingBagIcon, TableIcon, UsersIcon, WalletIcon } from "../header/icons";
 
 const NAV = [
   { title: "Dashboard", href: "/dashboard", Icon: DashboardIcon },
   { title: "Links", href: "/links", Icon: LinkIcon },
+  { title: "Mesas", href: "/mesas", Icon: TableIcon },
   { title: "Financeiro", href: "/finance", Icon: WalletIcon },
   { title: "Vendas", href: "/sales", Icon: ShoppingBagIcon },
   { title: "Clientes", href: "/customers", Icon: UsersIcon },

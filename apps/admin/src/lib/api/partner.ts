@@ -106,6 +106,31 @@ export async function getPartnerLinks(token: string): Promise<{ items: PartnerLi
   }
 }
 
+export async function getPartnerTableLinks(
+  token: string,
+): Promise<{ items: { table_id: string; iframe_url: string; updated_at?: string | null }[]; affiliate_slug?: string; needs_affiliate_setup?: boolean }> {
+  try {
+    return await apiRequest<{ items: { table_id: string; iframe_url: string; updated_at?: string | null }[]; affiliate_slug?: string; needs_affiliate_setup?: boolean }>({
+      path: "/partners/me/table-links",
+      token,
+    });
+  } catch {
+    return { items: [] };
+  }
+}
+
+export async function updatePartnerTableLinks(
+  token: string,
+  items: { table_id: string; iframe_url: string }[],
+): Promise<{ items: { table_id: string; iframe_url: string; updated_at?: string | null }[]; affiliate_slug?: string; needs_affiliate_setup?: boolean }> {
+  return await apiRequest<{ items: { table_id: string; iframe_url: string; updated_at?: string | null }[]; affiliate_slug?: string; needs_affiliate_setup?: boolean }>({
+    path: "/partners/me/table-links",
+    method: "PUT",
+    token,
+    body: { items },
+  });
+}
+
 export async function registerPartnerAffiliate(
   token: string,
   payload: {

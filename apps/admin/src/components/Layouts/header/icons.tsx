@@ -41,6 +41,14 @@ export function UsersIcon(props: IconProps) {
   );
 }
 
+export function TableIcon(props: IconProps) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M3 3h18v18H3V3zm2 2v4h6V5H5zm8 0v4h6V5h-6zM5 11v4h6v-4H5zm8 0v4h6v-4h-6zM5 17v2h6v-2H5zm8 0v2h6v-2h-6z" />
+    </svg>
+  );
+}
+
 export function ClockIcon(props: IconProps) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" {...props}>
