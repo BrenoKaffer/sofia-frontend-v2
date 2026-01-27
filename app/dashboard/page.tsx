@@ -76,6 +76,11 @@ interface KpiData {
   last_updated: string;
 }
 
+interface StrategyOption {
+  id: string;
+  name: string;
+}
+
 // Dados dinâmicos baseados no backend
 
 export default function DashboardPage() {
@@ -177,82 +182,14 @@ export default function DashboardPage() {
   };
 
   // Estados para dados reais do backend
-  const [liveSignalsData, setLiveSignalsData] = useState<GeneratedSignal[]>([
-    // DADOS MOCK TEMPORÁRIOS PARA TESTE
-    {
-      id: "1",
-      strategy_name: "Estratégia Fibonacci Avançada",
-      strategy_id: "fibonacci-advanced",
-      table_id: "evolution-double-ball-roulette",
-      suggested_bets: [7, 14, 21, 28, "Red", "1st-12"],
-      bet_numbers: [7, 14, 21, 28, "Red", "1st-12"],
-      suggested_units: 3,
-      confidence_level: 85,
-      confidence_score: 85,
-      confidence_factors: {
-        strategy_performance: 0.82,
-        table_performance: 0.78,
-        pattern_strength: 0.91,
-        data_volume: 0.88,
-        time_factor: 0.75,
-        consistency: 0.83
-      },
-      timestamp_generated: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 60000).toISOString(), // 1 minuto
-      expected_return: 125.50,
-      is_validated: false,
-      type: "pattern",
-      status: "active",
-      message: "Padrão forte detectado nos últimos 15 giros. Sequência de números pares com alta probabilidade."
-    },
-    {
-      id: "2",
-      strategy_name: "Martingale Modificado",
-      strategy_id: "martingale-modified",
-      table_id: "evolution-lightning-roulette",
-      suggested_bets: [0, 32, 15, "Black"],
-      bet_numbers: [0, 32, 15, "Black"],
-      suggested_units: 2,
-      confidence_level: 65,
-      confidence_score: 65,
-      timestamp_generated: new Date(Date.now() - 30000).toISOString(), // 30 segundos atrás
-      expires_at: new Date(Date.now() + 30000).toISOString(), // 30 segundos
-      expected_return: 89.25,
-      is_validated: false,
-      type: "progression",
-      status: "active",
-      message: "Oportunidade de recuperação identificada. Aposte com cautela."
-    }
-  ]);
+  const [availableStrategies, setAvailableStrategies] = useState<StrategyOption[]>([]);
+  const [strategyNameById, setStrategyNameById] = useState<Record<string, string>>({});
+  const [activateStrategyId, setActivateStrategyId] = useState<string>('');
+  const [liveSignalsData, setLiveSignalsData] = useState<GeneratedSignal[]>([]);
   const [latestRouletteSpin, setLatestRouletteSpin] = useState<RouletteSpin | null>(null);
   const [kpisData, setKpisData] = useState<KpiData[]>([]);
   const [rouletteHistoryData, setRouletteHistoryData] = useState<RouletteSpin[]>([]);
-  const [activeSignal, setActiveSignal] = useState<GeneratedSignal | null>({
-    id: "1",
-    strategy_name: "Estratégia Fibonacci Avançada",
-    strategy_id: "fibonacci-advanced",
-    table_id: "evolution-double-ball-roulette",
-    suggested_bets: [7, 14, 21, 28, "Red", "1st-12"],
-    bet_numbers: [7, 14, 21, 28, "Red", "1st-12"],
-    suggested_units: 3,
-    confidence_level: 85,
-    confidence_score: 85,
-    confidence_factors: {
-      strategy_performance: 0.82,
-      table_performance: 0.78,
-      pattern_strength: 0.91,
-      data_volume: 0.88,
-      time_factor: 0.75,
-      consistency: 0.83
-    },
-    timestamp_generated: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 60000).toISOString(),
-    expected_return: 125.50,
-    is_validated: false,
-    type: "pattern",
-    status: "active",
-    message: "Padrão forte detectado nos últimos 15 giros. Sequência de números pares com alta probabilidade."
-  });
+  const [activeSignal, setActiveSignal] = useState<GeneratedSignal | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [progressValue, setProgressValue] = useState(0);
   const [loading_data, setLoadingData] = useState(true); // Mantido para compatibilidade, mas não bloqueará tudo
@@ -270,6 +207,44 @@ export default function DashboardPage() {
     token ? { Authorization: `Bearer ${token}` } : {}
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    const fetchAvailableOptions = async () => {
+      try {
+        const res = await fetch('/api/available-options', { cache: 'no-store' });
+        if (!res.ok) return;
+        const raw = await res.json().catch(() => null as any);
+        const list = Array.isArray(raw?.strategies) ? raw.strategies : [];
+        const strategies: StrategyOption[] = list
+          .map((s: any) => ({
+            id: String(s?.id ?? s?.slug ?? '').trim(),
+            name: String(s?.name ?? s?.title ?? s?.id ?? s?.slug ?? '').trim()
+          }))
+          .filter((s: StrategyOption) => Boolean(s.id) && Boolean(s.name));
+
+        const map: Record<string, string> = {};
+        for (const s of strategies) map[s.id] = s.name;
+
+        if (cancelled) return;
+        setAvailableStrategies(strategies);
+        setStrategyNameById(map);
+      } catch {
+        // noop
+      }
+    };
+    fetchAvailableOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activateStrategyId) {
+      const next = kpisData[0]?.strategy_id || availableStrategies[0]?.id || '';
+      if (next) setActivateStrategyId(next);
+    }
+  }, [activateStrategyId, availableStrategies, kpisData]);
+
 
   // Função para buscar preferências do usuário (roletas monitoradas)
   const fetchUserPreferences = useCallback(async () => {
@@ -280,12 +255,12 @@ export default function DashboardPage() {
         timeout: 8000,
       });
       const preferences = (response as any)?.data ?? response;
-      console.log('✅ Preferências do usuário carregadas:', preferences);
+      console.log('Preferências do usuário carregadas:', preferences);
       const tables = Array.isArray(preferences?.tables) ? preferences.tables : (Array.isArray(preferences) ? preferences : []);
       setMonitoredTables(tables);
       return tables;
     } catch (error) {
-      console.error('❌ Erro ao buscar preferências:', error);
+      console.error('Erro ao buscar preferências:', error);
       return [];
     }
   }, [getToken]);
@@ -296,25 +271,33 @@ export default function DashboardPage() {
       if (Array.isArray(realtimeSignals) && realtimeSignals.length > 0) {
         setLiveSignalsData((prev) => {
           const existingIds = new Set(prev.map((s) => s.id));
-          const normalized = realtimeSignals.map((s) => ({
-            id: s.id,
-            strategy_name: s.strategy_name,
-            strategy_id: s.strategy_id,
-            table_id: s.table_id,
-            suggested_bets: s.suggested_bets ?? s.bet_numbers ?? [],
-            bet_numbers: s.bet_numbers ?? s.suggested_bets ?? [],
-            suggested_units: typeof s.suggested_units === 'number' ? s.suggested_units : 1,
-            confidence_level: s.confidence_level,
-            confidence_score: typeof s.confidence_score === 'number' ? s.confidence_score : s.confidence_level,
-            confidence_factors: s.confidence_factors,
-            timestamp_generated: s.timestamp_generated,
-            expires_at: s.expires_at,
-            expected_return: s.expected_return,
-            is_validated: false,
-            type: 'pattern',
-            status: s.status ?? 'active',
-            message: s.message ?? ''
-          }));
+          const normalized = realtimeSignals.map((s) => {
+            const strategyId = String((s as any)?.strategy_id ?? '').trim();
+            const rawStrategyName = String((s as any)?.strategy_name ?? '').trim();
+            const strategyName = strategyId && strategyNameById[strategyId]
+              ? strategyNameById[strategyId]
+              : (rawStrategyName || (strategyId ? strategyId : 'Estratégia Desconhecida'));
+
+            return {
+              id: s.id,
+              strategy_name: strategyName,
+              strategy_id: strategyId || rawStrategyName || 'Estratégia Desconhecida',
+              table_id: s.table_id,
+              suggested_bets: s.suggested_bets ?? s.bet_numbers ?? [],
+              bet_numbers: s.bet_numbers ?? s.suggested_bets ?? [],
+              suggested_units: typeof s.suggested_units === 'number' ? s.suggested_units : 1,
+              confidence_level: s.confidence_level,
+              confidence_score: typeof s.confidence_score === 'number' ? s.confidence_score : s.confidence_level,
+              confidence_factors: s.confidence_factors,
+              timestamp_generated: s.timestamp_generated,
+              expires_at: s.expires_at,
+              expected_return: s.expected_return,
+              is_validated: false,
+              type: 'pattern',
+              status: s.status ?? 'active',
+              message: s.message ?? ''
+            };
+          });
 
           const fresh = normalized.filter((s) => !existingIds.has(s.id));
           const merged = [...fresh, ...prev];
@@ -332,7 +315,7 @@ export default function DashboardPage() {
     } catch (e) {
       console.warn('Falha ao mesclar sinais realtime:', e);
     }
-  }, [realtimeSignals, realtimeStatus]);
+  }, [realtimeSignals, realtimeStatus, strategyNameById]);
  
   // Função para atualizar KPIs periodicamente
   const updateKPIs = useCallback(async () => {
@@ -355,9 +338,9 @@ export default function DashboardPage() {
         last_updated: item.last_updated || new Date().toISOString()
       }));
       setKpisData(transformedData);
-      console.log('🔄 KPIs atualizados');
+      console.log('KPIs atualizados');
     } catch (error) {
-      console.error('❌ Erro ao atualizar KPIs:', error);
+      console.error('Erro ao atualizar KPIs:', error);
     }
   }, [getToken]);
  
@@ -371,25 +354,25 @@ export default function DashboardPage() {
       });
       const statusData = (response as any)?.data ?? response;
       setActiveRouletteStatus(statusData);
-      console.log('🔄 Status da roleta atualizado');
+      console.log('Status da roleta atualizado');
     } catch (error) {
-      console.error('❌ Erro ao atualizar status da roleta:', error);
+      console.error('Erro ao atualizar status da roleta:', error);
     }
   }, [getToken]);
 
   // Função para buscar table_ids do backend
   const fetchTableIds = useCallback(async () => {
-    console.log('🎯 Iniciando busca de table_ids...');
+    console.log('Iniciando busca de table_ids...');
     try {
       const token = await getToken();
-      console.log('🔑 Token para table_ids obtido:', token ? 'Sim' : 'Não');
+      console.log('Token para table_ids obtido:', token ? 'Sim' : 'Não');
       
       const response = await apiClient.get('/roulette-tables', {
         headers: buildHeaders(token),
         timeout: 10000,
       });
       const data = (response as any)?.data ?? response;
-      console.log('✅ Roulette tables fetched successfully:', data);
+      console.log('Roulette tables fetched successfully:', data);
       
       let tableIds: string[] = [];
       if (Array.isArray(data)) {
@@ -404,15 +387,15 @@ export default function DashboardPage() {
       }
       
       if (tableIds.length === 0) {
-        console.warn('⚠️ Nenhum table_id válido encontrado no retorno, usando padrão');
+        console.warn('Nenhum table_id válido encontrado no retorno, usando padrão');
         tableIds = ['mesa1', 'mesa2', 'mesa3'];
       }
       
-      console.log('🎯 Table IDs extraídos:', tableIds);
+      console.log('Table IDs extraídos:', tableIds);
       setMonitoredTables(tableIds);
       return tableIds;
     } catch (error: any) {
-      console.error('❌ Erro ao buscar table_ids:', error);
+      console.error('Erro ao buscar table_ids:', error);
       
       const defaultTables = ['mesa1', 'mesa2', 'mesa3'];
       setMonitoredTables(defaultTables);
@@ -441,7 +424,7 @@ export default function DashboardPage() {
       }));
       setKpisData(transformedData);
     } catch (error: any) {
-      console.error('❌ Erro ao buscar KPIs do backend:', error);
+      console.error('Erro ao buscar KPIs do backend:', error);
       setKpisData([]);
     }
   }, [getToken]);
@@ -450,25 +433,25 @@ export default function DashboardPage() {
 
   // Função para buscar histórico da roleta do backend
   const fetchRouletteHistory = useCallback(async (table_id: string = 'pragmatic-mega-roulette') => {
-    console.log('🔍 Iniciando busca do histórico da roleta...');
+    console.log('Iniciando busca do histórico da roleta...');
     try {
       const token = await getToken();
-      console.log('🔑 Token obtido:', token ? 'Sim' : 'Não');
+      console.log('Token obtido:', token ? 'Sim' : 'Não');
       
       const response = await apiClient.getRouletteHistory(undefined, 100);
       const data: RouletteSpin[] = ((response as any)?.data ?? response) as RouletteSpin[];
-      console.log('✅ Roulette history fetched successfully:', data);
-      console.log('📊 Número de giros recebidos:', data.length);
+      console.log('Roulette history fetched successfully:', data);
+      console.log('Número de giros recebidos:', data.length);
       setRouletteHistoryData(data);
       
       if (data.length > 0) {
         setLatestRouletteSpin(data[0]);
-        console.log('🎯 Último giro definido:', data[0].spin_number);
+        console.log('Último giro definido:', data[0].spin_number);
       } else {
-        console.log('❌ Nenhum giro encontrado no histórico');
+        console.log('Nenhum giro encontrado no histórico');
       }
     } catch (error) {
-      console.error('❌ Erro ao buscar histórico da roleta:', error);
+      console.error('Erro ao buscar histórico da roleta:', error);
       setError('Não foi possível carregar o histórico da roleta. Verifique a conexão com o backend.');
       setRouletteHistoryData([]);
       setLatestRouletteSpin(null);
@@ -477,39 +460,39 @@ export default function DashboardPage() {
 
   // Função para buscar status da roleta ativa
   const fetchRouletteStatus = useCallback(async () => {
-    console.log('🔍 Iniciando busca do status da roleta...');
+    console.log('Iniciando busca do status da roleta...');
     try {
       const token = await getToken();
-      console.log('🔑 Token obtido:', token ? 'Sim' : 'Não');
+      console.log('Token obtido:', token ? 'Sim' : 'Não');
       
       const response = await apiClient.getRouletteStatus();
       const data = (response as any)?.data ?? response;
-      console.log('✅ Roulette status fetched successfully:', data);
-      console.log('📊 Tipo de dados retornados:', typeof data, Array.isArray(data) ? 'Array' : 'Object');
+      console.log('Roulette status fetched successfully:', data);
+      console.log('Tipo de dados retornados:', typeof data, Array.isArray(data) ? 'Array' : 'Object');
       
       if (Array.isArray(data) && data.length > 0) {
         const activeTable = data.find((table: any) => table.status === 'active') || data[0];
-        console.log('🎯 Mesa ativa selecionada:', activeTable);
+        console.log('Mesa ativa selecionada:', activeTable);
         return activeTable;
       }
       
       return data;
     } catch (error) {
-      console.error('❌ Erro ao buscar status da roleta:', error);
+      console.error('Erro ao buscar status da roleta:', error);
       return null;
     }
   }, [getToken]);
 
   // Função para buscar padrões recentes
   const fetchRecentSignals = useCallback(async () => {
-    console.log('🔍 Iniciando busca de padrões recentes...');
+    console.log('Iniciando busca de padrões recentes...');
     try {
       const token = await getToken();
-      console.log('🔑 Token para padrões obtido:', token ? 'Sim' : 'Não');
+      console.log('Token para padrões obtido:', token ? 'Sim' : 'Não');
       
       const response = await apiClient.getSignalsRecent(undefined, 5);
       const rawDataAny: any = (response as any)?.data ?? response;
-      console.log('✅ Recent signals fetched successfully:', rawDataAny);
+      console.log('Recent signals fetched successfully:', rawDataAny);
       
       // Padronizar para array, independente do formato retornado
       let signalsArray: any[] = [];
@@ -530,7 +513,7 @@ export default function DashboardPage() {
         console.warn('Falha ao padronizar dados de sinais recentes:', parseErr);
         signalsArray = [];
       }
-      console.log('📊 Número de padrões recebidos:', Array.isArray(signalsArray) ? signalsArray.length : 0);
+      console.log('Número de padrões recebidos:', Array.isArray(signalsArray) ? signalsArray.length : 0);
       
       // Buscar as preferências atuais do usuário para filtrar
       let currentMonitoredTables: string[] = [];
@@ -539,38 +522,48 @@ export default function DashboardPage() {
         const preferences = (prefsResp as any)?.data ?? prefsResp;
         currentMonitoredTables = Array.isArray(preferences?.tables) ? preferences.tables : [];
       } catch (error) {
-        console.log('⚠️ Usando todas as mesas devido a erro ao buscar preferências:', error);
+        console.log('Usando todas as mesas devido a erro ao buscar preferências:', error);
       }
       
       // Filtrar apenas sinais das roletas monitoradas
       const filteredData = signalsArray.filter((signal: any) => {
         const isMonitored = currentMonitoredTables.length === 0 || currentMonitoredTables.includes(signal.table_id);
         if (!isMonitored) {
-          console.log('🚫 Sinal filtrado (roleta não monitorada):', signal.table_id);
+          console.log('Sinal filtrado (roleta não monitorada):', signal.table_id);
         }
         return isMonitored;
       });
       
-      console.log('🎯 Sinais filtrados para roletas monitoradas:', filteredData.length, 'de', Array.isArray(signalsArray) ? signalsArray.length : 0);
-      console.log('📋 Roletas monitoradas:', currentMonitoredTables);
-      console.log('📊 Dados brutos dos sinais:', rawDataAny);
+      console.log('Sinais filtrados para roletas monitoradas:', filteredData.length, 'de', Array.isArray(signalsArray) ? signalsArray.length : 0);
+      console.log('Roletas monitoradas:', currentMonitoredTables);
+      console.log('Dados brutos dos sinais:', rawDataAny);
       console.log('🔍 Sinais filtrados:', filteredData);
       
       // Mapear dados para estrutura compatível com LiveSignals
-      const mappedData = filteredData.map(signal => ({
-        ...signal,
-        strategy_id: signal.strategy_name,
-        bet_numbers: signal.suggested_bets,
-        expected_return: signal.expected_return,
-        status: signal.is_validated ? 'validated' : 'pending',
-        confidence_level: typeof signal.confidence_level === 'string' ? 
-          (signal.confidence_level === 'High' ? 85 : signal.confidence_level === 'Medium' ? 65 : 45) : 
-          signal.confidence_level,
-        message: signal.message,
-        suggested_bets: signal.suggested_bets,
-        confidence_score: signal.confidence_score,
-        confidence_factors: signal.confidence_factors
-      }));
+      const mappedData = filteredData.map((signal: any) => {
+        const strategyId = String(signal?.strategy_id ?? signal?.strategy_slug ?? '').trim();
+        const rawStrategyName = String(signal?.strategy_name ?? '').trim();
+        const strategyName = strategyId && strategyNameById[strategyId]
+          ? strategyNameById[strategyId]
+          : (rawStrategyName || (strategyId ? strategyId : 'Estratégia Desconhecida'));
+
+        return {
+          ...signal,
+          strategy_id: strategyId || rawStrategyName || 'Estratégia Desconhecida',
+          strategy_name: strategyName,
+          bet_numbers: signal?.bet_numbers ?? signal?.suggested_bets,
+          expected_return: signal?.expected_return,
+          status: signal?.is_validated ? 'validated' : 'pending',
+          confidence_level:
+            typeof signal?.confidence_level === 'string'
+              ? (signal.confidence_level === 'High' ? 85 : signal.confidence_level === 'Medium' ? 65 : 45)
+              : signal?.confidence_level,
+          message: signal?.message,
+          suggested_bets: signal?.suggested_bets,
+          confidence_score: signal?.confidence_score,
+          confidence_factors: signal?.confidence_factors
+        } as GeneratedSignal;
+      });
       
       console.log('🗂️ Dados mapeados:', mappedData);
       
@@ -615,7 +608,7 @@ export default function DashboardPage() {
       setActiveSignal(null);
       setCountdown(0);
     }
-  }, [getToken]);
+  }, [getToken, strategyNameById]);
 
   // Efeito para sincronizar activeSignal com o primeiro sinal da lista
   useEffect(() => {
@@ -888,64 +881,6 @@ export default function DashboardPage() {
     );
   }
 
-  const dailyWelcome = user ? getDailyWelcomeMessage() : null;
-
-  const dashboardInsight = useSmartMemo(() => {
-    const hasActiveSignal = !!activeSignal && countdown > 0;
-
-    const totalSignals = kpisData.reduce((sum, kpi) => sum + (Number(kpi.total_signals_generated) || 0), 0);
-    const avgAssertiveness = kpisData.length
-      ? kpisData.reduce((sum, kpi) => sum + (Number(kpi.assertiveness_rate_percent) || 0), 0) / kpisData.length
-      : 0;
-    const netProfit = kpisData.reduce((sum, kpi) => sum + (Number(kpi.total_net_profit_loss) || 0), 0);
-
-    const consistencyRaw = activeSignal?.confidence_factors?.consistency;
-    const consistencyPercent = typeof consistencyRaw === 'number'
-      ? (consistencyRaw > 1 ? consistencyRaw : consistencyRaw * 100)
-      : null;
-    const consistencyLevel = consistencyPercent === null
-      ? null
-      : (consistencyPercent >= 80 ? 'alta' : (consistencyPercent >= 60 ? 'media' : 'baixa'));
-
-    let title = 'Resumo do dia';
-    let description = 'Acompanhe sinais, consistência e performance em tempo real.';
-    let tone: 'good' | 'warn' | 'bad' | 'neutral' = 'neutral';
-
-    if (connectionStatus === 'disconnected') {
-      title = 'Conexão instável';
-      description = 'Reconecte para receber sinais em tempo real e evitar atrasos.';
-      tone = 'bad';
-    } else if (connectionStatus === 'reconnecting') {
-      title = 'Reconectando';
-      description = 'Aguardando estabilizar para atualizar os sinais e KPIs.';
-      tone = 'warn';
-    } else if (hasActiveSignal) {
-      title = 'Sinal ativo pronto para execução';
-      description = countdown <= 30
-        ? 'Últimos segundos: priorize a execução agora.'
-        : 'Execute com disciplina e siga o plano de banca.';
-      tone = countdown <= 30 ? 'warn' : 'good';
-    } else {
-      title = 'Aguardando novo sinal';
-      description = 'Sem padrão ativo no momento. Fique atento às próximas oportunidades.';
-      tone = 'neutral';
-    }
-
-    return {
-      hasActiveSignal,
-      totalSignals,
-      avgAssertiveness,
-      netProfit,
-      consistencyPercent,
-      consistencyLevel,
-      title,
-      description,
-      tone,
-    };
-  }, [activeSignal, countdown, connectionStatus, kpisData]);
-
-  const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dashboardInsight.netProfit || 0);
-
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6">
@@ -992,14 +927,14 @@ export default function DashboardPage() {
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
                     <h4 className="font-medium">Estratégia</h4>
-                    <Select defaultValue="fibonacci">
+                    <Select value={activateStrategyId} onValueChange={setActivateStrategyId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma estratégia" />
                       </SelectTrigger>
                       <SelectContent>
-                        {kpisData.map((kpi) => (
-                          <SelectItem key={kpi.strategy_id} value={kpi.strategy_id}>
-                      {kpi.strategy_id}
+                        {(availableStrategies.length > 0 ? availableStrategies : kpisData.map((k) => ({ id: k.strategy_id, name: strategyNameById[k.strategy_id] || k.strategy_id }))).map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1022,103 +957,6 @@ export default function DashboardPage() {
 
         {/* Carregamento inicial não bloqueante */}
         <>
-          <Card className="border-border/60 bg-card/60">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base">
-                    {dailyWelcome?.greeting ?? dashboardInsight.title}
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    {dailyWelcome ? dashboardInsight.description : 'Acompanhe sinais, consistência e performance em tempo real.'}
-                  </CardDescription>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <Badge
-                    variant="secondary"
-                    className={
-                      dashboardInsight.tone === 'good'
-                        ? 'bg-green-600 text-white border-green-500'
-                        : dashboardInsight.tone === 'warn'
-                          ? 'bg-yellow-600 text-white border-yellow-500'
-                          : dashboardInsight.tone === 'bad'
-                            ? 'bg-red-600 text-white border-red-500'
-                            : 'bg-muted text-foreground'
-                    }
-                  >
-                    {dashboardInsight.hasActiveSignal ? (countdown <= 30 ? 'Urgente' : 'Ativo') : 'Monitorando'}
-                  </Badge>
-                  {dashboardInsight.consistencyPercent !== null && (
-                    <Badge variant="outline" className="border-border/60">
-                      Consistência {dashboardInsight.consistencyLevel === 'alta'
-                        ? 'alta'
-                        : dashboardInsight.consistencyLevel === 'media'
-                          ? 'média'
-                          : 'baixa'} ({dashboardInsight.consistencyPercent.toFixed(0)}%)
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="border-border/60">
-                    {connectionStatus === 'connected'
-                      ? 'Conectado'
-                      : connectionStatus === 'reconnecting'
-                        ? 'Reconectando'
-                        : 'Desconectado'}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                  <div className="text-xs text-muted-foreground">Sinais</div>
-                  <div className="mt-1 text-lg font-semibold">{dashboardInsight.totalSignals}</div>
-                </div>
-                <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                  <div className="text-xs text-muted-foreground">Assertividade média</div>
-                  <div className="mt-1 text-lg font-semibold">{dashboardInsight.avgAssertiveness.toFixed(1)}%</div>
-                </div>
-                <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                  <div className="text-xs text-muted-foreground">P&amp;L</div>
-                  <div className="mt-1 text-lg font-semibold">{brl}</div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-muted-foreground">
-                  {dashboardInsight.title}
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    className="gap-2"
-                    disabled={connectionStatus !== 'connected' && dashboardInsight.hasActiveSignal}
-                    onClick={() => {
-                      if (dashboardInsight.hasActiveSignal && activeSignal) {
-                        setSelectedActiveTable({
-                          tableId: activeSignal.table_id || 'pragmatic-mega-roulette',
-                          strategyName: activeSignal.strategy_name || activeSignal.strategy_id,
-                          suggestedBets: activeSignal.bet_numbers || [],
-                        });
-                        return;
-                      }
-                      setShowActivateDialog(true);
-                    }}
-                  >
-                    {dashboardInsight.hasActiveSignal ? <Target className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    {dashboardInsight.hasActiveSignal ? 'Ação rápida: entrar' : 'Ação rápida: ativar'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => router.push('/profit')}
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    Relatórios
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Informações Dinâmicas */}
             <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
               <CardContent className="p-4">
@@ -1384,7 +1222,7 @@ export default function DashboardPage() {
                        <p className="text-lg font-bold">
                          {(() => {
                            // Assertividade específica da estratégia ativa
-                           const kpi = kpisData.find(k => k.strategy_id === (activeSignal.strategy_name || activeSignal.strategy_id));
+                           const kpi = kpisData.find(k => k.strategy_id === (activeSignal.strategy_id || activeSignal.strategy_name));
                            if (kpi && typeof kpi.assertiveness_rate_percent === 'number' && !isNaN(kpi.assertiveness_rate_percent)) {
                              return `${kpi.assertiveness_rate_percent.toFixed(1)}%`;
                            }
@@ -1397,7 +1235,7 @@ export default function DashboardPage() {
                        <p className="text-xs text-gray-400">Sinais Hoje</p>
                        <p className="text-lg font-bold">
                          {(() => {
-                           const kpi = kpisData.find(k => k.strategy_id === (activeSignal.strategy_name || activeSignal.strategy_id));
+                           const kpi = kpisData.find(k => k.strategy_id === (activeSignal.strategy_id || activeSignal.strategy_name));
                            if (kpi && typeof kpi.total_signals_generated === 'number' && !isNaN(kpi.total_signals_generated)) {
                              return kpi.total_signals_generated.toString();
                            }
