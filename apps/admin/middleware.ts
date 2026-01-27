@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (pathname === "/favicon.svg" || pathname === "/favicon.ico") {
+    return NextResponse.next();
+  }
   if (pathname === "/auth/sign-in" && req.method === "POST") {
     const url = req.nextUrl.clone();
     url.pathname = "/api/auth/sign-in";
@@ -26,5 +29,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|static|images|favicon.ico).*)"],
+  matcher: ["/((?!_next|static|images|favicon.ico|favicon.svg).*)"],
 };

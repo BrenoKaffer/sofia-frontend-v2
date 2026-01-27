@@ -28,7 +28,7 @@ function isValidCPF(raw: string): boolean {
 function parseMoneyToCents(v: string) {
   const n = Number(String(v || "").replace(/\./g, "").replace(",", "."));
   if (!Number.isFinite(n) || n <= 0) return 0;
-  return Math.round(n * 100);
+  return Math.round(n);
 }
 
 function decodeJwtPayload(token: string): any | null {
@@ -155,6 +155,7 @@ export default function CadastroParceiroPage() {
       case "phoneNumber":
         if (!String(phoneNumber || "").trim()) return "Informe seu telefone.";
         if (sanitizeDigits(phoneNumber).length < 8) return "Telefone inválido.";
+        if (sanitizeDigits(phoneNumber).length > 9) return "Informe apenas o número, sem DDD.";
         return null;
       case "zipCode":
         if (!String(zipCode || "").trim()) return "Informe seu CEP.";
@@ -314,18 +315,20 @@ export default function CadastroParceiroPage() {
         },
         register_information: {
           mother_name: motherName,
-          birthdate,
-          monthly_income: parseMoneyToCents(monthlyIncome),
+          birthdate: birthdate ? `${birthdate}T00:00:00` : birthdate,
+          monthly_income: String(parseMoneyToCents(monthlyIncome)),
           professional_occupation: occupation,
           address: {
             street,
             street_number: streetNumber,
+            complementary: "SN",
             neighborhood,
             city,
             state: String(stateUf || "").trim().toUpperCase(),
             zip_code: sanitizeDigits(zipCode),
+            reference_point: "SN",
           },
-          phone_numbers: [{ ddd: sanitizeDigits(phoneDdd), number: sanitizeDigits(phoneNumber) }],
+          phone_numbers: [{ ddd: sanitizeDigits(phoneDdd), number: sanitizeDigits(phoneNumber), type: "mobile" }],
         },
       });
 
@@ -489,7 +492,7 @@ export default function CadastroParceiroPage() {
                   <label className="mb-1 block text-sm">Telefone</label>
                   <input
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(sanitizeDigits(e.target.value).slice(0, 11))}
+                    onChange={(e) => setPhoneNumber(sanitizeDigits(e.target.value).slice(0, 9))}
                     onBlur={() => markTouched(["phoneNumber"])}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                     placeholder="999999999"

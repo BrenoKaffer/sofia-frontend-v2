@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard/layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -165,6 +166,9 @@ function getConditionValidationMessages(n: StrategyNode): string[] {
 }
 
 export default function BuilderPage() {
+  const router = useRouter()
+  const didAutoOpenTemplateRef = useRef(false)
+
   const { user } = useAuth()
   const { userProfile, loading } = useUserStatus(user?.id)
   const { openUpgradeModal } = useUpgrade()
@@ -341,6 +345,28 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       }
     } catch { }
   }, [])
+
+  useEffect(() => {
+    if (didAutoOpenTemplateRef.current) return
+
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+    const templateId = String(params.get('templateId') || '').trim()
+    if (!templateId) return
+
+    const list = Array.isArray(templates) ? templates : []
+    const tpl = list.find((t: any) => String(t?.id || '').trim() === templateId)
+    if (!tpl) return
+
+    didAutoOpenTemplateRef.current = true
+    editTemplate(tpl)
+
+    const imported = String(params.get('imported') || '').trim()
+    if (imported === '1' || imported.toLowerCase() === 'true') {
+      toast.success('Importada com sucesso')
+    }
+
+    router.replace('/builder')
+  }, [templates, router])
 
   const instanceByTemplateId = useMemo(() => {
     const map: Record<string, any> = {}

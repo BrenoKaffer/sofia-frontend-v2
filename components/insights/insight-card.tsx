@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShinyButton } from '@/components/ui/shiny-button';
 import { Lock, Clock, TrendingUp, Zap, ShieldCheck } from 'lucide-react';
@@ -163,7 +162,7 @@ export function InsightCard({
           <DialogFooter className="sm:justify-center">
             <ShinyButton 
               className="w-full font-bold h-11 shadow-lg shadow-primary/20"
-              onClick={() => window.location.href = 'https://pay.v1sofia.com/?plan=premium&price_id=sofia-premium-mensal'}
+              onClick={() => router.push('/checkout')}
             >
               Ativar SOFIA PRO Agora
             </ShinyButton>

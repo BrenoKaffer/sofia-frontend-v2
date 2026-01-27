@@ -6,7 +6,11 @@ import { cn } from "@/lib/utils";
 import { NetflixTopBar } from "@/components/layout/netflix-top-bar";
 import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Props interface for the component
 interface AnimatedMarqueeHeroProps {
@@ -160,115 +164,185 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
   );
 };
 
-/**
- * @interface Article
- * Defines the structure for a single article card.
- * @param {string | number} id - A unique identifier for the article.
- * @param {string} imageSrc - URL for the article's image.
- * @param {string} title - The main heading of the article.
- * @param {string} linkText - The text for the call-to-action link.
- * @param {string} linkHref - The URL the article card will link to.
- */
-interface Article {
-  id: string | number;
-  imageSrc: string;
-  title: string;
-  linkText: string;
-  linkHref: string;
+type MarketplaceCard = {
+  id: string
+  title: string
+  description?: string
+  authorName: string
+  authorAvatarUrl?: string | null
+  templateId?: string
+  template?: TemplateRow | null
 }
 
-/**
- * @interface ArticleCardGridProps
- * Defines the props for the ArticleCardGrid component.
- * @param {string} title - The main title displayed above the grid.
- * @param {Article[]} articles - An array of article objects to display.
- */
-interface ArticleCardGridProps {
-  title: string;
-  articles: Article[];
+function safeInitials(value: string): string {
+  const cleaned = String(value || "").trim()
+  if (!cleaned) return "S"
+  const parts = cleaned.split(/\s+/).filter(Boolean)
+  const first = parts[0]?.charAt(0) || "S"
+  const last = (parts.length > 1 ? parts[parts.length - 1]?.charAt(0) : "") || ""
+  return (first + last).toUpperCase()
 }
 
-/**
- * A responsive grid of article cards with a title.
- * Features animations on load and hover.
- */
-const ArticleCardGrid: React.FC<ArticleCardGridProps> = ({ title, articles }) => {
-  // Animation variant for the grid container to stagger children
+function getYoutubeEmbedUrl(raw: string | null | undefined): string | null {
+  const input = String(raw || "").trim()
+  if (!input) return null
+
+  try {
+    const url = new URL(input)
+    const host = url.hostname.toLowerCase()
+
+    if (host === "youtu.be") {
+      const id = url.pathname.replace("/", "").trim()
+      return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : null
+    }
+
+    if (host.endsWith("youtube.com")) {
+      const path = url.pathname
+      if (path.startsWith("/embed/")) {
+        const id = path.replace("/embed/", "").split("/")[0]?.trim()
+        return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : null
+      }
+
+      const v = url.searchParams.get("v")
+      return v ? `https://www.youtube.com/embed/${encodeURIComponent(v)}` : null
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
+function extractRules(meta: any): string[] {
+  const rules = meta?.rules
+  if (Array.isArray(rules)) return rules.map((r: any) => String(r).trim()).filter(Boolean)
+  if (typeof rules === "string") {
+    return rules
+      .split(/\r?\n|\s*\-\s+/)
+      .map((x) => String(x).trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
+function extractMetrics(meta: any): Array<{ label: string; value: string }> {
+  const metrics = meta?.metrics
+  if (!metrics || typeof metrics !== "object") return []
+  return Object.entries(metrics)
+    .map(([k, v]) => ({ label: String(k), value: typeof v === "string" ? v : JSON.stringify(v) }))
+    .filter((m) => m.label && m.value)
+}
+
+function extractUpdates(meta: any): string[] {
+  const updates = meta?.updates || meta?.changelog || meta?.history
+  if (Array.isArray(updates)) return updates.map((u: any) => String(u).trim()).filter(Boolean)
+  return []
+}
+
+function buildTemplateDownloadFile(tpl: TemplateRow) {
+  const payload = tpl?.builder_payload
+  const schemaVersion = String(payload?.schemaVersion || payload?.schema_version || "1.0.0")
+  const nodes = Array.isArray(payload?.nodes) ? payload.nodes : []
+  const connections = Array.isArray(payload?.connections) ? payload.connections : []
+  const selectionMode = payload?.selectionMode
+  const gating = payload?.gating
+  const meta = payload && typeof payload === "object" ? (payload as any).metadata : undefined
+
+  return {
+    type: "sofia_strategy_template",
+    schemaVersion,
+    templateId: tpl?.id ? String(tpl.id) : undefined,
+    name: String(tpl?.name || "Template do Builder"),
+    description: typeof tpl?.description === "string" ? tpl.description : undefined,
+    author: meta?.author,
+    tags: meta?.tags,
+    metadata: meta,
+    graph: {
+      schemaVersion,
+      nodes,
+      connections,
+      selectionMode,
+      gating,
+    },
+    createdAt: tpl?.created_at ? new Date(tpl.created_at).toISOString() : undefined,
+    updatedAt: tpl?.updated_at ? new Date(tpl.updated_at).toISOString() : undefined,
+  }
+}
+
+function downloadJsonFile(filename: string, json: any) {
+  const text = JSON.stringify(json, null, 2)
+  const blob = new Blob([text], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+const StrategyTemplateGrid = ({ title, cards, onOpen }: { title: string; cards: MarketplaceCard[]; onOpen: (c: MarketplaceCard) => void }) => {
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
+      transition: { staggerChildren: 0.08 },
     },
-  };
+  }
 
-  // Animation variant for each card item
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: 14, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
-      transition: {
-        type: 'spring',
-        stiffness: 100,
-      },
+      transition: { type: "spring", stiffness: 110, damping: 18 },
     },
-  };
+  }
 
   return (
     <section className="w-full max-w-6xl mx-auto py-12 px-4 md:px-6 bg-background text-foreground">
-      <h2 className="text-3xl font-bold tracking-tight mb-8">
-        {title}
-      </h2>
-      <motion.div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {articles.map((article) => (
-          <motion.a
-            key={article.id}
-            href={article.linkHref}
-            className="group block overflow-hidden rounded-lg bg-card border hover:border-primary/50 transition-colors duration-300"
-            variants={itemVariants}
-            whileHover={{ y: -8 }}
-            transition={{ type: 'spring', stiffness: 300 }}
-          >
-            <div className="flex flex-col h-full">
-              {/* Card Image */}
-              <div className="overflow-hidden">
-                 <motion.img
-                    src={article.imageSrc}
-                    alt={article.title}
-                    className="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300"
-                    whileHover={{ scale: 1.08 }}
-                    transition={{ type: "spring", stiffness: 250, damping: 18 }}
-                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                      e.currentTarget.src = "/hero-poster.jpg";
-                    }}
-                  />
-              </div>
+      <h2 className="text-3xl font-bold tracking-tight mb-8">{title}</h2>
 
-              {/* Card Content */}
-              <div className="p-6 flex flex-col flex-grow">
-                <h3 className="text-lg font-semibold text-card-foreground mb-4 flex-grow">
-                  {article.title}
-                </h3>
-                <div className="flex items-center text-sm font-medium text-primary mt-auto">
-                  {article.linkText}
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                </div>
+      <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" variants={containerVariants} initial="hidden" animate="visible">
+        {cards.map((card) => (
+          <motion.button
+            key={card.id}
+            type="button"
+            onClick={() => onOpen(card)}
+            className="group text-left rounded-2xl border bg-card p-6 hover:border-primary/50 transition-colors"
+            variants={itemVariants}
+            whileHover={{ y: -6 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <div className="flex items-start gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={card.authorAvatarUrl || undefined} alt={card.authorName} />
+                <AvatarFallback>{safeInitials(card.authorName)}</AvatarFallback>
+              </Avatar>
+
+              <div className="min-w-0 flex-1">
+                <div className="text-lg font-semibold text-card-foreground truncate">{card.title}</div>
+                <div className="text-sm text-muted-foreground truncate">por {card.authorName}</div>
               </div>
             </div>
-          </motion.a>
+
+            {card.description ? (
+              <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{card.description}</p>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">Sem descrição</p>
+            )}
+
+            <div className="mt-6 flex items-center text-sm font-medium text-primary">
+              Abrir detalhes
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </div>
+          </motion.button>
         ))}
       </motion.div>
     </section>
-  );
-};
+  )
+}
 
 type TemplateRow = {
   id: string
@@ -278,6 +352,9 @@ type TemplateRow = {
   builder_payload: any
   is_published: boolean
   published_strategy_slug: string | null
+  created_at?: string
+  updated_at?: string
+  author_profile?: { user_id: string; full_name?: string | null; avatar_url?: string | null } | null
 }
 
 function sigFromString(value: string): number {
@@ -308,9 +385,12 @@ function getTemplateImage(tpl: TemplateRow): string {
 }
 
 export default function Marketplace2Page() {
+  const router = useRouter()
   const [templates, setTemplates] = useState<TemplateRow[]>([])
   const { setTheme } = useTheme()
   const [randomSeed, setRandomSeed] = useState<number | null>(null)
+  const [selectedCard, setSelectedCard] = useState<MarketplaceCard | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   useEffect(() => {
     setTheme("light")
@@ -327,8 +407,29 @@ export default function Marketplace2Page() {
     })()
   }, [setTheme])
 
-  const mockArticles = useMemo(() => {
-    const baseSeed = randomSeed ?? 1
+  const cards = useMemo<MarketplaceCard[]>(() => {
+    const published = templates.filter((t) => Boolean((t as any)?.is_published))
+
+    const mapped = published.map((t) => {
+      const meta = t?.builder_payload && typeof t.builder_payload === "object" ? (t.builder_payload as any).metadata : null
+      const displayName = String(meta?.author?.displayName || "").trim()
+      const authorName = String(t?.user_id || "") === "system"
+        ? "SOFIA"
+        : (displayName || String(t?.author_profile?.full_name || "").trim() || "Autor")
+
+      return {
+        id: t.id,
+        title: String(t?.name || ""),
+        description: t.description || undefined,
+        authorName,
+        authorAvatarUrl: t?.author_profile?.avatar_url || null,
+        templateId: t.id,
+        template: t,
+      }
+    })
+
+    if (mapped.length) return mapped
+
     const base = [
       { title: "Conexão de Cores SOFIA" },
       { title: "Puxador de Terminais" },
@@ -337,26 +438,17 @@ export default function Marketplace2Page() {
       { title: "Alternância" },
       { title: "Setor Dominante" },
     ]
+
     return base.map((b, idx) => ({
       id: `mock-${idx + 1}`,
-      imageSrc: picsumPhotoUrl({ width: 900, height: 700, seed: baseSeed + (idx + 1) * 37 }),
       title: b.title,
-      linkText: "Usar no Builder",
-      linkHref: "/builder",
+      description: "Em breve no marketplace.",
+      authorName: "SOFIA",
+      authorAvatarUrl: null,
+      templateId: undefined,
+      template: null,
     }))
-  }, [randomSeed])
-
-  const articles = useMemo(() => {
-    const published = templates.filter(t => Boolean((t as any)?.is_published))
-    const mapped = published.map((t) => ({
-      id: t.id,
-      imageSrc: getTemplateImage(t),
-      title: t.name,
-      linkText: "Usar no Builder",
-      linkHref: `/builder?templateId=${encodeURIComponent(t.id)}`
-    }))
-    return mapped.length ? mapped : mockArticles
-  }, [templates, mockArticles])
+  }, [templates])
 
   const heroImages = useMemo(
     () => [
@@ -372,6 +464,39 @@ export default function Marketplace2Page() {
     [randomSeed]
   );
 
+  const selectedMeta = useMemo(() => {
+    const tpl = selectedCard?.template
+    const payload = tpl?.builder_payload
+    return payload && typeof payload === "object" ? (payload as any).metadata : null
+  }, [selectedCard])
+
+  const rules = useMemo(() => extractRules(selectedMeta), [selectedMeta])
+  const metrics = useMemo(() => extractMetrics(selectedMeta), [selectedMeta])
+  const updates = useMemo(() => extractUpdates(selectedMeta), [selectedMeta])
+  const youtubeEmbed = useMemo(() => getYoutubeEmbedUrl(selectedMeta?.youtubeUrl || selectedMeta?.youtube), [selectedMeta])
+
+  const onOpen = (c: MarketplaceCard) => {
+    setSelectedCard(c)
+    setDetailsOpen(true)
+  }
+
+  const onImport = () => {
+    const templateId = String(selectedCard?.templateId || "").trim()
+    if (!templateId) return
+    router.push(`/builder?templateId=${encodeURIComponent(templateId)}&imported=1`)
+  }
+
+  const onDownload = () => {
+    const tpl = selectedCard?.template
+    if (!tpl) return
+    const safeName = String(tpl?.name || "template")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+    const filename = `sofia-template-${safeName}-${tpl.id}.json`
+    downloadJsonFile(filename, buildTemplateDownloadFile(tpl))
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <NetflixTopBar />
@@ -383,7 +508,100 @@ export default function Marketplace2Page() {
         ctaText="Ver estratégias"
         images={heroImages}
       />
-      <ArticleCardGrid title="Estratégias" articles={articles} />
+
+      <StrategyTemplateGrid title="Estratégias" cards={cards} onOpen={onOpen} />
+
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedCard?.title || "Estratégia"}</DialogTitle>
+            <DialogDescription>
+              {selectedCard?.authorName ? `por ${selectedCard.authorName}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="flex items-start gap-3">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={selectedCard?.authorAvatarUrl || undefined} alt={selectedCard?.authorName || "Autor"} />
+                <AvatarFallback>{safeInitials(selectedCard?.authorName || "S")}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <div className="font-medium truncate">{selectedCard?.authorName || "Autor"}</div>
+                <div className="text-sm text-muted-foreground">{selectedCard?.description || "Sem descrição"}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Regras da estratégia</div>
+              {rules.length ? (
+                <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                  {rules.map((r, idx) => (
+                    <li key={idx}>{r}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-sm text-muted-foreground">Sem regras cadastradas.</div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Métricas-chave</div>
+              {metrics.length ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {metrics.map((m) => (
+                    <div key={m.label} className="rounded-lg border bg-card px-3 py-2">
+                      <div className="text-xs text-muted-foreground">{m.label}</div>
+                      <div className="text-sm font-medium">{m.value}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">Sem métricas cadastradas.</div>
+              )}
+            </div>
+
+            {youtubeEmbed ? (
+              <div className="space-y-2">
+                <div className="text-sm font-semibold">Vídeo</div>
+                <div className="aspect-video w-full overflow-hidden rounded-lg border">
+                  <iframe
+                    className="h-full w-full"
+                    src={youtubeEmbed}
+                    title="Vídeo da estratégia"
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Histórico de updates</div>
+              {updates.length ? (
+                <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                  {updates.map((u, idx) => (
+                    <li key={idx}>{u}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-sm text-muted-foreground">Sem updates registrados.</div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={onDownload} disabled={!selectedCard?.template}>
+              Download (JSON)
+            </Button>
+            <Button onClick={onImport} disabled={!selectedCard?.templateId}>
+              Importar no Builder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

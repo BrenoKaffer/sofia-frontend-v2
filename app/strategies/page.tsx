@@ -18,8 +18,26 @@ interface Strategy {
   id: string
   name: string
   enabled: boolean
-  origin?: 'curated' | 'builder'
+  origin?: 'curated' | 'template'
   status?: 'active' | 'paused' | string
+}
+
+interface TemplateRow {
+  id: string
+  user_id?: string
+  name: string
+  description?: string | null
+  is_published?: boolean
+  published_strategy_slug?: string | null
+}
+
+interface StrategyInstance {
+  id: string
+  user_id?: string
+  table_id: string
+  strategy_slug: string
+  enabled: boolean
+  params?: any
 }
 
 interface StrategyDescription {
@@ -73,7 +91,7 @@ export default function EstrategiasAtivas() {
     risk: '',
     chips: ''
   })
-  const [builderStrategyIds, setBuilderStrategyIds] = useState<string[]>([])
+  const [instances, setInstances] = useState<StrategyInstance[]>([])
 
   // Carregar opções disponíveis e preferências do usuário
   useEffect(() => {
@@ -91,6 +109,34 @@ export default function EstrategiasAtivas() {
   useEffect(() => {
     applyFilters()
   }, [strategyDescriptions, filters])
+
+  useEffect(() => {
+    const enabledTableIds = new Set(tables.filter(t => t.enabled).map(t => String(t.id).trim()))
+
+    setStrategies(prev => {
+      let changed = false
+
+      const next = prev.map(s => {
+        if (s.origin !== 'template') return s
+
+        const enabled = instances.some(i =>
+          String(i?.strategy_slug || '').trim() === String(s.id).trim() &&
+          Boolean(i?.enabled) &&
+          enabledTableIds.has(String(i?.table_id || '').trim())
+        )
+        const status = enabled ? 'active' : 'paused'
+
+        if (s.enabled !== enabled || s.status !== status) {
+          changed = true
+          return { ...s, enabled, status }
+        }
+
+        return s
+      })
+
+      return changed ? next : prev
+    })
+  }, [tables, instances])
 
   const loadStrategyDescriptions = async () => {
     try {
@@ -150,11 +196,12 @@ export default function EstrategiasAtivas() {
     try {
       setLoading(true)
       
-      // Buscar opções disponíveis, preferências do usuário e estratégias do Builder
-      const [availableResponse, preferencesResponse, builderResponse] = await Promise.all([
+      // Buscar opções disponíveis, preferências do usuário, templates e instâncias
+      const [availableResponse, preferencesResponse, templatesResponse, instancesResponse] = await Promise.all([
         fetch('/api/available-options'),
         fetch('/api/user-preferences'),
-        fetch('/api/strategies').catch(() => null as any)
+        fetch('/api/dynamic-strategies/templates', { cache: 'no-store' }).catch(() => null as any),
+        fetch('/api/strategy-instances', { cache: 'no-store' }).catch(() => null as any)
       ])
 
       let availableOptions: AvailableOptions
@@ -237,23 +284,43 @@ export default function EstrategiasAtivas() {
         return a.name.localeCompare(b.name)
       })
 
-      // Carregar estratégias do Builder do backend
-      let builderList: any[] = []
-      if (builderResponse && builderResponse.ok) {
-        const builderData = await builderResponse.json()
-        builderList = Array.isArray(builderData) ? builderData : (builderData?.strategies || [])
-      }
-      const builderStrategies: Strategy[] = builderList.map((s: any) => ({
-        id: s.id,
-        name: s.name || s.id,
-        enabled: String(s.status || '').toLowerCase() === 'active',
-        origin: 'builder',
-        status: String(s.status || '').toLowerCase() === 'active' ? 'active' : 'paused'
-      }))
-      setBuilderStrategyIds(builderStrategies.map(s => s.id))
+      const enabledTableIds = new Set(tablesWithState.filter(t => t.enabled).map(t => t.id))
 
-      // Unificar listas (curadas + Builder)
-      setStrategies([...curatedStrategies, ...builderStrategies])
+      let fetchedTemplates: TemplateRow[] = []
+      if (templatesResponse && templatesResponse.ok) {
+        const tplData = await templatesResponse.json().catch(() => ({} as any))
+        const list = Array.isArray((tplData as any)?.templates) ? (tplData as any).templates : []
+        fetchedTemplates = list as TemplateRow[]
+      }
+
+      let fetchedInstances: StrategyInstance[] = []
+      if (instancesResponse && instancesResponse.ok) {
+        const instData = await instancesResponse.json().catch(() => ({} as any))
+        const list = Array.isArray((instData as any)?.instances) ? (instData as any).instances : []
+        fetchedInstances = list as StrategyInstance[]
+      }
+      setInstances(fetchedInstances)
+
+      const publishedTemplates = fetchedTemplates
+        .filter(t => Boolean(t?.is_published) && Boolean(String(t?.published_strategy_slug || '').trim()))
+        .map(t => {
+          const slug = String(t.published_strategy_slug || '').trim()
+          const enabled = fetchedInstances.some(i =>
+            String(i?.strategy_slug || '').trim() === slug &&
+            Boolean(i?.enabled) &&
+            enabledTableIds.has(String(i?.table_id || '').trim())
+          )
+          return {
+            id: slug,
+            name: String(t?.name || slug),
+            enabled,
+            origin: 'template' as const,
+            status: enabled ? 'active' : 'paused'
+          } satisfies Strategy
+        })
+
+      // Unificar listas (curadas + Templates publicados)
+      setStrategies([...curatedStrategies, ...publishedTemplates])
       setTables(tablesWithState)
       setHasChanges(false)
     } catch (error) {
@@ -263,25 +330,10 @@ export default function EstrategiasAtivas() {
     }
   }
 
-  useEffect(() => {
-    try {
-      const bc = new BroadcastChannel('strategies')
-      bc.onmessage = (ev: MessageEvent) => {
-        const msg: any = (ev && (ev as any).data) || (ev as any)
-        if (msg?.type === 'strategy_saved') {
-          loadData()
-        }
-      }
-      return () => bc.close()
-    } catch (_) {
-      // ambientes sem BroadcastChannel
-    }
-  }, [])
-
   const toggleStrategy = async (strategyId: string) => {
-    const isBuilder = builderStrategyIds.includes(strategyId)
     const current = strategies.find(s => s.id === strategyId)
     const enabling = !(current?.enabled)
+    const origin = current?.origin
 
     setStrategies(prev => 
       prev.map(s => 
@@ -291,20 +343,73 @@ export default function EstrategiasAtivas() {
       )
     )
 
-    if (isBuilder) {
+    if (origin === 'template') {
       try {
-        const resp = await fetch('/api/automation/auto-entry/toggle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ strategy_id: strategyId, enabled: enabling })
-        })
-        if (!resp.ok) {
-          const data = await resp.json().catch(() => ({}))
-          throw new Error(String((data as any)?.error || resp.statusText))
+        const enabledTableIds = tables.filter(t => t.enabled).map(t => t.id)
+        if (enabledTableIds.length === 0) {
+          setStrategies(prev =>
+            prev.map(s =>
+              s.id === strategyId
+                ? { ...s, enabled: Boolean(current?.enabled), status: current?.enabled ? 'active' : 'paused' }
+                : s
+            )
+          )
+          toast.error('Selecione ao menos uma mesa para ativar o template')
+          return
         }
-        toast.success(enabling ? 'Estratégia ativada.' : 'Estratégia pausada.')
+
+        const byKey = new Map<string, StrategyInstance>()
+        for (const i of instances) {
+          const k = `${String(i.table_id).trim()}::${String(i.strategy_slug).trim()}`
+          byKey.set(k, i)
+        }
+
+        const ops = enabledTableIds.map(async (tableId) => {
+          const key = `${String(tableId).trim()}::${String(strategyId).trim()}`
+          const existing = byKey.get(key)
+          if (existing) {
+            const resp = await fetch('/api/strategy-instances', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: existing.id, enabled: enabling })
+            })
+            if (!resp.ok) {
+              const data = await resp.json().catch(() => ({}))
+              throw new Error(String((data as any)?.error || resp.statusText))
+            }
+            return
+          }
+
+          if (!enabling) return
+          const resp = await fetch('/api/strategy-instances', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table_id: tableId, strategy_slug: strategyId, enabled: true })
+          })
+          if (!resp.ok) {
+            const data = await resp.json().catch(() => ({}))
+            throw new Error(String((data as any)?.error || resp.statusText))
+          }
+        })
+        await Promise.all(ops)
+
+        const refreshResp = await fetch('/api/strategy-instances', { cache: 'no-store' })
+        if (refreshResp.ok) {
+          const instData = await refreshResp.json().catch(() => ({} as any))
+          const list = Array.isArray((instData as any)?.instances) ? (instData as any).instances : []
+          setInstances(list as StrategyInstance[])
+        }
+
+        toast.success(enabling ? 'Template ativado.' : 'Template pausado.')
       } catch (error) {
-        toast.error('Erro ao alternar estratégia do Builder')
+        setStrategies(prev =>
+          prev.map(s =>
+            s.id === strategyId
+              ? { ...s, enabled: Boolean(current?.enabled), status: current?.enabled ? 'active' : 'paused' }
+              : s
+          )
+        )
+        toast.error('Erro ao alternar template')
       }
     } else {
       setHasChanges(true)
@@ -328,7 +433,7 @@ export default function EstrategiasAtivas() {
       
       const preferences: UserPreferences = {
         strategies: strategies
-          .filter(s => !builderStrategyIds.includes(s.id))
+          .filter(s => s.origin !== 'template')
           .filter(s => s.enabled)
           .map(s => s.id),
         tables: tables.filter(t => t.enabled).map(t => t.id)
@@ -521,7 +626,7 @@ export default function EstrategiasAtivas() {
                       <p className="font-medium">{strategy.name}</p>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
-                          {strategy.origin === 'builder' ? 'Builder' : 'Curada'}
+                          {strategy.origin === 'template' ? 'Template' : 'Curada'}
                         </Badge>
                         <Badge variant={strategy.status === 'active' ? "default" : "secondary"} className="text-xs">
                           {strategy.status === 'active' ? "Ativa" : "Pausada"}

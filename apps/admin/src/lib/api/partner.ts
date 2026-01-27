@@ -123,7 +123,7 @@ export async function registerPartnerAffiliate(
     register_information: {
       mother_name: string;
       birthdate: string;
-      monthly_income: number;
+      monthly_income: string;
       professional_occupation: string;
       site_url?: string;
       address: {
@@ -136,7 +136,7 @@ export async function registerPartnerAffiliate(
         zip_code: string;
         reference_point?: string;
       };
-      phone_numbers: { ddd: string; number: string }[];
+      phone_numbers: { ddd: string; number: string; type?: string }[];
     };
   },
 ): Promise<{ success: boolean; affiliate_slug?: string; checkout_links?: { annual: string }; error?: any }> {
