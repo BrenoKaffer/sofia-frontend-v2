@@ -67,7 +67,7 @@ test("Cadastro de parceiro (afiliado) completa fluxo e recebe sucesso", async ({
   const neighborhood = (process.env.E2E_NEIGHBORHOOD || envLocal.E2E_NEIGHBORHOOD || "Asa Norte").trim();
   const city = (process.env.E2E_CITY || envLocal.E2E_CITY || "Brasília").trim();
 
-  const cadastroUrl = `${baseUrl}/afiliado/cadastro`;
+  const cadastroUrl = `${baseUrl}/parceiro/cadastro`;
 
   if (shouldMockBackend) {
     await page.route("**/api/partners/me/affiliate/register", async (route) => {

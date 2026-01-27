@@ -69,7 +69,7 @@ export default function LinksPage() {
             <div className="rounded-lg border bg-gray-2 p-6 text-center text-sm text-dark-5 dark:border-dark-3 dark:bg-dark-2 dark:text-dark-6">
               <div>Nenhum link disponível.</div>
               <div className="mt-3">
-                <Link href="/afiliado/cadastro" className="inline-flex rounded-lg bg-primary px-4 py-2 font-semibold text-white">
+                <Link href="/parceiro/cadastro" className="inline-flex rounded-lg bg-primary px-4 py-2 font-semibold text-white">
                   Completar cadastro de parceiro
                 </Link>
               </div>
