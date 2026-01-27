@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { loginPartner, getPartnerMe } from '@/lib/api/partner';
 import { ssoExchange } from '@/lib/api/sso';
 import type { Partner } from '@/types/partner';
@@ -20,6 +20,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [partner, setPartner] = useState<Partner | null>(null);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+
+  const logout = useCallback(() => {
+    setToken(null);
+    setPartner(null);
+    localStorage.removeItem('partner-auth');
+    try {
+      fetch("/api/auth/session", { method: "DELETE" }).catch(() => {});
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('partner-auth');
@@ -55,16 +64,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const me = await getPartnerMe(token);
         if (active) setPartner(me);
-      } catch {
-        if (active) {
+      } catch (err) {
+        if (!active) return;
+        const msg = err instanceof Error ? err.message : "";
+        if (msg === "unauthorized" || msg === "forbidden_role") {
+          logout();
+          return;
         }
+        setPartner(null);
       }
     }
     fetchMe();
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, logout]);
 
   const login = async (email: string, password: string, remember?: boolean) => {
     setLoading(true);
@@ -85,15 +99,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const logout = () => {
-    setToken(null);
-    setPartner(null);
-    localStorage.removeItem('partner-auth');
-    try {
-      fetch("/api/auth/session", { method: "DELETE" }).catch(() => {});
-    } catch {}
   };
 
   const value = useMemo(

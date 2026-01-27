@@ -69,6 +69,9 @@ export default function CadastroParceiroPage() {
   const [neighborhood, setNeighborhood] = useState("");
   const [city, setCity] = useState("");
   const [stateUf, setStateUf] = useState("");
+  const [zipLookupStatus, setZipLookupStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [zipLookupError, setZipLookupError] = useState<string | null>(null);
+  const [zipLocked, setZipLocked] = useState(false);
   const [bank, setBank] = useState("");
   const [branch, setBranch] = useState("");
   const [account, setAccount] = useState("");
@@ -116,6 +119,50 @@ export default function CadastroParceiroPage() {
     setName(partner?.name || "");
     setDocument(partner?.document || "");
   }, [partner]);
+
+  useEffect(() => {
+    if (zipLocked) return;
+
+    const cep = sanitizeDigits(zipCode);
+    if (cep.length !== 8) {
+      setZipLookupStatus("idle");
+      setZipLookupError(null);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    setZipLookupStatus("loading");
+    setZipLookupError(null);
+
+    fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("CEP inválido.");
+        return await res.json();
+      })
+      .then((data) => {
+        if (!active) return;
+        if (data?.erro) throw new Error("CEP não encontrado.");
+        setStreet(String(data?.logradouro || "").trim());
+        setNeighborhood(String(data?.bairro || "").trim());
+        setCity(String(data?.localidade || "").trim());
+        setStateUf(String(data?.uf || "").trim().toUpperCase());
+        setZipLocked(true);
+        setZipLookupStatus("success");
+      })
+      .catch((err) => {
+        if (!active) return;
+        if (err?.name === "AbortError") return;
+        setZipLookupStatus("error");
+        setZipLookupError(err instanceof Error ? err.message : "Falha ao consultar CEP.");
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [zipCode, zipLocked]);
 
   function markTouched(keys: string[]) {
     setTouched((prev) => {
@@ -512,12 +559,15 @@ export default function CadastroParceiroPage() {
                     value={zipCode}
                     onChange={(e) => setZipCode(sanitizeDigits(e.target.value).slice(0, 8))}
                     onBlur={() => markTouched(["zipCode"])}
+                    disabled={loading || zipLocked || zipLookupStatus === "loading"}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                     placeholder="00000-000"
                     inputMode="numeric"
                     pattern="[0-9]*"
                   />
                   {touched.zipCode && getFieldError("zipCode") && <div className="mt-1 text-xs text-red-light">{getFieldError("zipCode")}</div>}
+                  {zipLookupStatus === "loading" && <div className="mt-1 text-xs text-dark-5 dark:text-dark-6">Buscando endereço...</div>}
+                  {zipLookupError && <div className="mt-1 text-xs text-red-light">{zipLookupError}</div>}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm">UF</label>
@@ -525,6 +575,7 @@ export default function CadastroParceiroPage() {
                     value={stateUf}
                     onChange={(e) => setStateUf(sanitizeLetters(e.target.value).trim().toUpperCase().slice(0, 2))}
                     onBlur={() => markTouched(["stateUf"])}
+                    disabled={loading || zipLocked}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none uppercase dark:border-dark-3 dark:bg-dark-2"
                     placeholder="SP"
                     maxLength={2}
@@ -537,6 +588,7 @@ export default function CadastroParceiroPage() {
                     value={street}
                     onChange={(e) => setStreet(sanitizeStreet(e.target.value))}
                     onBlur={() => markTouched(["street"])}
+                    disabled={loading || zipLocked}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                   />
                   {touched.street && getFieldError("street") && <div className="mt-1 text-xs text-red-light">{getFieldError("street")}</div>}
@@ -559,6 +611,7 @@ export default function CadastroParceiroPage() {
                     value={neighborhood}
                     onChange={(e) => setNeighborhood(e.target.value)}
                     onBlur={() => markTouched(["neighborhood"])}
+                    disabled={loading || zipLocked}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                   />
                   {touched.neighborhood && getFieldError("neighborhood") && <div className="mt-1 text-xs text-red-light">{getFieldError("neighborhood")}</div>}
@@ -569,6 +622,7 @@ export default function CadastroParceiroPage() {
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     onBlur={() => markTouched(["city"])}
+                    disabled={loading || zipLocked}
                     className="w-full rounded-lg border bg-gray-2 p-3 outline-none dark:border-dark-3 dark:bg-dark-2"
                   />
                   {touched.city && getFieldError("city") && <div className="mt-1 text-xs text-red-light">{getFieldError("city")}</div>}
