@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { DashboardLayout } from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Activity, Download, Plus, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { Activity, Download, MoreVertical, Plus, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { toast } from 'sonner';
 
@@ -60,21 +68,8 @@ function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function computeConsistency(profitSeries: ProfitPoint[]) {
+function computeStability(profitSeries: ProfitPoint[]) {
   const last = profitSeries.slice(-7);
-  const last5 = profitSeries.slice(-5);
-  const consecutivePositive = (() => {
-    let count = 0;
-    for (let i = profitSeries.length - 1; i >= 0; i -= 1) {
-      if (profitSeries[i]?.profit > 0) count += 1;
-      else break;
-    }
-    return count;
-  })();
-
-  const last3 = profitSeries.slice(-3);
-  const last3AllNegative = last3.length === 3 && last3.every(p => p.profit < 0);
-  const last5Sum = last5.reduce((acc, p) => acc + p.profit, 0);
 
   const profits = last.map(p => p.profit);
   const mean = profits.length ? profits.reduce((a, b) => a + b, 0) / profits.length : 0;
@@ -93,22 +88,6 @@ function computeConsistency(profitSeries: ProfitPoint[]) {
     maxDrawdown = Math.max(maxDrawdown, peak - equity);
   }
 
-  if (consecutivePositive >= 5) {
-    return {
-      label: `Consistente (${consecutivePositive} dias positivos)`,
-      className: 'bg-green-600 text-white border-transparent',
-      icon: <TrendingUp className="h-3.5 w-3.5" />
-    };
-  }
-
-  if (last3AllNegative && last5Sum < 0) {
-    return {
-      label: 'Em queda',
-      className: 'bg-red-600 text-white border-transparent',
-      icon: <TrendingDown className="h-3.5 w-3.5" />
-    };
-  }
-
   const volatilityScore = clampNumber(std / Math.max(1, Math.abs(mean)), 0, 10);
   const drawdownScore = clampNumber(maxDrawdown / Math.max(1, Math.abs(peak)), 0, 10);
   const isVolatile = volatilityScore > 1.25 || drawdownScore > 0.35;
@@ -118,6 +97,120 @@ function computeConsistency(profitSeries: ProfitPoint[]) {
     className: isVolatile ? 'bg-amber-500 text-black border-transparent' : 'bg-secondary text-secondary-foreground',
     icon: <Activity className="h-3.5 w-3.5" />
   };
+}
+
+function computeTrend(profitSeries: ProfitPoint[]) {
+  if (!profitSeries.length) {
+    return {
+      label: 'Lateral',
+      className: 'bg-secondary text-secondary-foreground border-transparent',
+      icon: <Activity className="h-3.5 w-3.5" />
+    };
+  }
+
+  let equity = 0;
+  const equitySeries = profitSeries.map((p) => {
+    equity += p.profit;
+    return equity;
+  });
+
+  const n = equitySeries.length;
+  const meanX = (n - 1) / 2;
+  const meanY = equitySeries.reduce((acc, v) => acc + v, 0) / n;
+
+  let cov = 0;
+  let varX = 0;
+  for (let i = 0; i < n; i += 1) {
+    const dx = i - meanX;
+    cov += dx * (equitySeries[i] - meanY);
+    varX += dx * dx;
+  }
+
+  const slope = varX ? cov / varX : 0;
+  const avgAbsDaily =
+    profitSeries.reduce((acc, p) => acc + Math.abs(p.profit), 0) / Math.max(1, profitSeries.length);
+  const threshold = Math.max(1, avgAbsDaily * 0.15);
+
+  if (slope > threshold) {
+    return {
+      label: 'Alta',
+      className: 'bg-green-600 text-white border-transparent',
+      icon: <TrendingUp className="h-3.5 w-3.5" />
+    };
+  }
+
+  if (slope < -threshold) {
+    return {
+      label: 'Queda',
+      className: 'bg-red-600 text-white border-transparent',
+      icon: <TrendingDown className="h-3.5 w-3.5" />
+    };
+  }
+
+  return {
+    label: 'Lateral',
+    className: 'bg-secondary text-secondary-foreground border-transparent',
+    icon: <Activity className="h-3.5 w-3.5" />
+  };
+}
+
+function exportProfitCsv(params: {
+  profitData: ProfitPoint[];
+  strategies: StrategyKpi[];
+  sessions: ProfitSession[];
+  selectedPeriod: string;
+}) {
+  const now = new Date();
+  const fileName = `meu-lucro_${params.selectedPeriod}_${now.toISOString().slice(0, 10)}.csv`;
+
+  const sections: { title: string; rows: string[][] }[] = [
+    {
+      title: 'Evolucao do lucro',
+      rows: [
+        ['data', 'lucro', 'sessoes', 'taxa_acerto_percent'],
+        ...params.profitData.map((p) => [p.date, String(p.profit), String(p.sessions), String(p.winRate)])
+      ]
+    },
+    {
+      title: 'Performance por estrategia',
+      rows: [
+        ['estrategia', 'lucro', 'sessoes', 'taxa_acerto_percent'],
+        ...params.strategies.map((s) => [s.name, String(s.profit), String(s.sessions), String(s.winRate)])
+      ]
+    },
+    {
+      title: 'Sessoes registradas',
+      rows: [
+        ['criado_em', 'estrategia', 'lucro', 'duracao_min'],
+        ...params.sessions.map((s) => [
+          s.createdAt,
+          s.strategy,
+          String(s.profit),
+          s.durationMinutes === undefined ? '' : String(s.durationMinutes)
+        ])
+      ]
+    }
+  ];
+
+  const escapeCell = (value: string) => `"${value.replaceAll('"', '""')}"`;
+
+  const csv = sections
+    .flatMap((section) => {
+      const lines = [escapeCell(section.title)];
+      lines.push(...section.rows.map((row) => row.map((cell) => escapeCell(cell)).join(',')));
+      return [...lines, ''];
+    })
+    .join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 export default function ProfitPage() {
@@ -201,11 +294,9 @@ export default function ProfitPage() {
   }, [selectedPeriod, refreshKey]);
 
   const totalProfit = profitDataState.reduce((sum, day) => sum + day.profit, 0);
-  const avgWinRate = profitDataState.length
-    ? profitDataState.reduce((sum, day) => sum + day.winRate, 0) / profitDataState.length
-    : 0;
   const percentOfBankroll = initialBankroll ? (totalProfit / initialBankroll) * 100 : null;
-  const consistency = useMemo(() => computeConsistency(profitDataState), [profitDataState]);
+  const stability = useMemo(() => computeStability(profitDataState), [profitDataState]);
+  const trend = useMemo(() => computeTrend(profitDataState), [profitDataState]);
 
   const { topStrategies, worstStrategy } = useMemo(() => {
     const sorted = [...strategyProfitsState].sort((a, b) => b.profit - a.profit);
@@ -248,6 +339,28 @@ export default function ProfitPage() {
 
     return parts.join(' ');
   }, [sessions, strategyProfitsState, worstStrategy]);
+
+  const microInsight = useMemo(() => {
+    const positives = strategyProfitsState.filter(s => s.profit > 0).sort((a, b) => b.profit - a.profit);
+    const totalPositive = positives.reduce((acc, s) => acc + s.profit, 0);
+    const top1 = positives[0] || null;
+    const top2 = positives[1] || null;
+    const topShare =
+      totalPositive > 0 && top1
+        ? ((top1.profit + (top2?.profit ?? 0)) / totalPositive) * 100
+        : 0;
+
+    if (worstStrategy?.profit !== undefined && worstStrategy.profit < 0) {
+      return `1 estratégia está puxando o resultado para baixo: ${worstStrategy.name}.`;
+    }
+
+    if (top1 && topShare > 0) {
+      const strategiesCount = top2 ? 2 : 1;
+      return `${strategiesCount} ${strategiesCount === 1 ? 'estratégia gerou' : 'estratégias geraram'} ${Math.round(topShare)}% do lucro.`;
+    }
+
+    return '';
+  }, [strategyProfitsState, worstStrategy]);
 
   const handleRefresh = () => setRefreshKey(v => v + 1);
 
@@ -335,6 +448,20 @@ export default function ProfitPage() {
     toast.success('Sessão registrada');
   };
 
+  const handleExport = () => {
+    try {
+      exportProfitCsv({
+        profitData: profitDataState,
+        strategies: strategyProfitsState,
+        sessions,
+        selectedPeriod
+      });
+      toast.success('Exportação gerada');
+    } catch {
+      toast.error('Falha ao exportar');
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -367,10 +494,23 @@ export default function ProfitPage() {
               Registrar sessão
             </Button>
 
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" aria-label="Mais ações">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/bankroll">Configurar banca</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -383,17 +523,34 @@ export default function ProfitPage() {
                   {totalProfit >= 0 ? '+' : ''}{formatCurrencyBRL(totalProfit)}
                 </div>
                 <CardDescription className="mt-1">
-                  {percentOfBankroll !== null ? `${percentOfBankroll >= 0 ? '+' : ''}${percentOfBankroll.toFixed(1)}% da banca inicial` : 'Defina sua banca inicial em Gestão de Banca'}
+                  {percentOfBankroll !== null ? (
+                    `${percentOfBankroll >= 0 ? '+' : ''}${percentOfBankroll.toFixed(1)}% da banca inicial`
+                  ) : (
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      <span>Banca não configurada</span>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href="/bankroll">Configurar banca</Link>
+                      </Button>
+                    </span>
+                  )}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className={consistency.className}>
-                  <span className="mr-1 inline-flex">{consistency.icon}</span>
-                  {consistency.label}
+                <Badge className={stability.className}>
+                  <span className="mr-1 inline-flex">{stability.icon}</span>
+                  Consistência: {stability.label}
                 </Badge>
-                <Badge variant="outline">{avgWinRate.toFixed(0)}% assertividade</Badge>
+                <Badge className={trend.className}>
+                  <span className="mr-1 inline-flex">{trend.icon}</span>
+                  Tendência: {trend.label}
+                </Badge>
               </div>
             </div>
+            {microInsight ? (
+              <div className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                {microInsight}
+              </div>
+            ) : null}
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid gap-4 md:grid-cols-3">
