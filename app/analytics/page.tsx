@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/dashboard/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -172,6 +172,27 @@ export default function AnalyticsPage() {
     setRealTimeMetrics(calculateRealTimeMetrics());
   }, []);
 
+  const executiveSummary = useMemo(() => {
+    const profitSum = comparativeData.reduce((acc, item) => acc + item.profit, 0)
+    const top = comparativeData.reduce((best, item) => (item.profit > best.profit ? item : best), comparativeData[0])
+    const topShare = profitSum ? top.profit / profitSum : 0
+    const isConcentrated = topShare >= 0.5
+
+    const netProfit = realTimeMetrics.netProfit
+    const profitText =
+      netProfit > 0 ? "Seu resultado está positivo" : netProfit < 0 ? "Seu resultado está negativo" : "Seu resultado está estável"
+
+    if (netProfit > 0 && isConcentrated && top.maxDrawdown >= 15) {
+      return `${profitText}, mas está concentrado em ${top.name}, que apresenta drawdown elevado (${top.maxDrawdown}%). Os blocos abaixo ajudam a entender o porquê e onde ajustar com mais segurança.`
+    }
+
+    if (riskMetrics.maxDrawdown >= 15) {
+      return `${profitText}, mas o drawdown máximo segue alto (${riskMetrics.maxDrawdown}%). Os blocos abaixo ajudam a entender o porquê e onde ajustar com mais segurança.`
+    }
+
+    return `${profitText}, com risco sob controle para o período (drawdown máximo de ${riskMetrics.maxDrawdown}%). Os blocos abaixo ajudam a entender o porquê e onde ajustar com mais segurança.`
+  }, [realTimeMetrics.netProfit]);
+
   const handleExport = async () => {
     setIsExporting(true);
     
@@ -291,6 +312,19 @@ export default function AnalyticsPage() {
               </Select>
             </div>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Resumo Executivo
+              </CardTitle>
+              <CardDescription>Síntese do período para orientar a leitura</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{executiveSummary}</p>
+            </CardContent>
+          </Card>
 
           {showAdvancedFilters && (
             <Card className="p-4">
@@ -622,7 +656,7 @@ export default function AnalyticsPage() {
                   <div className="flex justify-end">
                     <Button variant="outline" className="gap-2" onClick={() => setIsAdvancedReportOpen(true)}>
                       <FileText className="h-4 w-4" />
-                      Ver relatório avançado
+                      Explorar cenários
                     </Button>
                   </div>
                 </div>
@@ -726,26 +760,26 @@ export default function AnalyticsPage() {
                   <AlertTriangle className="h-5 w-5" />
                   Insights e Alertas
                 </CardTitle>
-                <CardDescription>Texto claro e ação recomendada para orientar suas decisões</CardDescription>
+                <CardDescription>Leituras estratégicas baseadas nos dados atuais</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <Alert>
                     <CheckCircle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Ação recomendada:</strong> aumentar a exposição em Fibonacci em até +10% e manter Dozens ativa.
+                      <strong>Sugestão baseada nos dados:</strong> considerar aumentar a exposição em Fibonacci em até +10% e manter Dozens ativa.
                     </AlertDescription>
                   </Alert>
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Ação recomendada:</strong> pausar Martingale por 24h ou reduzir stake até o drawdown voltar a patamar seguro.
+                      <strong>Sugestão baseada nos dados:</strong> considerar pausar Martingale por 24h ou reduzir stake até o drawdown voltar a um patamar mais seguro.
                     </AlertDescription>
                   </Alert>
                   <Alert>
                     <TrendingUp className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Ação recomendada:</strong> aumentar a frequência de sinais na roleta Evolution, mantendo limite de risco.
+                      <strong>Sugestão baseada nos dados:</strong> considerar aumentar a frequência de sinais na roleta Evolution, mantendo limite de risco.
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -753,6 +787,18 @@ export default function AnalyticsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <div className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Use{" "}
+          <a href="/daily-goals" className="font-medium text-foreground underline underline-offset-4">
+            Metas Diárias
+          </a>{" "}
+          para executar melhor. Use{" "}
+          <a href="/bankroll" className="font-medium text-foreground underline underline-offset-4">
+            Gestão de Banca
+          </a>{" "}
+          para proteger o capital.
+        </div>
 
         <Dialog open={isAdvancedReportOpen} onOpenChange={setIsAdvancedReportOpen}>
           <DialogContent className="max-w-5xl">

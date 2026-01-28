@@ -73,7 +73,13 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
           />
         </div>
         <div className="absolute inset-0 bg-black/10" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85" />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.78) 55%, rgba(0,0,0,0.90) 100%)",
+          }}
+        />
       </div>
 
       <div className="z-10 flex flex-col items-center">

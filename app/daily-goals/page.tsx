@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Switch } from '@/components/ui/switch';
 import { 
   Target, 
   TrendingUp, 
@@ -438,37 +437,6 @@ export default function DailyGoalsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-3 rounded-md border px-3 py-2">
-              <Switch
-                checked={isProfitGoalEnabled}
-                onCheckedChange={(checked) => {
-                  setIsProfitGoalEnabled(checked);
-                  setTodayGoals((prev) => {
-                    const withoutProfit = prev.filter((g) => g.type !== 'profit');
-                    if (!checked) return withoutProfit;
-                    const existing = prev.find((g) => g.type === 'profit');
-                    if (existing) return [{ ...existing }, ...withoutProfit];
-                    return [
-                      {
-                        id: Date.now(),
-                        title: 'Meta de Lucro',
-                        target: 200,
-                        current: 0,
-                        type: 'profit',
-                        priority: 'low',
-                        deadline: '23:59',
-                        completed: false
-                      },
-                      ...withoutProfit
-                    ];
-                  });
-                }}
-              />
-              <div className="leading-tight">
-                <p className="text-sm font-medium">Meta de lucro (opcional)</p>
-                <p className="text-xs text-muted-foreground">Use como bônus, não como foco.</p>
-              </div>
-            </div>
             <Badge variant="outline" className="text-orange-600">
               <Flame className="h-3 w-3 mr-1" />
               {currentStreak} dias seguidos
