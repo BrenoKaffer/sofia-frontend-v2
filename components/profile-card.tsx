@@ -77,10 +77,11 @@ export function ProfileCard({
           variants={variants.imageV}
           src={image}
           alt={name}
-          className="h-full w-full object-cover"
+          className="block h-full w-full object-cover"
           style={{ willChange: 'transform' }}
         />
-        <div className="pointer-events-none absolute left-0 right-0 top-0 -bottom-px bg-gradient-to-b from-transparent via-transparent to-white transform-gpu" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white transform-gpu" />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-white" />
 
         <div className="absolute bottom-8 left-7 right-7 flex items-end justify-between gap-4">
           <div className="min-w-0">

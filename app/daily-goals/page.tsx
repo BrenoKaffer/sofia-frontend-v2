@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Target, 
   TrendingUp, 
@@ -33,7 +34,7 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
+  Tooltip as RechartsTooltip, 
   Legend,
   BarChart,
   Bar
@@ -448,38 +449,42 @@ export default function DailyGoalsPage() {
           </div>
         </div>
 
-        {/* Mensagem Motivacional */}
-        <Alert className="border-blue-500 bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20">
-          <Star className="h-4 w-4" />
-          <AlertDescription className="font-medium">
-            {getMotivationalMessage()}
-          </AlertDescription>
-        </Alert>
-
-        <Alert>
-          <Lightbulb className="h-4 w-4" />
-          <AlertDescription>
-            Cumprir essas metas reforça disciplina e reduz risco na Gestão de Banca.
-          </AlertDescription>
-        </Alert>
-
-        {/* Alerta Motivacional Dinâmico */}
-        {showMotivationalAlert && (
-          <Alert className="border-green-500 bg-green-100 dark:border-green-700 dark:bg-green-900/20 animate-pulse">
-            <Trophy className="h-4 w-4" />
-            <AlertDescription>
-              {motivationalMessage}
+        <TooltipProvider>
+          <Alert
+            className={
+              showMotivationalAlert
+                ? "relative border-green-500 bg-green-100 dark:border-green-700 dark:bg-green-900/20"
+                : "relative border-blue-500 bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20"
+            }
+          >
+            {showMotivationalAlert ? <Trophy className="h-4 w-4" /> : <Star className="h-4 w-4" />}
+            <AlertDescription className="font-medium">
+              {showMotivationalAlert ? motivationalMessage : getMotivationalMessage()}
             </AlertDescription>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="absolute top-2 right-2"
-              onClick={() => setShowMotivationalAlert(false)}
-            >
-              ×
-            </Button>
+            <div className="absolute right-2 top-2 flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Ajuda">
+                    <Lightbulb className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Cumprir essas metas reforça disciplina e reduz risco na Gestão de Banca.
+                </TooltipContent>
+              </Tooltip>
+              {showMotivationalAlert ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={() => setShowMotivationalAlert(false)}
+                >
+                  ×
+                </Button>
+              ) : null}
+            </div>
           </Alert>
-        )}
+        </TooltipProvider>
 
         {/* Cards de Resumo */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -525,7 +530,7 @@ export default function DailyGoalsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Eficiência recente</CardTitle>
+              <CardTitle className="text-sm font-medium">Eficiência de execução</CardTitle>
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -554,7 +559,7 @@ export default function DailyGoalsPage() {
                 <CardHeader>
                   <CardTitle>Metas de Hoje</CardTitle>
                   <CardDescription>
-                    Acompanhe o progresso das suas metas diárias
+                    Compromissos configuráveis para manter disciplina
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -734,9 +739,15 @@ export default function DailyGoalsPage() {
               {/* Missões Ativas */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Missões Diárias</CardTitle>
+                  <CardTitle className="flex items-center justify-between gap-2">
+                    Missões Diárias
+                    <Badge variant="secondary" className="gap-1">
+                      <Star className="h-3 w-3" />
+                      XP
+                    </Badge>
+                  </CardTitle>
                   <CardDescription>
-                    Complete missões para ganhar XP e desbloquear conquistas
+                    Desafios sugeridos pelo sistema para manter consistência
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -892,8 +903,8 @@ export default function DailyGoalsPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="day" />
                     <YAxis />
-                    <Tooltip 
-                      formatter={(value, name) => [
+                    <RechartsTooltip
+                      formatter={(value: number | string, name: string) => [
                         isProfitGoalEnabled ? `R$ ${value}` : String(value),
                         isProfitGoalEnabled
                           ? (name === 'goal' ? 'Meta de lucro' : 'Lucro do dia')
