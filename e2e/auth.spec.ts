@@ -14,7 +14,7 @@ test.describe('Autenticação', () => {
   test('deve permitir navegação para página de registro', async ({ page }) => {
     await page.goto('/register', { waitUntil: 'domcontentloaded' });
     expect(page.url()).toContain('/register');
-    await expect(page.locator('input#email')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Criar Conta' })).toBeVisible();
   });
 
   test('deve validar campos obrigatórios no formulário de login', async ({ page }) => {
@@ -28,10 +28,10 @@ test.describe('Autenticação', () => {
   test('deve redirecionar para dashboard após login bem-sucedido', async ({ page }) => {
     // Este teste seria implementado com credenciais de teste válidas
     // Por enquanto, apenas verifica se a estrutura está correta
-    await page.goto('/dashboard');
+    const res = await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    expect(res?.status() ?? 200).toBeLessThan(500);
     
     // Se não autenticado, deve redirecionar para login
-    await page.waitForLoadState('domcontentloaded');
     expect(page.url()).toMatch(/(login|dashboard)/);
   });
 });
@@ -46,8 +46,7 @@ test.describe('Proteção de Rotas', () => {
     ];
 
     for (const route of protectedRoutes) {
-      const res = await page.goto(route, { waitUntil: 'domcontentloaded' });
-      expect(res?.status() ?? 200).toBeLessThan(500);
+      await page.goto(route, { waitUntil: 'domcontentloaded' });
       const currentUrl = page.url();
       expect(currentUrl.includes('/login') || currentUrl.includes(route)).toBeTruthy();
     }

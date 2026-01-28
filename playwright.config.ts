@@ -88,7 +88,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: shouldStart ? {
-    command: 'NEXT_PUBLIC_AUTH_DEV_BYPASS=false AUTH_DEV_BYPASS=false node -e "require(\'fs\').rmSync(\'.next\',{recursive:true,force:true})" && next dev -p 3102',
+    command:
+      'NEXT_PUBLIC_AUTH_DEV_BYPASS=false AUTH_DEV_BYPASS=false node -e "require(\'fs\').rmSync(\'.next\',{recursive:true,force:true})" && npm run build && next start -p 3102',
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120000,
