@@ -8,6 +8,8 @@
 # testing
 /coverage
 /test-results/
+lint-report.json
+playwright-report/
 
 # next.js
 /.next/
