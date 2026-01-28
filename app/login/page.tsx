@@ -360,7 +360,7 @@ export default function LoginPage() {
             <h2 className="text-4xl font-heading font-bold mb-6">
               A SOFIA pensa.
               <br />
-              <span className="text-accent">Você apenas executa e lucra.</span>
+              <span className="text-white">Você apenas executa e lucra.</span>
             </h2>
             <p className="text-xl opacity-90 leading-relaxed font-sans">
               Inteligência artificial avançada para análise de roleta online.
