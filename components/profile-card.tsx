@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Check, UserCheck, Users } from 'lucide-react'
 
@@ -14,7 +14,7 @@ export type ProfileCardProps = {
   followers?: number
   following?: number
   showActionButton?: boolean
-  actionText?: string
+  actionText?: ReactNode
   onActionClick?: () => void
   enableAnimations?: boolean
   className?: string
@@ -72,7 +72,7 @@ export function ProfileCard({
       )}
       style={{ willChange: 'transform' }}
     >
-      <div className="relative h-[240px]">
+      <div className="relative h-[240px] overflow-hidden bg-white transform-gpu">
         <motion.img
           variants={variants.imageV}
           src={image}
@@ -80,7 +80,7 @@ export function ProfileCard({
           className="h-full w-full object-cover"
           style={{ willChange: 'transform' }}
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white" />
+        <div className="pointer-events-none absolute left-0 right-0 top-0 -bottom-px bg-gradient-to-b from-transparent via-transparent to-white transform-gpu" />
 
         <div className="absolute bottom-8 left-7 right-7 flex items-end justify-between gap-4">
           <div className="min-w-0">
@@ -126,7 +126,7 @@ export function ProfileCard({
             }}
             className="mt-7 w-full rounded-full bg-black py-3 text-[14px] font-semibold text-white shadow-[0_10px_22px_-16px_rgba(0,0,0,0.7)] transition-transform active:scale-[0.99]"
           >
-            {actionText}
+            <span className="inline-flex items-center justify-center gap-2">{actionText}</span>
           </button>
         ) : null}
       </div>

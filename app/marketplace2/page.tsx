@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileCard } from "@/components/profile-card";
+import { ArrowRight } from "lucide-react";
 
 // Props interface for the component
 interface AnimatedMarqueeHeroProps {
@@ -50,6 +51,8 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
 
   // Duplicate images for a seamless loop
   const duplicatedImages = [...images, ...images];
+  const muxSrc =
+    "https://player.mux.com/C01VY9EnSzUxEnEWrQjA15A6ngnqRFcle7CYuLwA7g700?metadata-video-title=15142673_3840_2160_60fps&video-title=15142673_3840_2160_60fps&autoplay=1&loop=1&muted=1&controls=0&playsinline=1";
 
   return (
     <section
@@ -58,13 +61,28 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
         className
       )}
     >
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 overflow-hidden">
+          <iframe
+            src={muxSrc}
+            title="Vídeo de fundo"
+            className="absolute left-1/2 top-1/2 h-[140%] w-[140%] -translate-x-1/2 -translate-y-1/2"
+            style={{ width: "100%", border: "none", aspectRatio: "16/9" }}
+            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+            allowFullScreen
+          />
+        </div>
+        <div className="absolute inset-0 bg-black/35" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/45 to-background/95" />
+      </div>
+
       <div className="z-10 flex flex-col items-center">
         {/* Tagline */}
         <motion.div
           initial="hidden"
           animate="show"
           variants={FADE_IN_ANIMATION_VARIANTS}
-          className="mb-4 inline-block rounded-full border border-border bg-card/50 px-4 py-1.5 text-sm font-medium text-muted-foreground backdrop-blur-sm"
+          className="mb-4 inline-block rounded-full border border-white/15 bg-black/25 px-4 py-1.5 text-sm font-medium text-white/85 backdrop-blur-sm"
         >
           {tagline}
         </motion.div>
@@ -81,7 +99,7 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
               },
             },
           }}
-          className="text-5xl md:text-7xl font-bold tracking-tighter text-foreground"
+          className="text-5xl md:text-7xl font-bold tracking-tighter text-white"
         >
           {typeof title === 'string' ? (
             title.split(" ").map((word, i) => (
@@ -104,7 +122,7 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
           animate="show"
           variants={FADE_IN_ANIMATION_VARIANTS}
           transition={{ delay: 0.5 }}
-          className="mt-6 max-w-xl text-lg text-muted-foreground"
+          className="mt-6 max-w-xl text-lg text-white/80"
         >
           {description}
         </motion.p>
@@ -124,14 +142,8 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
       <div className="absolute bottom-0 left-0 w-full h-1/3 md:h-2/5 [mask-image:linear-gradient(to_bottom,transparent,black_20%,black_80%,transparent)]">
         <motion.div
           className="flex gap-4"
-          animate={{
-            x: ["0%", "-50%"],
-            transition: {
-              ease: "linear",
-              duration: 40,
-              repeat: Infinity,
-            },
-          }}
+          animate={{ x: ["0%", "-50%"] }}
+          transition={{ ease: "linear", duration: 40, repeat: Infinity }}
           style={{ width: "max-content", willChange: "transform" }}
         >
           {duplicatedImages.map((src, index) => (
@@ -337,7 +349,12 @@ const StrategyTemplateGrid = ({ title, cards, onOpen }: { title: string; cards: 
                   followers={card.followers}
                   following={card.following}
                   showActionButton
-                  actionText="Abrir"
+                  actionText={
+                    <span className="inline-flex items-center justify-center gap-2">
+                      Abrir
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  }
                   onActionClick={() => onOpen(card)}
                 />
               </div>
