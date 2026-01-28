@@ -11,16 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   Target, 
   TrendingUp, 
-  TrendingDown, 
   Trophy, 
-  Calendar,
   Clock,
   DollarSign,
   CheckCircle,
@@ -29,51 +25,35 @@ import {
   Flame,
   Award,
   Plus,
-  Edit,
   Save,
-  RotateCcw,
   Shield,
   Lightbulb
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
-  LineChart, 
-  Line, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   Legend,
   BarChart,
-  Bar,
-  RadialBarChart,
-  RadialBar
+  Bar
 } from 'recharts';
 
 // Dados mock para demonstração
 const initialTodayGoals = [
   {
     id: 1,
-    title: 'Meta de Lucro',
-    target: 200,
-    current: 150,
-    type: 'profit',
-    priority: 'high',
-    deadline: '23:59',
-    completed: false
-  },
-  {
-    id: 2,
     title: 'Número de Sessões',
     target: 5,
     current: 3,
     type: 'sessions',
-    priority: 'medium',
+    priority: 'high',
     deadline: '22:00',
     completed: false
   },
   {
-    id: 3,
+    id: 2,
     title: 'Taxa de Acerto',
     target: 70,
     current: 75,
@@ -83,7 +63,7 @@ const initialTodayGoals = [
     completed: true
   },
   {
-    id: 4,
+    id: 3,
     title: 'Tempo de Jogo',
     target: 180,
     current: 120,
@@ -94,7 +74,7 @@ const initialTodayGoals = [
   }
 ];
 
-const weeklyProgress = [
+const weeklyProfitProgress = [
   { day: 'Seg', goal: 200, achieved: 180, completed: false },
   { day: 'Ter', goal: 200, achieved: 250, completed: true },
   { day: 'Qua', goal: 200, achieved: 120, completed: false },
@@ -104,12 +84,22 @@ const weeklyProgress = [
   { day: 'Dom', goal: 150, achieved: 150, completed: true }
 ];
 
+const weeklyProcessProgress = [
+  { day: 'Seg', planned: 4, completed: 3, achieved: false },
+  { day: 'Ter', planned: 4, completed: 4, achieved: true },
+  { day: 'Qua', planned: 4, completed: 2, achieved: false },
+  { day: 'Qui', planned: 4, completed: 4, achieved: true },
+  { day: 'Sex', planned: 4, completed: 3, achieved: false },
+  { day: 'Sáb', planned: 4, completed: 4, achieved: true },
+  { day: 'Dom', planned: 4, completed: 4, achieved: true }
+];
+
 const achievements = [
   {
     id: 1,
     title: 'Sequência de 3 dias',
     description: 'Atingiu a meta por 3 dias consecutivos',
-    icon: '🔥',
+    icon: <Flame className="h-6 w-6 text-orange-500" />,
     unlocked: true,
     date: '15/01/2024'
   },
@@ -117,7 +107,7 @@ const achievements = [
     id: 2,
     title: 'Meta Superada',
     description: 'Superou a meta diária em 50%',
-    icon: '🚀',
+    icon: <TrendingUp className="h-6 w-6 text-green-600" />,
     unlocked: true,
     date: '12/01/2024'
   },
@@ -125,7 +115,7 @@ const achievements = [
     id: 3,
     title: 'Semana Perfeita',
     description: 'Atingiu todas as metas da semana',
-    icon: '👑',
+    icon: <Award className="h-6 w-6 text-blue-600" />,
     unlocked: false,
     date: null
   },
@@ -133,13 +123,13 @@ const achievements = [
     id: 4,
     title: 'Disciplina Total',
     description: 'Não ultrapassou limites por 7 dias',
-    icon: '🛡️',
+    icon: <Shield className="h-6 w-6 text-purple-600" />,
     unlocked: true,
     date: '10/01/2024'
   }
 ];
 
-const goalHistory = [
+const profitGoalHistory = [
   { date: '15/01', profit: 220, goal: 200, sessions: 4, winRate: 75, completed: true },
   { date: '14/01', profit: 180, goal: 200, sessions: 3, winRate: 60, completed: false },
   { date: '13/01', profit: 250, goal: 200, sessions: 5, winRate: 80, completed: true },
@@ -149,22 +139,31 @@ const goalHistory = [
   { date: '09/01', profit: 190, goal: 200, sessions: 4, winRate: 65, completed: false }
 ];
 
+const processGoalHistory = [
+  { date: '15/01', planned: 4, completed: 4, sessions: 4, winRate: 75, achieved: true },
+  { date: '14/01', planned: 4, completed: 2, sessions: 3, winRate: 60, achieved: false },
+  { date: '13/01', planned: 4, completed: 4, sessions: 5, winRate: 80, achieved: true },
+  { date: '12/01', planned: 4, completed: 4, sessions: 6, winRate: 70, achieved: true },
+  { date: '11/01', planned: 4, completed: 1, sessions: 3, winRate: 50, achieved: false },
+  { date: '10/01', planned: 4, completed: 4, sessions: 5, winRate: 85, achieved: true },
+  { date: '09/01', planned: 4, completed: 3, sessions: 4, winRate: 65, achieved: false }
+];
+
 export default function DailyGoalsPage() {
   const [todayGoals, setTodayGoals] = useState(initialTodayGoals);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
-  const [newGoalType, setNewGoalType] = useState('profit');
+  const [newGoalType, setNewGoalType] = useState('sessions');
   const [newGoalDeadline, setNewGoalDeadline] = useState('23:59');
   const [goalValueType, setGoalValueType] = useState('fixed'); // 'fixed' ou 'percentage'
   const [baseValue, setBaseValue] = useState('1000'); // Valor base para cálculo percentual
-  const [editingGoal, setEditingGoal] = useState<number | null>(null);
+  const [isProfitGoalEnabled, setIsProfitGoalEnabled] = useState(false);
   const [motivationalMessage, setMotivationalMessage] = useState(
-    "Bom dia! Hoje é um novo dia para alcançar suas metas. Vamos começar com foco e disciplina! 💪"
+    "Bom dia. Disciplina hoje protege sua banca amanhã."
   );
   const [showMotivationalAlert, setShowMotivationalAlert] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentStreak, setCurrentStreak] = useState(3);
-  const [totalGoalsCompleted, setTotalGoalsCompleted] = useState(12);
+  const [currentStreak] = useState(3);
+  const [totalGoalsCompleted] = useState(12);
   
   // Estados para missões
   const [missions, setMissions] = useState([
@@ -207,15 +206,17 @@ export default function DailyGoalsPage() {
         const res = await fetch('/api/user-preferences');
         if (!res.ok) throw new Error('Erro ao buscar preferências');
         const prefs = await res.json();
-        const targetProfit = Number(prefs?.daily_goal ?? initialTodayGoals[0]?.target ?? 200);
-        const base = Number(prefs?.initial_bankroll ?? baseValue);
+        const targetProfit = Number(prefs?.daily_goal ?? 0);
+        const base = Number(prefs?.initial_bankroll ?? 1000);
         setBaseValue(String(base));
+        const shouldEnableProfitGoal = targetProfit > 0;
+        setIsProfitGoalEnabled(shouldEnableProfitGoal);
         setTodayGoals(prev => {
-          const idx = prev.findIndex(g => g.type === 'profit');
-          if (idx >= 0) {
-            const updated = [...prev];
-            updated[idx] = { ...updated[idx], target: targetProfit };
-            return updated;
+          const withoutProfit = prev.filter(g => g.type !== 'profit');
+          if (!shouldEnableProfitGoal) return withoutProfit;
+          const existing = prev.find(g => g.type === 'profit');
+          if (existing) {
+            return [{ ...existing, target: targetProfit }, ...withoutProfit];
           }
           return [
             {
@@ -224,11 +225,11 @@ export default function DailyGoalsPage() {
               target: targetProfit,
               current: 0,
               type: 'profit',
-              priority: 'high',
+              priority: 'low',
               deadline: '23:59',
               completed: false
             },
-            ...prev
+            ...withoutProfit
           ];
         });
       } catch (e) {
@@ -242,16 +243,18 @@ export default function DailyGoalsPage() {
   const todayStats = {
     totalGoals: todayGoals.length,
     completedGoals: todayGoals.filter(g => g.completed).length,
-    totalProgress: todayGoals.reduce((sum, goal) => {
-      const progress = Math.min((goal.current / goal.target) * 100, 100);
-      return sum + progress;
-    }, 0) / todayGoals.length,
+    totalProgress: todayGoals.length > 0
+      ? todayGoals.reduce((sum, goal) => {
+        const progress = Math.min((goal.current / goal.target) * 100, 100);
+        return sum + progress;
+      }, 0) / todayGoals.length
+      : 0,
     estimatedCompletion: '18:30' // Mock
   };
 
   // Função para calcular valor da meta baseado no tipo
   const calculateGoalValue = () => {
-    if (goalValueType === 'percentage') {
+    if (newGoalType === 'profit' && goalValueType === 'percentage') {
       const base = parseFloat(baseValue) || 1000;
       const percentage = parseFloat(newGoalTarget) || 0;
       return (base * percentage) / 100;
@@ -260,19 +263,19 @@ export default function DailyGoalsPage() {
   };
 
   // Função para gerar feedback motivacional com LLM
-  const generateMotivationalFeedback = async (type: 'achievement' | 'encouragement', context?: any) => {
+  const generateMotivationalFeedback = async (type: 'achievement' | 'encouragement') => {
     const messages = {
       achievement: [
-        "🎉 Parabéns! Você atingiu sua meta! Sua disciplina está pagando dividendos!",
-        "🏆 Excelente trabalho! Mais uma meta conquistada. Continue assim!",
-        "⭐ Fantástico! Você está no caminho certo para o sucesso!",
-        "🚀 Meta alcançada! Sua consistência é inspiradora!"
+        "Meta concluída. Boa execução e disciplina.",
+        "Você manteve o processo. Isso protege sua banca no longo prazo.",
+        "Ótimo. Consistência hoje reduz risco amanhã.",
+        "Execução sólida. Continue no ritmo."
       ],
       encouragement: [
-        "💪 Você está quase lá! Mantenha o foco e a disciplina!",
-        "🎯 Cada aposta é um passo em direção à sua meta. Continue!",
-        "⚡ A persistência é a chave do sucesso. Não desista!",
-        "🌟 Acredite no seu potencial! Você consegue!"
+        "Mantenha o foco no processo. Uma decisão por vez.",
+        "Menos pressa, mais controle. Continue.",
+        "Disciplina antes de volume. Ajuste e siga.",
+        "Você está no ritmo. Priorize consistência."
       ]
     };
     
@@ -280,7 +283,6 @@ export default function DailyGoalsPage() {
     setMotivationalMessage(randomMessage);
     setShowMotivationalAlert(true);
     
-    // Auto-hide alert after 5 seconds
     setTimeout(() => setShowMotivationalAlert(false), 5000);
   };
 
@@ -327,7 +329,7 @@ export default function DailyGoalsPage() {
     setTodayGoals([...todayGoals, newGoal]);
     setNewGoalTitle('');
     setNewGoalTarget('');
-    setNewGoalType('profit');
+    setNewGoalType('sessions');
     setNewGoalDeadline('23:59');
     setGoalValueType('fixed');
 
@@ -373,21 +375,19 @@ export default function DailyGoalsPage() {
   };
 
   const handleSaveGoals = async () => {
-    setIsLoading(true);
     try {
       const profitGoal = todayGoals.find(g => g.type === 'profit');
       await fetch('/api/user-preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          daily_goal: profitGoal?.target ?? 0
+          daily_goal: isProfitGoalEnabled ? (profitGoal?.target ?? 0) : 0
         })
       });
-      console.log('Metas salvas com sucesso');
-    } catch (e) {
-      console.error('Erro ao salvar metas', e);
-    } finally {
-      setIsLoading(false);
+    } catch {
+      setMotivationalMessage('Não foi possível salvar agora. Tente novamente.');
+      setShowMotivationalAlert(true);
+      setTimeout(() => setShowMotivationalAlert(false), 5000);
     }
   };
 
@@ -414,15 +414,15 @@ export default function DailyGoalsPage() {
     const completionRate = (todayStats.completedGoals / todayStats.totalGoals) * 100;
     
     if (completionRate === 100) {
-      return "🎉 Parabéns! Você atingiu todas as suas metas hoje!";
+      return "Você concluiu suas metas de processo hoje. Disciplina protege sua banca amanhã.";
     } else if (completionRate >= 75) {
-      return "🔥 Você está quase lá! Mais um pouco e todas as metas estarão completas!";
+      return "Você está no ritmo. Termine o que falta e mantenha o controle.";
     } else if (completionRate >= 50) {
-      return "💪 Bom progresso! Continue focado para atingir suas metas!";
+      return "Bom progresso. Priorize consistência e siga o plano.";
     } else if (completionRate >= 25) {
-      return "⚡ Você pode fazer isso! Mantenha o foco e a disciplina!";
+      return "Comece pequeno e execute com disciplina. O resto vem junto.";
     } else {
-      return "🎯 Comece agora! Cada pequeno passo te aproxima das suas metas!";
+      return "Defina o próximo passo e execute. Hoje é sobre hábito, não sobre resultado.";
     }
   };
 
@@ -434,10 +434,41 @@ export default function DailyGoalsPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Metas Diárias</h1>
             <p className="text-muted-foreground">
-              Defina e acompanhe suas metas para manter o foco e a disciplina
+              Condicione disciplina diária. O porquê fica em Relatórios e Meu Lucro
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 rounded-md border px-3 py-2">
+              <Switch
+                checked={isProfitGoalEnabled}
+                onCheckedChange={(checked) => {
+                  setIsProfitGoalEnabled(checked);
+                  setTodayGoals((prev) => {
+                    const withoutProfit = prev.filter((g) => g.type !== 'profit');
+                    if (!checked) return withoutProfit;
+                    const existing = prev.find((g) => g.type === 'profit');
+                    if (existing) return [{ ...existing }, ...withoutProfit];
+                    return [
+                      {
+                        id: Date.now(),
+                        title: 'Meta de Lucro',
+                        target: 200,
+                        current: 0,
+                        type: 'profit',
+                        priority: 'low',
+                        deadline: '23:59',
+                        completed: false
+                      },
+                      ...withoutProfit
+                    ];
+                  });
+                }}
+              />
+              <div className="leading-tight">
+                <p className="text-sm font-medium">Meta de lucro (opcional)</p>
+                <p className="text-xs text-muted-foreground">Use como bônus, não como foco.</p>
+              </div>
+            </div>
             <Badge variant="outline" className="text-orange-600">
               <Flame className="h-3 w-3 mr-1" />
               {currentStreak} dias seguidos
@@ -454,6 +485,13 @@ export default function DailyGoalsPage() {
           <Star className="h-4 w-4" />
           <AlertDescription className="font-medium">
             {getMotivationalMessage()}
+          </AlertDescription>
+        </Alert>
+
+        <Alert>
+          <Lightbulb className="h-4 w-4" />
+          <AlertDescription>
+            Cumprir essas metas reforça disciplina e reduz risco na Gestão de Banca.
           </AlertDescription>
         </Alert>
 
@@ -519,13 +557,13 @@ export default function DailyGoalsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Taxa de Sucesso</CardTitle>
+              <CardTitle className="text-sm font-medium">Eficiência recente</CardTitle>
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">85%</div>
               <p className="text-xs text-muted-foreground">
-                Últimos 30 dias
+                Consistência de execução nos últimos 30 dias
               </p>
             </CardContent>
           </Card>
@@ -601,7 +639,7 @@ export default function DailyGoalsPage() {
                           />
                           <p className="text-xs text-muted-foreground">
                             {progress.toFixed(0)}% concluído
-                            {isOverTarget && ' (Meta superada! 🎉)'}
+                            {isOverTarget && ' (Meta superada)'}
                           </p>
                         </div>
                       </div>
@@ -623,7 +661,7 @@ export default function DailyGoalsPage() {
                     <Label htmlFor="goal-title">Título da Meta</Label>
                     <Input
                       id="goal-title"
-                      placeholder="Ex: Lucro de R$ 100"
+                      placeholder="Ex: 5 sessões, 70% de acerto, 120 min"
                       value={newGoalTitle}
                       onChange={(e) => setNewGoalTitle(e.target.value)}
                     />
@@ -631,64 +669,72 @@ export default function DailyGoalsPage() {
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Tipo de Valor</Label>
-                      <Select value={goalValueType} onValueChange={setGoalValueType}>
+                      <Label>Tipo</Label>
+                      <Select
+                        value={newGoalType}
+                        onValueChange={(value) => {
+                          setNewGoalType(value);
+                          if (value !== 'profit') setGoalValueType('fixed');
+                        }}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="fixed">Valor Fixo</SelectItem>
-                          <SelectItem value="percentage">Percentual da Banca</SelectItem>
+                          <SelectItem value="sessions">Sessões</SelectItem>
+                          <SelectItem value="winrate">Taxa de Acerto (%)</SelectItem>
+                          <SelectItem value="time">Tempo (min)</SelectItem>
+                          {isProfitGoalEnabled ? <SelectItem value="profit">Lucro (opcional)</SelectItem> : null}
                         </SelectContent>
                       </Select>
                     </div>
 
-                    {goalValueType === 'percentage' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="base-value">Valor Base da Banca (R$)</Label>
-                        <Input
-                          id="base-value"
-                          type="number"
-                          placeholder="1000"
-                          value={baseValue}
-                          onChange={(e) => setBaseValue(e.target.value)}
-                        />
-                      </div>
-                    )}
+                    {newGoalType === 'profit' ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label>Tipo de valor</Label>
+                          <Select value={goalValueType} onValueChange={setGoalValueType}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="fixed">Valor fixo</SelectItem>
+                              <SelectItem value="percentage">Percentual da banca</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="goal-target">
-                          {goalValueType === 'percentage' ? 'Percentual (%)' : 'Valor Alvo'}
-                        </Label>
-                        <Input
-                          id="goal-target"
-                          type="number"
-                          placeholder={goalValueType === 'percentage' ? '10' : '100'}
-                          value={newGoalTarget}
-                          onChange={(e) => setNewGoalTarget(e.target.value)}
-                        />
-                        {goalValueType === 'percentage' && newGoalTarget && (
-                          <p className="text-xs text-muted-foreground">
-                            Valor calculado: R$ {calculateGoalValue().toFixed(2)}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Tipo</Label>
-                        <Select value={newGoalType} onValueChange={setNewGoalType}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="profit">Lucro (R$)</SelectItem>
-                            <SelectItem value="sessions">Sessões</SelectItem>
-                            <SelectItem value="winrate">Taxa de Acerto (%)</SelectItem>
-                            <SelectItem value="time">Tempo (min)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                        {goalValueType === 'percentage' ? (
+                          <div className="space-y-2">
+                            <Label htmlFor="base-value">Valor base da banca (R$)</Label>
+                            <Input
+                              id="base-value"
+                              type="number"
+                              placeholder="1000"
+                              value={baseValue}
+                              onChange={(e) => setBaseValue(e.target.value)}
+                            />
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="goal-target">
+                        {newGoalType === 'profit' && goalValueType === 'percentage' ? 'Percentual (%)' : 'Valor alvo'}
+                      </Label>
+                      <Input
+                        id="goal-target"
+                        type="number"
+                        placeholder={newGoalType === 'profit' && goalValueType === 'percentage' ? '10' : '5'}
+                        value={newGoalTarget}
+                        onChange={(e) => setNewGoalTarget(e.target.value)}
+                      />
+                      {newGoalType === 'profit' && goalValueType === 'percentage' && newGoalTarget ? (
+                        <p className="text-xs text-muted-foreground">
+                          Valor calculado: R$ {calculateGoalValue().toFixed(2)}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 
@@ -784,7 +830,7 @@ export default function DailyGoalsPage() {
                           <div className="flex justify-between items-center">
                             <p className="text-xs text-muted-foreground">
                               {progress.toFixed(0)}% concluído
-                              {isOverTarget && ' (Superado! 🎉)'}
+                              {isOverTarget && ' (Superado)'}
                             </p>
                             {!mission.completed && mission.type === 'strategy' && (
                               <Button
@@ -874,33 +920,63 @@ export default function DailyGoalsPage() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={weeklyProgress}>
+                  <BarChart data={isProfitGoalEnabled ? weeklyProfitProgress : weeklyProcessProgress}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="day" />
                     <YAxis />
                     <Tooltip 
                       formatter={(value, name) => [
-                        `R$ ${value}`, 
-                        name === 'goal' ? 'Meta' : 'Atingido'
+                        isProfitGoalEnabled ? `R$ ${value}` : String(value),
+                        isProfitGoalEnabled
+                          ? (name === 'goal' ? 'Meta de lucro' : 'Lucro do dia')
+                          : (name === 'planned' ? 'Metas planejadas' : 'Metas concluídas')
                       ]}
                     />
                     <Legend />
-                    <Bar dataKey="goal" fill="#475569" name="Meta" />
-                    <Bar dataKey="achieved" fill="#10b981" name="Atingido" />
+                    {isProfitGoalEnabled ? (
+                      <>
+                        <Bar dataKey="goal" fill="#475569" name="Meta" />
+                        <Bar dataKey="achieved" fill="#10b981" name="Atingido" />
+                      </>
+                    ) : (
+                      <>
+                        <Bar dataKey="planned" fill="#475569" name="Planejado" />
+                        <Bar dataKey="completed" fill="#10b981" name="Concluído" />
+                      </>
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
                 
                 <div className="mt-4 grid grid-cols-7 gap-2">
-                  {weeklyProgress.map((day, index) => (
-                    <div key={index} className="text-center">
-                      <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-medium ${
-                        day.completed ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400'
-                      }`}>
-                        {day.completed ? '✓' : '○'}
+                  {isProfitGoalEnabled
+                    ? weeklyProfitProgress.map((day, index) => (
+                      <div key={index} className="text-center">
+                        <div
+                          className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-medium ${
+                            day.completed
+                              ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400'
+                          }`}
+                        >
+                          {day.completed ? 'OK' : '-'}
+                        </div>
+                        <p className="text-xs mt-1">{day.day}</p>
                       </div>
-                      <p className="text-xs mt-1">{day.day}</p>
-                    </div>
-                  ))}
+                    ))
+                    : weeklyProcessProgress.map((day, index) => (
+                      <div key={index} className="text-center">
+                        <div
+                          className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-medium ${
+                            day.achieved
+                              ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400'
+                          }`}
+                        >
+                          {day.achieved ? 'OK' : '-'}
+                        </div>
+                        <p className="text-xs mt-1">{day.day}</p>
+                      </div>
+                    ))}
                 </div>
               </CardContent>
             </Card>
@@ -926,7 +1002,7 @@ export default function DailyGoalsPage() {
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="text-2xl">{achievement.icon}</div>
+                        <div className="mt-0.5">{achievement.icon}</div>
                         <div className="flex-1">
                           <h4 className="font-medium">{achievement.title}</h4>
                           <p className="text-sm text-muted-foreground mb-2">
@@ -959,42 +1035,77 @@ export default function DailyGoalsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Meta</TableHead>
-                      <TableHead>Atingido</TableHead>
-                      <TableHead>Sessões</TableHead>
-                      <TableHead>Taxa</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {goalHistory.map((day, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{day.date}</TableCell>
-                        <TableCell>R$ {day.goal}</TableCell>
-                        <TableCell className={day.profit >= day.goal ? 'text-green-600' : 'text-red-600'}>
-                          R$ {day.profit}
-                        </TableCell>
-                        <TableCell>{day.sessions}</TableCell>
-                        <TableCell>
-                          <Badge variant={day.winRate >= 70 ? 'default' : 'secondary'}>
-                            {day.winRate}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {day.completed ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-red-600" />
-                          )}
-                        </TableCell>
+                {isProfitGoalEnabled ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Meta (lucro)</TableHead>
+                        <TableHead>Resultado</TableHead>
+                        <TableHead>Sessões</TableHead>
+                        <TableHead>Taxa</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {profitGoalHistory.map((day, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{day.date}</TableCell>
+                          <TableCell>R$ {day.goal}</TableCell>
+                          <TableCell className={day.profit >= day.goal ? 'text-green-600' : 'text-red-600'}>
+                            R$ {day.profit}
+                          </TableCell>
+                          <TableCell>{day.sessions}</TableCell>
+                          <TableCell>
+                            <Badge variant={day.winRate >= 70 ? 'default' : 'secondary'}>{day.winRate}%</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {day.completed ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-600" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Metas</TableHead>
+                        <TableHead>Concluídas</TableHead>
+                        <TableHead>Sessões</TableHead>
+                        <TableHead>Taxa</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {processGoalHistory.map((day, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{day.date}</TableCell>
+                          <TableCell>{day.planned}</TableCell>
+                          <TableCell className={day.completed === day.planned ? 'text-green-600' : 'text-muted-foreground'}>
+                            {day.completed}
+                          </TableCell>
+                          <TableCell>{day.sessions}</TableCell>
+                          <TableCell>
+                            <Badge variant={day.winRate >= 70 ? 'default' : 'secondary'}>{day.winRate}%</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {day.achieved ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
