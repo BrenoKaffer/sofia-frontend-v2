@@ -30,22 +30,22 @@ export async function POST(request: NextRequest) {
       
       case 'refused':
       case 'failed':
-        redirectUrl = '/checkout?error=payment_failed';
+        redirectUrl = 'https://pay.v1sofia.com/checkout?error=payment_failed';
         message = 'Pagamento recusado. Tente novamente com outro cartão.';
         break;
       
       case 'canceled':
-        redirectUrl = '/checkout?error=payment_canceled';
+        redirectUrl = 'https://pay.v1sofia.com/checkout?error=payment_canceled';
         message = 'Pagamento cancelado.';
         break;
       
       default:
-        redirectUrl = '/checkout';
+        redirectUrl = 'https://pay.v1sofia.com/checkout';
         message = 'Status de pagamento desconhecido.';
     }
 
     // Log da transação para auditoria
-    console.log(`[PAYMENT_REDIRECT] Transaction ${transactionId} - Status: ${paymentStatus} - User: ${userEmail} - Redirect: ${redirectUrl}`);
+    console.log(`[PAYMENT_REDIRECT] Transaction ${transactionId} - Status: ${paymentStatus} - Plan: ${planType || 'n/a'} - Redirect: ${redirectUrl}`);
 
     // Retornar informações de redirecionamento
     return NextResponse.json({
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       success: false,
       error: 'Erro interno do servidor',
       redirect: {
-        url: '/checkout',
+        url: 'https://pay.v1sofia.com/checkout',
         message: 'Erro ao processar redirecionamento. Tente novamente.',
         delay: 1000
       }
@@ -82,9 +82,9 @@ export async function GET() {
   const redirectOptions = {
     success: '/dashboard?welcome=true',
     pending: '/payment/pending',
-    failed: '/checkout?error=payment_failed',
-    canceled: '/checkout?error=payment_canceled',
-    default: '/checkout'
+    failed: 'https://pay.v1sofia.com/checkout?error=payment_failed',
+    canceled: 'https://pay.v1sofia.com/checkout?error=payment_canceled',
+    default: 'https://pay.v1sofia.com/checkout'
   };
 
   return NextResponse.json({

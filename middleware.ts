@@ -59,33 +59,28 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   if (pathname.startsWith('/checkout')) {
     const parts = pathname.split('/').filter(Boolean)
-    const search = req.nextUrl.searchParams
-    const plan = search.get('plan')?.trim() || ''
-    const aff = search.get('aff')?.trim() || ''
+    const searchParams = req.nextUrl.searchParams
+    const plan = searchParams.get('plan')?.trim() || ''
+    const aff = searchParams.get('aff')?.trim() || ''
     const legacyPlanMap: Record<string, string> = { pro_anual: 'P1', pro_mensal: 'P2' }
+
+    let targetPathname = pathname
+    let targetSearch = req.nextUrl.search
+
     if (parts.length === 1 && plan && aff) {
       const planCode = legacyPlanMap[plan] || plan
-      const url = req.nextUrl.clone()
-      url.pathname = `/checkout/${planCode}/${aff}`
-      url.search = ''
-      return NextResponse.redirect(url, 301)
-    }
-    if (parts.length === 3) {
+      targetPathname = `/checkout/${planCode}/${aff}`
+      targetSearch = ''
+    } else if (parts.length === 3) {
       const p = parts[1]
       const a = parts[2]
       const mapped = legacyPlanMap[p] || p
-      if (mapped !== p) {
-        const url = req.nextUrl.clone()
-        url.pathname = `/checkout/${mapped}/${a}`
-        url.search = ''
-        return NextResponse.redirect(url, 301)
-      }
+      if (mapped !== p) targetPathname = `/checkout/${mapped}/${a}`
     }
-  }
 
-  // if (pathname.startsWith('/checkout')) {
-  //   return NextResponse.redirect(`https://pay.v1sofia.com${pathname}${search}`)
-  // }
+    const targetUrl = new URL(`${targetPathname}${targetSearch}`, 'https://pay.v1sofia.com')
+    return NextResponse.redirect(targetUrl, 308)
+  }
 
   if (isAssetOrApi(pathname) || isPublicRoute(pathname)) {
     // Permitir acesso a reset-password mesmo autenticado (pode estar trocando senha de outra conta)

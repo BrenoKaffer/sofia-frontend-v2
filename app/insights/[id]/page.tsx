@@ -75,7 +75,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
                         <p className="text-muted-foreground max-w-md mx-auto mb-6">
                             Esta aula é exclusiva para assinantes PRO. Assine agora para desbloquear todo o conteúdo.
                         </p>
-                        <Link href="/checkout">
+                        <Link href="https://pay.v1sofia.com">
                             <Button size="lg" className="font-semibold">
                                 Desbloquear Acesso
                             </Button>

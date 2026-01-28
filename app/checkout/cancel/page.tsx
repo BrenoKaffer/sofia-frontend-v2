@@ -35,7 +35,7 @@ export default function CheckoutCancelPage() {
         {/* Ações */}
         <div className="space-y-3">
           <Button asChild className="w-full bg-blue-600 hover:bg-blue-700">
-            <Link href="/checkout">
+            <Link href="https://pay.v1sofia.com">
               <RefreshCw className="w-4 h-4 mr-2" />
               Tentar Novamente
             </Link>

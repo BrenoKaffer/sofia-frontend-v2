@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 export default function PaymentCancelPage() {
   const handleRetryPayment = () => {
     // Voltar para a página de checkout
-    window.location.href = '/checkout';
+    window.location.href = 'https://pay.v1sofia.com';
   };
 
   const handleGoHome = () => {
@@ -155,7 +155,7 @@ export default function PaymentCancelPage() {
         <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="text-center">
             <h3 className="font-medium text-green-800 mb-1">
-              🔒 Compra 100% Segura
+              Compra 100% Segura
             </h3>
             <p className="text-sm text-green-700">
               Todos os pagamentos são processados de forma segura pela Pagar.me. 

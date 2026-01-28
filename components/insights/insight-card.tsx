@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { ShinyButton } from '@/components/ui/shiny-button';
 import { Lock, Clock, TrendingUp, Zap, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -38,8 +37,6 @@ export function InsightCard({
   progress = 0,
   thumbnailUrl,
 }: InsightCardProps) {
-  const router = useRouter();
-
   const CardContentInner = () => (
     <div className="flex flex-col h-full group/card">
       {/* Thumbnail / Poster Area - Vertical Aspect Ratio 9:16 */}
@@ -162,7 +159,7 @@ export function InsightCard({
           <DialogFooter className="sm:justify-center">
             <ShinyButton 
               className="w-full font-bold h-11 shadow-lg shadow-primary/20"
-              onClick={() => router.push('/checkout')}
+              onClick={() => { window.location.href = 'https://pay.v1sofia.com' }}
             >
               Ativar SOFIA PRO Agora
             </ShinyButton>
