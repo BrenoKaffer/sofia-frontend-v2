@@ -66,14 +66,14 @@ const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
           <iframe
             src={muxSrc}
             title="Vídeo de fundo"
-            className="absolute left-1/2 top-1/2 h-[140%] w-[140%] -translate-x-1/2 -translate-y-1/2"
+            className="absolute left-1/2 top-1/2 h-[140%] w-[140%] -translate-x-1/2 -translate-y-[60%] md:-translate-y-[56%]"
             style={{ width: "100%", border: "none", aspectRatio: "16/9" }}
             allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
             allowFullScreen
           />
         </div>
-        <div className="absolute inset-0 bg-black/35" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/45 to-background/95" />
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85" />
       </div>
 
       <div className="z-10 flex flex-col items-center">
