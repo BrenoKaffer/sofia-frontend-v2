@@ -17,9 +17,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Activity, Download, MoreVertical, Plus, RefreshCw, TrendingDown, TrendingUp } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { toast } from 'sonner';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Activity, Download, Info, List, MoreVertical, Plus, RefreshCw, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts';
+import { sofiaToast } from '@/components/ui/sonner';
 
 type ProfitPoint = { date: string; profit: number; sessions: number; winRate: number };
 
@@ -37,7 +39,11 @@ type ProfitSession = {
   strategy: string;
   profit: number;
   durationMinutes?: number;
+  table?: string;
+  chips?: number;
 };
+
+const PROFIT_SESSIONS_STORAGE_KEY = 'sofia:profit:sessions:v1';
 
 const profitDataFallback: ProfitPoint[] = [
   { date: '01/01', profit: 150, sessions: 3, winRate: 65 },
@@ -94,7 +100,7 @@ function computeStability(profitSeries: ProfitPoint[]) {
 
   return {
     label: isVolatile ? 'Volátil' : 'Estável',
-    className: isVolatile ? 'bg-amber-500 text-black border-transparent' : 'bg-secondary text-secondary-foreground',
+    className: isVolatile ? 'bg-amber-500 text-black border-transparent' : 'bg-green-600 text-white border-transparent',
     icon: <Activity className="h-3.5 w-3.5" />
   };
 }
@@ -103,7 +109,7 @@ function computeTrend(profitSeries: ProfitPoint[]) {
   if (!profitSeries.length) {
     return {
       label: 'Lateral',
-      className: 'bg-secondary text-secondary-foreground border-transparent',
+      className: 'bg-slate-600 text-white border-transparent',
       icon: <Activity className="h-3.5 w-3.5" />
     };
   }
@@ -149,7 +155,7 @@ function computeTrend(profitSeries: ProfitPoint[]) {
 
   return {
     label: 'Lateral',
-    className: 'bg-secondary text-secondary-foreground border-transparent',
+    className: 'bg-slate-600 text-white border-transparent',
     icon: <Activity className="h-3.5 w-3.5" />
   };
 }
@@ -181,12 +187,14 @@ function exportProfitCsv(params: {
     {
       title: 'Sessoes registradas',
       rows: [
-        ['criado_em', 'estrategia', 'lucro', 'duracao_min'],
+        ['criado_em', 'estrategia', 'lucro', 'duracao_min', 'mesa_jogada', 'fichas'],
         ...params.sessions.map((s) => [
           s.createdAt,
           s.strategy,
           String(s.profit),
-          s.durationMinutes === undefined ? '' : String(s.durationMinutes)
+          s.durationMinutes === undefined ? '' : String(s.durationMinutes),
+          s.table ?? '',
+          s.chips === undefined ? '' : String(s.chips)
         ])
       ]
     }
@@ -219,6 +227,7 @@ export default function ProfitPage() {
   const [profitDataState, setProfitDataState] = useState<ProfitPoint[]>(profitDataFallback);
   const [strategyProfitsState, setStrategyProfitsState] = useState<StrategyKpi[]>(strategyProfitsFallback);
   const [initialBankroll, setInitialBankroll] = useState<number | null>(null);
+  const [dailyGoal, setDailyGoal] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessions, setSessions] = useState<ProfitSession[]>([]);
 
@@ -226,6 +235,15 @@ export default function ProfitPage() {
   const [registerStrategy, setRegisterStrategy] = useState<string>('');
   const [registerProfit, setRegisterProfit] = useState<string>('');
   const [registerDurationMinutes, setRegisterDurationMinutes] = useState<string>('');
+  const [registerTable, setRegisterTable] = useState<string>('');
+  const [registerChips, setRegisterChips] = useState<string>('');
+
+  const [entriesOpen, setEntriesOpen] = useState(false);
+  const [entriesResultByDay, setEntriesResultByDay] = useState<Record<string, string>>({});
+  const [entriesMesaByDay, setEntriesMesaByDay] = useState<Record<string, string>>({});
+  const [entriesSearch, setEntriesSearch] = useState('');
+  const [entriesStatusFilter, setEntriesStatusFilter] = useState<'all' | 'goal' | 'no-goal'>('all');
+  const [entriesPage, setEntriesPage] = useState(1);
 
   useEffect(() => {
     const fetchPreferences = async () => {
@@ -235,12 +253,33 @@ export default function ProfitPage() {
         const prefs = await res.json();
         const v = Number(prefs?.initial_bankroll ?? prefs?.initialBankroll ?? null);
         if (Number.isFinite(v) && v > 0) setInitialBankroll(v);
+        const daily = Number(prefs?.daily_goal ?? prefs?.dailyGoal ?? prefs?.risk_management?.target_profit ?? null);
+        if (Number.isFinite(daily) && daily > 0) setDailyGoal(daily);
       } catch {
         // noop
       }
     };
 
     fetchPreferences();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROFIT_SESSIONS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const normalized = parsed.filter((item) => {
+        if (!item || typeof item !== 'object') return false;
+        if (typeof item.id !== 'string') return false;
+        if (typeof item.createdAt !== 'string') return false;
+        if (typeof item.strategy !== 'string') return false;
+        return typeof item.profit === 'number' && Number.isFinite(item.profit) && item.profit !== 0;
+      }) as ProfitSession[];
+      setSessions(normalized.slice(0, 500));
+    } catch {
+      // noop
+    }
   }, []);
 
   useEffect(() => {
@@ -337,10 +376,10 @@ export default function ProfitPage() {
       );
     }
 
-    return parts.join(' ');
+    return parts;
   }, [sessions, strategyProfitsState, worstStrategy]);
 
-  const microInsight = useMemo(() => {
+  const microAlert = useMemo(() => {
     const positives = strategyProfitsState.filter(s => s.profit > 0).sort((a, b) => b.profit - a.profit);
     const totalPositive = positives.reduce((acc, s) => acc + s.profit, 0);
     const top1 = positives[0] || null;
@@ -351,20 +390,41 @@ export default function ProfitPage() {
         : 0;
 
     if (worstStrategy?.profit !== undefined && worstStrategy.profit < 0) {
-      return `1 estratégia está puxando o resultado para baixo: ${worstStrategy.name}.`;
+      return { tone: 'warning' as const, label: '1 estratégia impactando negativamente' };
     }
 
-    if (top1 && topShare > 0) {
-      const strategiesCount = top2 ? 2 : 1;
-      return `${strategiesCount} ${strategiesCount === 1 ? 'estratégia gerou' : 'estratégias geraram'} ${Math.round(topShare)}% do lucro.`;
+    if (top1 && topShare >= 80) {
+      return { tone: 'default' as const, label: 'Concentração alta em poucas estratégias' };
     }
 
-    return '';
+    return null;
   }, [strategyProfitsState, worstStrategy]);
 
   const handleRefresh = () => setRefreshKey(v => v + 1);
 
   const handleOpenRegister = () => {
+    const hasBankroll = initialBankroll !== null && Number.isFinite(initialBankroll) && initialBankroll > 0;
+    if (!hasBankroll) {
+      sofiaToast({
+        title: 'Banca não configurada',
+        message: 'Para registrar sessões, configure sua banca primeiro.',
+        variant: 'warning',
+        duration: 6000,
+        action: {
+          label: 'Configurar agora',
+          onClick: () => {
+            window.location.href = '/bankroll';
+          },
+          variant: 'default',
+        },
+        secondaryAction: {
+          label: 'Depois',
+          onClick: () => {},
+          variant: 'ghost',
+        },
+      });
+      return;
+    }
     if (!registerStrategy) {
       const defaultStrategy = strategyProfitsState[0]?.name || '';
       setRegisterStrategy(defaultStrategy);
@@ -372,22 +432,102 @@ export default function ProfitPage() {
     setRegisterOpen(true);
   };
 
+  const handleOpenEntries = () => {
+    const nextResults: Record<string, string> = {};
+    profitDataState.forEach((p) => {
+      nextResults[p.date] = String(p.profit);
+    });
+    setEntriesResultByDay(nextResults);
+    setEntriesPage(1);
+    setEntriesOpen(true);
+  };
+
+  const updateProfitForDay = (day: string, profit: number) => {
+    setProfitDataState((prev) => prev.map((p) => (p.date === day ? { ...p, profit } : p)));
+  };
+
+  const filteredProfitData = useMemo(() => {
+    const q = entriesSearch.trim().toLowerCase();
+    return profitDataState.filter((p) => {
+      const mesa = (entriesMesaByDay[p.date] ?? '').toLowerCase();
+      const matchesText = !q || p.date.toLowerCase().includes(q) || mesa.includes(q);
+
+      const bateuMeta = dailyGoal ? p.profit >= dailyGoal : p.profit > 0;
+      const matchesStatus =
+        entriesStatusFilter === 'all' ||
+        (entriesStatusFilter === 'goal' && bateuMeta) ||
+        (entriesStatusFilter === 'no-goal' && !bateuMeta);
+
+      return matchesText && matchesStatus;
+    });
+  }, [dailyGoal, entriesMesaByDay, entriesSearch, entriesStatusFilter, profitDataState]);
+
+  useEffect(() => {
+    if (!entriesOpen) return;
+    setEntriesPage(1);
+  }, [entriesOpen, entriesSearch, entriesStatusFilter]);
+
+  const entriesHasBankroll = initialBankroll !== null && Number.isFinite(initialBankroll) && initialBankroll > 0;
+  const entriesBankrollByDay = useMemo(() => {
+    if (!entriesHasBankroll) return null;
+    const map: Record<string, { start: number; end: number }> = {};
+    let rolling = initialBankroll as number;
+    for (const p of profitDataState) {
+      const start = rolling;
+      const end = rolling + p.profit;
+      map[p.date] = { start, end };
+      rolling = end;
+    }
+    return map;
+  }, [entriesHasBankroll, initialBankroll, profitDataState]);
+
+  const entriesPageSize = 10;
+  const entriesTotalPages = Math.max(1, Math.ceil(filteredProfitData.length / entriesPageSize));
+  const entriesPageSafe = Math.min(entriesPage, entriesTotalPages);
+  const entriesStartIndex = (entriesPageSafe - 1) * entriesPageSize;
+  const entriesEndIndex = Math.min(entriesStartIndex + entriesPageSize, filteredProfitData.length);
+  const paginatedProfitData = filteredProfitData.slice(entriesStartIndex, entriesEndIndex);
+
+  const handleDeleteEntry = (day: string) => {
+    if (!window.confirm('Excluir este registro?')) return;
+
+    setProfitDataState((prev) => prev.filter((p) => p.date !== day));
+    setEntriesResultByDay((prev) => {
+      const next = { ...prev };
+      delete next[day];
+      return next;
+    });
+    setEntriesMesaByDay((prev) => {
+      const next = { ...prev };
+      delete next[day];
+      return next;
+    });
+    sofiaToast({ title: 'Registro excluído', message: `Dia ${day} removido.`, variant: 'success' });
+  };
+
   const handleRegisterSession = () => {
     const profitValue = Number(registerProfit);
     const durationValue = registerDurationMinutes ? Number(registerDurationMinutes) : undefined;
+    const chipsValue = registerChips ? Number(registerChips) : undefined;
+    const tableValue = registerTable.trim() || undefined;
 
     if (!registerStrategy) {
-      toast.error('Selecione uma estratégia');
+      sofiaToast({ title: 'Atenção', message: 'Selecione uma estratégia', variant: 'warning' });
       return;
     }
 
     if (!Number.isFinite(profitValue) || profitValue === 0) {
-      toast.error('Informe um ganho/perda válido');
+      sofiaToast({ title: 'Erro', message: 'Informe um ganho/perda válido', variant: 'error' });
       return;
     }
 
     if (registerDurationMinutes && (!Number.isFinite(durationValue) || (durationValue ?? 0) <= 0)) {
-      toast.error('Duração inválida');
+      sofiaToast({ title: 'Erro', message: 'Duração inválida', variant: 'error' });
+      return;
+    }
+
+    if (registerChips && (!Number.isFinite(chipsValue) || (chipsValue ?? 0) <= 0)) {
+      sofiaToast({ title: 'Erro', message: 'Fichas inválidas', variant: 'error' });
       return;
     }
 
@@ -397,12 +537,22 @@ export default function ProfitPage() {
       createdAt: now.toISOString(),
       strategy: registerStrategy,
       profit: profitValue,
-      durationMinutes: durationValue
+      durationMinutes: durationValue,
+      table: tableValue,
+      chips: chipsValue,
     };
 
     const dayLabel = formatDayMonth(now);
 
-    setSessions(prev => [session, ...prev].slice(0, 5));
+    setSessions((prev) => {
+      const next = [session, ...prev].slice(0, 500);
+      try {
+        localStorage.setItem(PROFIT_SESSIONS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // noop
+      }
+      return next;
+    });
 
     setProfitDataState(prev => {
       const next = [...prev];
@@ -444,8 +594,14 @@ export default function ProfitPage() {
 
     setRegisterProfit('');
     setRegisterDurationMinutes('');
+    setRegisterTable('');
+    setRegisterChips('');
     setRegisterOpen(false);
-    toast.success('Sessão registrada');
+    sofiaToast({
+      title: 'Sessão registrada',
+      message: `${registerStrategy} • ${profitValue >= 0 ? '+' : ''}${formatCurrencyBRL(profitValue)}${tableValue ? ` • Mesa: ${tableValue}` : ''}${chipsValue ? ` • Fichas: ${chipsValue}` : ''}`,
+      variant: 'success',
+    });
   };
 
   const handleExport = () => {
@@ -456,9 +612,9 @@ export default function ProfitPage() {
         sessions,
         selectedPeriod
       });
-      toast.success('Exportação gerada');
+      sofiaToast({ title: 'Exportação gerada', message: 'O CSV foi baixado no seu dispositivo.', variant: 'success' });
     } catch {
-      toast.error('Falha ao exportar');
+      sofiaToast({ title: 'Erro', message: 'Falha ao exportar', variant: 'error' });
     }
   };
 
@@ -491,7 +647,7 @@ export default function ProfitPage() {
 
             <Button variant="outline" size="sm" onClick={handleOpenRegister}>
               <Plus className="h-4 w-4 mr-2" />
-              Registrar sessão
+              Registrar entrada
             </Button>
 
             <DropdownMenu>
@@ -504,6 +660,10 @@ export default function ProfitPage() {
                 <DropdownMenuItem onClick={handleExport}>
                   <Download className="mr-2 h-4 w-4" />
                   Exportar CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpenEntries}>
+                  <List className="mr-2 h-4 w-4" />
+                  Registros
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
@@ -518,39 +678,61 @@ export default function ProfitPage() {
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <CardTitle className="text-sm text-muted-foreground">Lucro Total</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-2">
+                    Lucro Total
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="Mais informações"
+                            className="inline-flex h-4 w-4 items-center justify-center text-muted-foreground/70 hover:text-muted-foreground"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          Este valor considera apenas resultados de jogo. Depósitos e saques ficam na Gestão de Banca.
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </span>
+                </CardTitle>
                 <div className={`text-4xl font-extrabold tracking-tight ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {totalProfit >= 0 ? '+' : ''}{formatCurrencyBRL(totalProfit)}
                 </div>
-                <CardDescription className="mt-1">
-                  {percentOfBankroll !== null ? (
-                    `${percentOfBankroll >= 0 ? '+' : ''}${percentOfBankroll.toFixed(1)}% da banca inicial`
-                  ) : (
-                    <span className="inline-flex flex-wrap items-center gap-2">
-                      <span>Banca não configurada</span>
-                      <Button asChild size="sm" variant="outline">
-                        <Link href="/bankroll">Configurar banca</Link>
-                      </Button>
-                    </span>
-                  )}
-                </CardDescription>
+                {microAlert ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="bg-blue-950/40 text-blue-200 border-blue-500/30"
+                    >
+                      <span
+                        className="mr-1 h-2 w-2 rounded-full animate-pulse bg-blue-400"
+                      />
+                      Ao vivo
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{microAlert.label}</span>
+                  </div>
+                ) : null}
+                {percentOfBankroll !== null ? (
+                  <CardDescription className="mt-1">
+                    {percentOfBankroll >= 0 ? '+' : ''}{percentOfBankroll.toFixed(1)}% da banca inicial
+                  </CardDescription>
+                ) : null}
               </div>
               <div className="flex items-center gap-2">
-                <Badge className={stability.className}>
+                <Badge variant="outline" className={stability.className}>
                   <span className="mr-1 inline-flex">{stability.icon}</span>
                   Consistência: {stability.label}
                 </Badge>
-                <Badge className={trend.className}>
+                <Badge variant="outline" className={trend.className}>
                   <span className="mr-1 inline-flex">{trend.icon}</span>
                   Tendência: {trend.label}
                 </Badge>
               </div>
             </div>
-            {microInsight ? (
-              <div className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-                {microInsight}
-              </div>
-            ) : null}
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid gap-4 md:grid-cols-3">
@@ -560,7 +742,15 @@ export default function ProfitPage() {
                   <CardDescription>O que explica o seu resultado no período</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm leading-relaxed">{smartSummary || 'Carregando...'} </p>
+                  {smartSummary.length ? (
+                    <ul className="text-sm leading-relaxed list-disc pl-4 space-y-1">
+                      {smartSummary.map((item, idx) => (
+                        <li key={`${idx}-${item}`}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm leading-relaxed text-muted-foreground">Carregando...</p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -575,7 +765,7 @@ export default function ProfitPage() {
                       <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                       <XAxis dataKey="date" tickLine={false} axisLine={false} />
                       <YAxis tickLine={false} axisLine={false} />
-                      <Tooltip
+                      <RechartsTooltip
                         formatter={(value: any) => formatCurrencyBRL(Number(value) || 0)}
                         labelFormatter={(label: any) => `Dia ${label}`}
                       />
@@ -632,9 +822,9 @@ export default function ProfitPage() {
         </Card>
 
         <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
-          <DialogContent className="w-[calc(100%-2rem)] sm:w-full sm:max-w-md">
+          <DialogContent className="w-[calc(100%-2rem)] sm:w-full sm:max-w-md bg-background/50 backdrop-blur-xl border-border/40 shadow-xl">
             <DialogHeader>
-              <DialogTitle>Registrar sessão</DialogTitle>
+              <DialogTitle>Registrar entrada</DialogTitle>
               <DialogDescription>Registre rápido, sem poluir o placar</DialogDescription>
             </DialogHeader>
 
@@ -672,11 +862,185 @@ export default function ProfitPage() {
                   onChange={(e) => setRegisterDurationMinutes(e.target.value)}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Mesa jogada</Label>
+                <Input
+                  placeholder="Opcional"
+                  value={registerTable}
+                  onChange={(e) => setRegisterTable(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Fichas</Label>
+                <Input
+                  inputMode="numeric"
+                  placeholder="Opcional"
+                  value={registerChips}
+                  onChange={(e) => setRegisterChips(e.target.value)}
+                />
+              </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setRegisterOpen(false)}>Cancelar</Button>
               <Button onClick={handleRegisterSession}>Salvar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={entriesOpen} onOpenChange={setEntriesOpen}>
+          <DialogContent className="w-[calc(100%-2rem)] sm:w-full sm:max-w-5xl bg-background/50 backdrop-blur-xl border-border/40 shadow-xl">
+            <DialogHeader>
+              <DialogTitle>Registros</DialogTitle>
+              <DialogDescription>Cada linha representa 1 dia. Edite o resultado e veja o sistema reagir.</DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <Input
+                value={entriesSearch}
+                onChange={(e) => setEntriesSearch(e.target.value)}
+                placeholder="Filtrar por dia ou mesa"
+                className="sm:max-w-xs"
+              />
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground">Status</Label>
+                <Select value={entriesStatusFilter} onValueChange={(v) => setEntriesStatusFilter(v as typeof entriesStatusFilter)}>
+                  <SelectTrigger className="h-9 w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="goal">Bateu meta</SelectItem>
+                    <SelectItem value="no-goal">Não bateu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto rounded-md border border-border/60">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[90px]">Dia</TableHead>
+                    <TableHead className="w-[160px]">Banca inicial</TableHead>
+                    <TableHead className="w-[170px]">Resultado do dia</TableHead>
+                    <TableHead className="w-[160px]">Banca final</TableHead>
+                    <TableHead className="w-[140px]">Status</TableHead>
+                    <TableHead>Mesa</TableHead>
+                    <TableHead className="w-[90px] text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(() => {
+                    if (!paginatedProfitData.length) return null;
+                    return paginatedProfitData.map((p) => {
+                      const bancaInicialDia = entriesHasBankroll ? (entriesBankrollByDay?.[p.date]?.start ?? null) : null;
+                      const profit = p.profit;
+                      const bancaFinalDia = entriesHasBankroll ? (entriesBankrollByDay?.[p.date]?.end ?? null) : null;
+
+                      const mesa = entriesMesaByDay[p.date] ?? '';
+                      const resultText = entriesResultByDay[p.date] ?? String(p.profit);
+                      const bateuMeta = dailyGoal ? profit >= dailyGoal : profit > 0;
+
+                      return (
+                        <TableRow key={p.date}>
+                          <TableCell className="font-medium">{p.date}</TableCell>
+                          <TableCell>{bancaInicialDia === null ? '—' : formatCurrencyBRL(bancaInicialDia)}</TableCell>
+                          <TableCell>
+                            <Input
+                              inputMode="decimal"
+                              value={resultText}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                setEntriesResultByDay((prev) => ({ ...prev, [p.date]: raw }));
+
+                                const normalized = raw.trim().replace(',', '.');
+                                if (normalized === '' || normalized === '+' || normalized === '-') return;
+
+                                const parsed = Number(normalized);
+                                if (Number.isFinite(parsed)) updateProfitForDay(p.date, parsed);
+                              }}
+                              onBlur={() => {
+                                const raw = entriesResultByDay[p.date] ?? String(p.profit);
+                                const normalized = raw.trim().replace(',', '.');
+                                if (normalized === '') {
+                                  updateProfitForDay(p.date, 0);
+                                  setEntriesResultByDay((prev) => ({ ...prev, [p.date]: '0' }));
+                                  return;
+                                }
+                                const parsed = Number(normalized);
+                                if (!Number.isFinite(parsed)) {
+                                  setEntriesResultByDay((prev) => ({ ...prev, [p.date]: String(p.profit) }));
+                                }
+                              }}
+                              placeholder="Ex: 150 ou -80"
+                            />
+                          </TableCell>
+                          <TableCell>{bancaFinalDia === null ? '—' : formatCurrencyBRL(bancaFinalDia)}</TableCell>
+                          <TableCell>
+                            <Badge className={bateuMeta ? 'bg-green-600 text-white border-transparent' : 'bg-secondary text-secondary-foreground border-transparent'}>
+                              {bateuMeta ? 'Bateu meta' : 'Não'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={mesa}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setEntriesMesaByDay((prev) => ({ ...prev, [p.date]: value }));
+                              }}
+                              placeholder="Opcional"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteEntry(p.date)}
+                              aria-label={`Excluir ${p.date}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    });
+                  })()}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                Mostrando {filteredProfitData.length ? entriesStartIndex + 1 : 0}–{entriesEndIndex} de {filteredProfitData.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEntriesPage((p) => Math.max(1, p - 1))}
+                  disabled={entriesPageSafe <= 1}
+                >
+                  Anterior
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Página {entriesPageSafe} de {entriesTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEntriesPage((p) => Math.min(entriesTotalPages, p + 1))}
+                  disabled={entriesPageSafe >= entriesTotalPages}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEntriesOpen(false)}>Fechar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

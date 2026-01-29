@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { GradientAlert } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
   Target, 
   TrendingUp, 
@@ -21,13 +22,14 @@ import {
   DollarSign,
   CheckCircle,
   XCircle,
-  Star,
   Flame,
   Award,
   Plus,
-  Save,
+  MoreVertical,
   Shield,
-  Lightbulb
+  Lightbulb,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -44,7 +46,7 @@ import {
 const initialTodayGoals = [
   {
     id: 1,
-    title: 'Número de Sessões',
+    title: 'Número de Entradas',
     target: 5,
     current: 3,
     type: 'sessions',
@@ -150,7 +152,44 @@ const processGoalHistory = [
 ];
 
 export default function DailyGoalsPage() {
-  const [todayGoals, setTodayGoals] = useState(initialTodayGoals);
+  function formatDayMonth(date: Date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}`;
+  }
+
+  const sanitizeGoalTitle = (value: string) => value.replace(/\s+/g, ' ').trim().slice(0, 80);
+
+  const sanitizePositiveNumberInput = (
+    value: string,
+    opts?: { allowDecimals?: boolean }
+  ) => {
+    const allowDecimals = opts?.allowDecimals ?? false;
+    let v = value.replace(/\s+/g, '').replace(',', '.');
+    v = allowDecimals ? v.replace(/[^\d.]/g, '') : v.replace(/[^\d]/g, '');
+    if (allowDecimals) {
+      const parts = v.split('.');
+      if (parts.length > 2) v = `${parts[0]}.${parts.slice(1).join('')}`;
+    }
+    return v;
+  };
+
+  const [todayGoals, setTodayGoals] = useState(() => initialTodayGoals.filter(g => !g.completed));
+  const [completedGoalsHistory, setCompletedGoalsHistory] = useState(() => {
+    const completedAt = new Date();
+    return initialTodayGoals
+      .filter(g => g.completed)
+      .map(g => ({
+        ...g,
+        completedAt: completedAt.toISOString(),
+        date: formatDayMonth(completedAt)
+      }));
+  });
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [historyTypeFilter, setHistoryTypeFilter] = useState<'all' | 'profit' | 'sessions' | 'winrate' | 'time'>('all');
+  const [historyPeriodFilter, setHistoryPeriodFilter] = useState<'all' | '7d' | '30d'>('30d');
+  const [historyPageSize, setHistoryPageSize] = useState(10);
+  const [historyPage, setHistoryPage] = useState(1);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
   const [newGoalType, setNewGoalType] = useState('sessions');
@@ -158,47 +197,14 @@ export default function DailyGoalsPage() {
   const [goalValueType, setGoalValueType] = useState('fixed'); // 'fixed' ou 'percentage'
   const [baseValue, setBaseValue] = useState('1000'); // Valor base para cálculo percentual
   const [isProfitGoalEnabled, setIsProfitGoalEnabled] = useState(false);
+  const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState(
     "Bom dia. Disciplina hoje protege sua banca amanhã."
   );
   const [showMotivationalAlert, setShowMotivationalAlert] = useState(false);
   const [currentStreak] = useState(3);
   const [totalGoalsCompleted] = useState(12);
-  
-  // Estados para missões
-  const [missions, setMissions] = useState([
-    {
-      id: 1,
-      title: "Fazer 10 apostas com estratégia Martingale",
-      description: "Use a estratégia Martingale em pelo menos 10 apostas hoje",
-      target: 10,
-      current: 3,
-      type: "strategy",
-      strategy: "Martingale",
-      reward: "50 XP",
-      completed: false
-    },
-    {
-      id: 2,
-      title: "Manter taxa de acerto acima de 70%",
-      description: "Mantenha sua taxa de acerto acima de 70% durante todo o dia",
-      target: 70,
-      current: 85,
-      type: "winrate",
-      reward: "100 XP",
-      completed: false
-    },
-    {
-      id: 3,
-      title: "Não exceder 5% da banca por aposta",
-      description: "Mantenha a disciplina e não aposte mais que 5% da banca",
-      target: 1,
-      current: 1,
-      type: "discipline",
-      reward: "75 XP",
-      completed: true
-    }
-  ]);
 
   useEffect(() => {
     const fetchPrefs = async () => {
@@ -239,18 +245,46 @@ export default function DailyGoalsPage() {
     fetchPrefs();
   }, []);
 
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [historyQuery, historyTypeFilter, historyPeriodFilter, historyPageSize]);
+
   // Calcular estatísticas do dia
+  const allTodayGoals = [...todayGoals, ...completedGoalsHistory];
   const todayStats = {
-    totalGoals: todayGoals.length,
-    completedGoals: todayGoals.filter(g => g.completed).length,
-    totalProgress: todayGoals.length > 0
-      ? todayGoals.reduce((sum, goal) => {
-        const progress = Math.min((goal.current / goal.target) * 100, 100);
-        return sum + progress;
-      }, 0) / todayGoals.length
-      : 0,
+    totalGoals: allTodayGoals.length,
+    completedGoals: allTodayGoals.filter(g => g.completed).length,
     estimatedCompletion: '18:30' // Mock
   };
+
+  const normalizedHistoryQuery = historyQuery.trim().toLowerCase();
+  const historyPeriodDays = historyPeriodFilter === '7d' ? 7 : historyPeriodFilter === '30d' ? 30 : null;
+  const historyCutoff = historyPeriodDays ? new Date(Date.now() - historyPeriodDays * 24 * 60 * 60 * 1000) : null;
+
+  const filteredCompletedGoalsHistory = completedGoalsHistory.filter((goal: any) => {
+    if (historyTypeFilter !== 'all' && goal.type !== historyTypeFilter) return false;
+
+    if (historyCutoff) {
+      const completedAt = goal.completedAt ? new Date(goal.completedAt) : null;
+      if (completedAt && completedAt < historyCutoff) return false;
+    }
+
+    if (!normalizedHistoryQuery) return true;
+    const label =
+      goal.type === 'profit' ? 'Lucro' :
+      goal.type === 'sessions' ? 'Entradas' :
+      goal.type === 'winrate' ? 'Taxa de Acerto' :
+      goal.type === 'time' ? 'Tempo' : String(goal.type ?? '');
+    const haystack = `${goal.title ?? ''} ${label}`.toLowerCase();
+    return haystack.includes(normalizedHistoryQuery);
+  });
+
+  const historyTotalPages = Math.max(1, Math.ceil(filteredCompletedGoalsHistory.length / historyPageSize));
+  const historyPageSafe = Math.min(historyPage, historyTotalPages);
+  const paginatedCompletedGoalsHistory = filteredCompletedGoalsHistory.slice(
+    (historyPageSafe - 1) * historyPageSize,
+    historyPageSafe * historyPageSize
+  );
 
   // Função para calcular valor da meta baseado no tipo
   const calculateGoalValue = () => {
@@ -260,6 +294,35 @@ export default function DailyGoalsPage() {
       return (base * percentage) / 100;
     }
     return parseFloat(newGoalTarget) || 0;
+  };
+
+  const resetGoalForm = () => {
+    setNewGoalTitle('');
+    setNewGoalTarget('');
+    setNewGoalType('sessions');
+    setNewGoalDeadline('23:59');
+    setGoalValueType('fixed');
+  };
+
+  const openAddGoalModal = () => {
+    setEditingGoalId(null);
+    resetGoalForm();
+    setIsAddGoalModalOpen(true);
+  };
+
+  const openEditGoalModal = (goal: any) => {
+    setEditingGoalId(goal.id);
+    setNewGoalTitle(sanitizeGoalTitle(String(goal.title || '')));
+    setNewGoalType(String(goal.type || 'sessions'));
+    setNewGoalDeadline(String(goal.deadline || '23:59'));
+    const inferredValueType = String(goal.valueType || 'fixed');
+    setGoalValueType(goal.type === 'profit' ? inferredValueType : 'fixed');
+    if (goal.type === 'profit' && inferredValueType === 'percentage' && goal.originalTarget) {
+      setNewGoalTarget(sanitizePositiveNumberInput(String(goal.originalTarget), { allowDecimals: true }));
+    } else {
+      setNewGoalTarget(sanitizePositiveNumberInput(String(goal.target ?? ''), { allowDecimals: goal.type === 'profit' }));
+    }
+    setIsAddGoalModalOpen(true);
   };
 
   // Função para gerar feedback motivacional com LLM
@@ -301,12 +364,12 @@ export default function DailyGoalsPage() {
     // Título padrão quando não informado
     const defaultTitle =
       newGoalType === 'profit' ? `Meta de Lucro` :
-      newGoalType === 'sessions' ? `Número de Sessões` :
+      newGoalType === 'sessions' ? `Número de Entradas` :
       newGoalType === 'winrate' ? `Taxa de Acerto` :
       newGoalType === 'time' ? `Tempo de Jogo` : 'Nova Meta';
 
     const titleWithValue = () => {
-      if (newGoalType === 'profit') return `${defaultTitle} (${calculatedTarget} R$)`;
+      if (newGoalType === 'profit') return `${defaultTitle} (R$${calculatedTarget})`;
       if (newGoalType === 'sessions') return `${defaultTitle} (${calculatedTarget})`;
       if (newGoalType === 'winrate') return `${defaultTitle} (${calculatedTarget}%)`;
       if (newGoalType === 'time') return `${defaultTitle} (${calculatedTarget} min)`;
@@ -327,68 +390,123 @@ export default function DailyGoalsPage() {
     };
 
     setTodayGoals([...todayGoals, newGoal]);
-    setNewGoalTitle('');
-    setNewGoalTarget('');
-    setNewGoalType('sessions');
-    setNewGoalDeadline('23:59');
-    setGoalValueType('fixed');
+    resetGoalForm();
 
     generateMotivationalFeedback('encouragement');
   };
 
-  const handleCompleteGoal = (goalId: number) => {
-    setTodayGoals(todayGoals.map(goal => 
-      goal.id === goalId 
-        ? { ...goal, completed: true, current: goal.target }
-        : goal
-    ));
-    
-    generateMotivationalFeedback('achievement');
-  };
+  const handleUpdateGoal = () => {
+    if (editingGoalId == null) return;
 
-  // Função para completar missão
-  const handleCompleteMission = (missionId: number) => {
-    setMissions(missions.map(mission => 
-      mission.id === missionId 
-        ? { ...mission, completed: true, current: mission.target }
-        : mission
-    ));
-    
-    generateMotivationalFeedback('achievement');
-  };
-
-  // Função para simular progresso de missão
-  const simulateMissionProgress = (missionId: number, increment: number = 1) => {
-    setMissions(missions.map(mission => {
-      if (mission.id === missionId && !mission.completed) {
-        const newCurrent = Math.min(mission.current + increment, mission.target);
-        const completed = newCurrent >= mission.target;
-        
-        if (completed && !mission.completed) {
-          generateMotivationalFeedback('achievement');
-        }
-        
-        return { ...mission, current: newCurrent, completed };
-      }
-      return mission;
-    }));
-  };
-
-  const handleSaveGoals = async () => {
-    try {
-      const profitGoal = todayGoals.find(g => g.type === 'profit');
-      await fetch('/api/user-preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          daily_goal: isProfitGoalEnabled ? (profitGoal?.target ?? 0) : 0
-        })
-      });
-    } catch {
-      setMotivationalMessage('Não foi possível salvar agora. Tente novamente.');
-      setShowMotivationalAlert(true);
-      setTimeout(() => setShowMotivationalAlert(false), 5000);
+    let calculatedTarget = calculateGoalValue();
+    if (!newGoalTarget || calculatedTarget <= 0) {
+      calculatedTarget =
+        newGoalType === 'profit' ? 100 :
+        newGoalType === 'sessions' ? 5 :
+        newGoalType === 'winrate' ? 70 :
+        newGoalType === 'time' ? 60 : 100;
     }
+
+    const defaultTitle =
+      newGoalType === 'profit' ? `Meta de Lucro` :
+      newGoalType === 'sessions' ? `Número de Entradas` :
+      newGoalType === 'winrate' ? `Taxa de Acerto` :
+      newGoalType === 'time' ? `Tempo de Jogo` : 'Nova Meta';
+
+    const titleWithValue = () => {
+      if (newGoalType === 'profit') return `${defaultTitle} (R$${calculatedTarget})`;
+      if (newGoalType === 'sessions') return `${defaultTitle} (${calculatedTarget})`;
+      if (newGoalType === 'winrate') return `${defaultTitle} (${calculatedTarget}%)`;
+      if (newGoalType === 'time') return `${defaultTitle} (${calculatedTarget} min)`;
+      return defaultTitle;
+    };
+
+    const isEditingToday = todayGoals.some((g: any) => g.id === editingGoalId);
+
+    if (isEditingToday) {
+      const completedAt = new Date();
+      setTodayGoals(prev => {
+        const updatedGoals = prev.map((goal: any) => {
+          if (goal.id !== editingGoalId) return goal;
+          const current = Number(goal.current ?? 0);
+          return {
+            ...goal,
+            title: newGoalTitle ? newGoalTitle : titleWithValue(),
+            target: calculatedTarget,
+            type: newGoalType as 'profit' | 'sessions' | 'winrate' | 'time',
+            deadline: newGoalDeadline,
+            valueType: goalValueType,
+            originalTarget: newGoalTarget,
+            completed: current >= calculatedTarget
+          };
+        });
+
+        const updatedGoal = updatedGoals.find((g: any) => g.id === editingGoalId);
+        if (updatedGoal?.completed) {
+          setCompletedGoalsHistory(history => [
+            {
+              ...updatedGoal,
+              completed: true,
+              current: updatedGoal.target,
+              completedAt: completedAt.toISOString(),
+              date: formatDayMonth(completedAt)
+            },
+            ...history
+          ]);
+          return updatedGoals.filter((g: any) => g.id !== editingGoalId);
+        }
+
+        return updatedGoals;
+      });
+    } else {
+      setCompletedGoalsHistory(prev => prev.map((goal: any) => {
+        if (goal.id !== editingGoalId) return goal;
+        return {
+          ...goal,
+          title: newGoalTitle ? newGoalTitle : titleWithValue(),
+          target: calculatedTarget,
+          type: newGoalType as 'profit' | 'sessions' | 'winrate' | 'time',
+          deadline: newGoalDeadline,
+          valueType: goalValueType,
+          originalTarget: newGoalTarget,
+          completed: true,
+          current: calculatedTarget
+        };
+      }));
+    }
+
+    setEditingGoalId(null);
+    resetGoalForm();
+    generateMotivationalFeedback('encouragement');
+  };
+
+  const handleDeleteGoal = (goalId: number) => {
+    setTodayGoals(todayGoals.filter((g: any) => g.id !== goalId));
+  };
+
+  const handleDeleteHistoryGoal = (goalId: number) => {
+    setCompletedGoalsHistory(prev => prev.filter((g: any) => g.id !== goalId));
+  };
+
+  const finalizeGoal = (goalId: number, outcome: 'success' | 'failed') => {
+    const finishedAt = new Date();
+    setTodayGoals(prev => {
+      const goal = prev.find(g => g.id === goalId);
+      if (!goal) return prev;
+      setCompletedGoalsHistory(history => [
+        {
+          ...goal,
+          completed: outcome === 'success',
+          current: outcome === 'success' ? goal.target : goal.current,
+          completedAt: finishedAt.toISOString(),
+          date: formatDayMonth(finishedAt),
+          outcome
+        },
+        ...history
+      ]);
+      return prev.filter(g => g.id !== goalId);
+    });
+    generateMotivationalFeedback(outcome === 'success' ? 'achievement' : 'encouragement');
   };
 
   const getGoalIcon = (type: string) => {
@@ -401,13 +519,26 @@ export default function DailyGoalsPage() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'border-red-600 bg-red-100 dark:border-red-700 dark:bg-red-900/20';
-      case 'medium': return 'border-yellow-600 bg-yellow-100 dark:border-yellow-700 dark:bg-yellow-900/20';
-      case 'low': return 'border-green-600 bg-green-100 dark:border-green-700 dark:bg-green-900/20';
-      default: return 'border-slate-600 bg-slate-100 dark:border-slate-700 dark:bg-slate-900/20';
-    }
+  const formatGoalDisplayTitle = (goal: any) => {
+    const rawTitle = String(goal?.title ?? '').trim();
+    const title =
+      rawTitle ||
+      (goal?.type === 'profit' ? 'Meta de Lucro' :
+        goal?.type === 'sessions' ? 'Número de Entradas' :
+        goal?.type === 'winrate' ? 'Taxa de Acerto' :
+        goal?.type === 'time' ? 'Tempo de Jogo' : 'Meta');
+
+    if (/\([^)]*\)\s*$/.test(title)) return title;
+
+    const target = goal?.target ?? '';
+    if (goal?.type === 'profit') return `${title} (R$${target})`;
+    if (goal?.type === 'winrate') return `${title} (${target}%)`;
+    if (goal?.type === 'time') return `${title} (${target} min)`;
+    return `${title} (${target})`;
+  };
+
+  const getPriorityColor = (_priority: string) => {
+    return 'border-green-600 bg-green-100 dark:border-green-700 dark:bg-green-900/20';
   };
 
   const getMotivationalMessage = () => {
@@ -428,7 +559,8 @@ export default function DailyGoalsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <TooltipProvider>
+        <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -449,19 +581,13 @@ export default function DailyGoalsPage() {
           </div>
         </div>
 
-        <TooltipProvider>
-          <Alert
-            className={
-              showMotivationalAlert
-                ? "relative border-green-500 bg-green-100 dark:border-green-700 dark:bg-green-900/20"
-                : "relative border-blue-500 bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20"
-            }
-          >
-            {showMotivationalAlert ? <Trophy className="h-4 w-4" /> : <Star className="h-4 w-4" />}
-            <AlertDescription className="font-medium">
-              {showMotivationalAlert ? motivationalMessage : getMotivationalMessage()}
-            </AlertDescription>
-            <div className="absolute right-2 top-2 flex items-center gap-1">
+        <GradientAlert
+          variant={showMotivationalAlert ? 'success' : 'information'}
+          title={
+            <div className="flex w-full items-start justify-between gap-3">
+              <span className="flex-1 font-medium">
+                {showMotivationalAlert ? motivationalMessage : getMotivationalMessage()}
+              </span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Ajuda">
@@ -472,19 +598,10 @@ export default function DailyGoalsPage() {
                   Cumprir essas metas reforça disciplina e reduz risco na Gestão de Banca.
                 </TooltipContent>
               </Tooltip>
-              {showMotivationalAlert ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2"
-                  onClick={() => setShowMotivationalAlert(false)}
-                >
-                  ×
-                </Button>
-              ) : null}
             </div>
-          </Alert>
-        </TooltipProvider>
+          }
+          onClose={showMotivationalAlert ? () => setShowMotivationalAlert(false) : undefined}
+        />
 
         {/* Cards de Resumo */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -494,11 +611,10 @@ export default function DailyGoalsPage() {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{todayStats.totalProgress.toFixed(0)}%</div>
-              <Progress value={todayStats.totalProgress} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-1">
-                {todayStats.completedGoals} de {todayStats.totalGoals} metas concluídas
-              </p>
+              <div className="text-2xl font-bold">
+                {todayStats.completedGoals}/{todayStats.totalGoals}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Metas concluídas hoje</p>
             </CardContent>
           </Card>
 
@@ -546,27 +662,34 @@ export default function DailyGoalsPage() {
         <Tabs defaultValue="today" className="space-y-4">
           <TabsList>
             <TabsTrigger value="today">Hoje</TabsTrigger>
-            <TabsTrigger value="missions">Missões</TabsTrigger>
             <TabsTrigger value="weekly">Semanal</TabsTrigger>
             <TabsTrigger value="achievements">Conquistas</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
 
           <TabsContent value="today" className="space-y-4">
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6">
               {/* Metas de Hoje */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Metas de Hoje</CardTitle>
-                  <CardDescription>
-                    Compromissos configuráveis para manter disciplina
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+                  <div className="space-y-1.5">
+                    <CardTitle>Metas de Hoje</CardTitle>
+                    <CardDescription>
+                      Compromissos configuráveis para manter disciplina
+                    </CardDescription>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2"
+                    onClick={openAddGoalModal}
+                    aria-label="Adicionar nova meta"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {todayGoals.map((goal) => {
-                    const progress = Math.min((goal.current / goal.target) * 100, 100);
-                    const isOverTarget = goal.current > goal.target;
-                    
                     return (
                       <div
                         key={goal.id}
@@ -575,7 +698,7 @@ export default function DailyGoalsPage() {
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             {getGoalIcon(goal.type)}
-                            <h4 className="font-medium">{goal.title}</h4>
+                            <h4 className="font-medium">{formatGoalDisplayTitle(goal)}</h4>
                             {goal.completed && (
                               <CheckCircle className="h-4 w-4 text-green-600" />
                             )}
@@ -584,59 +707,67 @@ export default function DailyGoalsPage() {
                             <Badge variant="outline" className="text-xs">
                               {goal.deadline}
                             </Badge>
-                            {!goal.completed && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleCompleteGoal(goal.id)}
-                              >
-                                <CheckCircle className="h-3 w-3" />
-                              </Button>
-                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="outline" aria-label="Mais ações">
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                              {!goal.completed ? (
+                                <>
+                                  <DropdownMenuItem onClick={() => finalizeGoal(goal.id, 'success')}>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Concluir
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => finalizeGoal(goal.id, 'failed')}>
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Não atingida
+                                  </DropdownMenuItem>
+                                </>
+                              ) : null}
+                                <DropdownMenuItem onClick={() => openEditGoalModal(goal)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteGoal(goal.id)}>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Progresso:</span>
-                            <span className={isOverTarget ? 'text-green-600 font-medium' : ''}>
-                              {goal.current} / {goal.target}
-                              {goal.type === 'profit' && ' R$'}
-                              {goal.type === 'winrate' && '%'}
-                              {goal.type === 'time' && ' min'}
-                            </span>
-                          </div>
-                          <Progress 
-                            value={progress} 
-                            className={`h-2 ${isOverTarget ? 'bg-green-100' : ''}`}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            {progress.toFixed(0)}% concluído
-                            {isOverTarget && ' (Meta superada)'}
-                          </p>
                         </div>
                       </div>
                     );
                   })}
                 </CardContent>
               </Card>
+            </div>
 
-              {/* Adicionar Nova Meta */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Adicionar Nova Meta</CardTitle>
-                  <CardDescription>
-                    Crie uma nova meta para hoje
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <Dialog open={isAddGoalModalOpen} onOpenChange={setIsAddGoalModalOpen}>
+              <DialogContent
+                className="max-w-xl overflow-hidden border border-white/20 bg-black/60 p-6 shadow-2xl backdrop-blur-xl !rounded-none sm:!rounded-none dark:border-white/10 dark:bg-zinc-950/50"
+                style={{
+                  clipPath:
+                    'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)',
+                }}
+              >
+                <DialogHeader>
+                  <DialogTitle>{editingGoalId == null ? 'Adicionar Nova Meta' : 'Editar Meta'}</DialogTitle>
+                  <DialogDescription>
+                    {editingGoalId == null ? 'Crie uma nova meta para hoje' : 'Ajuste sua meta atual'}
+                  </DialogDescription>
+                </DialogHeader>
+
+                  <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="goal-title">Título da Meta</Label>
                     <Input
                       id="goal-title"
-                      placeholder="Ex: 5 sessões, 70% de acerto, 120 min"
+                      placeholder="Ex: 5 entradas, R$ 100, 70% de acerto, 120 min"
                       value={newGoalTitle}
-                      onChange={(e) => setNewGoalTitle(e.target.value)}
+                      onChange={(e) => setNewGoalTitle(sanitizeGoalTitle(e.target.value))}
                     />
                   </div>
 
@@ -647,6 +778,7 @@ export default function DailyGoalsPage() {
                         value={newGoalType}
                         onValueChange={(value) => {
                           setNewGoalType(value);
+                          if (value === 'profit') setIsProfitGoalEnabled(true);
                           if (value !== 'profit') setGoalValueType('fixed');
                         }}
                       >
@@ -654,10 +786,10 @@ export default function DailyGoalsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="sessions">Sessões</SelectItem>
+                          <SelectItem value="profit">Valor em dinheiro (R$)</SelectItem>
+                          <SelectItem value="sessions">Entradas (Nº)</SelectItem>
                           <SelectItem value="winrate">Taxa de Acerto (%)</SelectItem>
                           <SelectItem value="time">Tempo (min)</SelectItem>
-                          {isProfitGoalEnabled ? <SelectItem value="profit">Lucro (opcional)</SelectItem> : null}
                         </SelectContent>
                       </Select>
                     </div>
@@ -685,7 +817,7 @@ export default function DailyGoalsPage() {
                               type="number"
                               placeholder="1000"
                               value={baseValue}
-                              onChange={(e) => setBaseValue(e.target.value)}
+                              onChange={(e) => setBaseValue(sanitizePositiveNumberInput(e.target.value, { allowDecimals: true }))}
                             />
                           </div>
                         ) : null}
@@ -694,14 +826,27 @@ export default function DailyGoalsPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="goal-target">
-                        {newGoalType === 'profit' && goalValueType === 'percentage' ? 'Percentual (%)' : 'Valor alvo'}
+                        {newGoalType === 'profit' && goalValueType === 'percentage'
+                          ? 'Percentual (%)'
+                          : newGoalType === 'profit'
+                            ? 'Valor alvo (R$)'
+                            : 'Valor alvo'}
                       </Label>
                       <Input
                         id="goal-target"
                         type="number"
-                        placeholder={newGoalType === 'profit' && goalValueType === 'percentage' ? '10' : '5'}
+                        placeholder={
+                          newGoalType === 'profit' && goalValueType === 'percentage'
+                            ? '10'
+                            : newGoalType === 'profit'
+                              ? '100'
+                              : '5'
+                        }
                         value={newGoalTarget}
-                        onChange={(e) => setNewGoalTarget(e.target.value)}
+                        onChange={(e) => {
+                          const allowDecimals = newGoalType === 'profit';
+                          setNewGoalTarget(sanitizePositiveNumberInput(e.target.value, { allowDecimals }));
+                        }}
                       />
                       {newGoalType === 'profit' && goalValueType === 'percentage' && newGoalTarget ? (
                         <p className="text-xs text-muted-foreground">
@@ -713,180 +858,53 @@ export default function DailyGoalsPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="goal-deadline">Prazo</Label>
-                    <Input
-                      id="goal-deadline"
-                      type="time"
-                      value={newGoalDeadline}
-                      onChange={(e) => setNewGoalDeadline(e.target.value)}
-                    />
+                    <Select value={newGoalDeadline} onValueChange={setNewGoalDeadline}>
+                      <SelectTrigger id="goal-deadline">
+                        <SelectValue placeholder="Selecione o horário" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {(() => {
+                          const base: string[] = []
+                          for (let h = 0; h < 24; h++) {
+                            for (let m = 0; m < 60; m += 5) {
+                              const hh = String(h).padStart(2, '0')
+                              const mm = String(m).padStart(2, '0')
+                              base.push(`${hh}:${mm}`)
+                            }
+                          }
+                          if (!base.includes('23:59')) base.push('23:59')
+                          if (newGoalDeadline && !base.includes(newGoalDeadline)) base.push(newGoalDeadline)
+                          const uniqueSorted = Array.from(new Set(base)).sort()
+                          return uniqueSorted.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))
+                        })()}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <Button onClick={handleAddGoal} className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Meta
-                  </Button>
-                  <Button variant="outline" onClick={handleSaveGoals} className="w-full">
-                    <Save className="h-4 w-4 mr-2" />
-                    Salvar Metas
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="missions" className="space-y-4">
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Missões Ativas */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between gap-2">
-                    Missões Diárias
-                    <Badge variant="secondary" className="gap-1">
-                      <Star className="h-3 w-3" />
-                      XP
-                    </Badge>
-                  </CardTitle>
-                  <CardDescription>
-                    Desafios sugeridos pelo sistema para manter consistência
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {missions.map((mission) => {
-                    const progress = Math.min((mission.current / mission.target) * 100, 100);
-                    const isOverTarget = mission.current > mission.target;
-                    
-                    return (
-                      <div
-                        key={mission.id}
-                        className={`p-4 border rounded-lg ${
-                          mission.completed 
-                            ? 'border-green-600 bg-green-100 dark:border-green-700 dark:bg-green-900/20' 
-                            : 'border-slate-600 bg-slate-100 dark:border-slate-700 dark:bg-slate-900/20'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            {mission.type === 'strategy' && <Target className="h-4 w-4 text-blue-600" />}
-                            {mission.type === 'winrate' && <TrendingUp className="h-4 w-4 text-green-600" />}
-                            {mission.type === 'discipline' && <Shield className="h-4 w-4 text-purple-600" />}
-                            <h4 className="font-medium">{mission.title}</h4>
-                            {mission.completed && (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {mission.reward}
-                            </Badge>
-                            {!mission.completed && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleCompleteMission(mission.id)}
-                              >
-                                <CheckCircle className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {mission.description}
-                        </p>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Progresso:</span>
-                            <span className={isOverTarget ? 'text-green-600 font-medium' : ''}>
-                              {mission.current} / {mission.target}
-                              {mission.type === 'winrate' && '%'}
-                            </span>
-                          </div>
-                          <Progress 
-                            value={progress} 
-                            className={`h-2 ${isOverTarget ? 'bg-green-100 dark:bg-green-900/20' : ''}`}
-                          />
-                          <div className="flex justify-between items-center">
-                            <p className="text-xs text-muted-foreground">
-                              {progress.toFixed(0)}% concluído
-                              {isOverTarget && ' (Superado)'}
-                            </p>
-                            {!mission.completed && mission.type === 'strategy' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => simulateMissionProgress(mission.id)}
-                                className="text-xs"
-                              >
-                                Simular +1
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-
-              {/* Estatísticas de Missões */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Estatísticas de Missões</CardTitle>
-                  <CardDescription>
-                    Seu progresso geral em missões
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 border rounded-lg bg-slate-100 dark:bg-slate-900/20 border-slate-600 dark:border-slate-700">
-                      <div className="text-2xl font-bold text-green-600">
-                        {missions.filter(m => m.completed).length}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Concluídas</p>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg bg-slate-100 dark:bg-slate-900/20 border-slate-600 dark:border-slate-700">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {missions.filter(m => !m.completed).length}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Pendentes</p>
-                    </div>
+                  <div className="space-y-2">
+                    <Button
+                      onClick={() => {
+                        if (editingGoalId == null) {
+                          handleAddGoal();
+                        } else {
+                          handleUpdateGoal();
+                        }
+                        setIsAddGoalModalOpen(false);
+                        setEditingGoalId(null);
+                      }}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      {editingGoalId == null ? 'Adicionar Meta' : 'Salvar Alterações'}
+                    </Button>
                   </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">XP Total Disponível:</span>
-                      <span className="font-medium">
-                        {missions.reduce((total, mission) => {
-                          const xp = parseInt(mission.reward.replace(' XP', ''));
-                          return total + xp;
-                        }, 0)} XP
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">XP Conquistado:</span>
-                      <span className="font-medium text-green-600">
-                        {missions
-                          .filter(m => m.completed)
-                          .reduce((total, mission) => {
-                            const xp = parseInt(mission.reward.replace(' XP', ''));
-                            return total + xp;
-                          }, 0)} XP
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    className="w-full" 
-                    onClick={() => generateMotivationalFeedback('encouragement')}
-                  >
-                    <Lightbulb className="h-4 w-4 mr-2" />
-                    Motivação Sofia
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="weekly" className="space-y-4">
@@ -1013,7 +1031,159 @@ export default function DailyGoalsPage() {
                   Acompanhe seu histórico de metas dos últimos dias
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-6">
+                {completedGoalsHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="space-y-1">
+                          <Label>Buscar</Label>
+                          <Input
+                            value={historyQuery}
+                            onChange={(e) => setHistoryQuery(e.target.value)}
+                            placeholder="Buscar por meta"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Tipo</Label>
+                          <Select value={historyTypeFilter} onValueChange={(v) => setHistoryTypeFilter(v as any)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos</SelectItem>
+                              <SelectItem value="sessions">Entradas</SelectItem>
+                              <SelectItem value="winrate">Taxa de Acerto</SelectItem>
+                              <SelectItem value="time">Tempo</SelectItem>
+                              <SelectItem value="profit">Lucro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Período</Label>
+                          <Select value={historyPeriodFilter} onValueChange={(v) => setHistoryPeriodFilter(v as any)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+                              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+                              <SelectItem value="all">Tudo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 justify-end">
+                        <Select value={String(historyPageSize)} onValueChange={(v) => setHistoryPageSize(Number(v))}>
+                          <SelectTrigger className="w-[110px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10 / pág</SelectItem>
+                            <SelectItem value="20">20 / pág</SelectItem>
+                            <SelectItem value="50">50 / pág</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                          disabled={historyPageSafe <= 1}
+                        >
+                          Anterior
+                        </Button>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                          Página {historyPageSafe} de {historyTotalPages}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setHistoryPage(p => Math.min(historyTotalPages, p + 1))}
+                          disabled={historyPageSafe >= historyTotalPages}
+                        >
+                          Próxima
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Meta</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedCompletedGoalsHistory.length > 0 ? paginatedCompletedGoalsHistory.map((goal: any) => {
+                          const label =
+                            goal.type === 'profit' ? 'Lucro' :
+                            goal.type === 'sessions' ? 'Entradas' :
+                            goal.type === 'winrate' ? 'Taxa de Acerto' :
+                            goal.type === 'time' ? 'Tempo' : String(goal.type ?? '');
+                          const suffix =
+                            goal.type === 'profit' ? ' R$' :
+                            goal.type === 'winrate' ? '%' :
+                            goal.type === 'time' ? ' min' : '';
+
+                          return (
+                            <TableRow key={goal.id}>
+                              <TableCell>{goal.date ?? (goal.completedAt ? formatDayMonth(new Date(goal.completedAt)) : '')}</TableCell>
+                              <TableCell>{goal.title}</TableCell>
+                              <TableCell>{label}</TableCell>
+                              <TableCell>
+                                {goal.target}
+                                {suffix}
+                              </TableCell>
+                              <TableCell>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex">
+                                      {goal.completed ? (
+                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                      ) : (
+                                        <XCircle className="h-4 w-4 text-red-600" />
+                                      )}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {goal.completed ? 'Meta batida' : 'Meta não batida'}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="inline-flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (!confirm('Excluir esta meta do histórico?')) return;
+                                      handleDeleteHistoryGoal(goal.id);
+                                    }}
+                                    aria-label="Excluir meta do histórico"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }) : (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-sm text-muted-foreground">
+                              Nenhuma meta encontrada com os filtros atuais.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : null}
+
                 {isProfitGoalEnabled ? (
                   <Table>
                     <TableHeader>
@@ -1021,7 +1191,7 @@ export default function DailyGoalsPage() {
                         <TableHead>Data</TableHead>
                         <TableHead>Meta (lucro)</TableHead>
                         <TableHead>Resultado</TableHead>
-                        <TableHead>Sessões</TableHead>
+                        <TableHead>Entradas</TableHead>
                         <TableHead>Taxa</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
@@ -1056,7 +1226,7 @@ export default function DailyGoalsPage() {
                         <TableHead>Data</TableHead>
                         <TableHead>Metas</TableHead>
                         <TableHead>Concluídas</TableHead>
-                        <TableHead>Sessões</TableHead>
+                        <TableHead>Entradas</TableHead>
                         <TableHead>Taxa</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
@@ -1089,7 +1259,8 @@ export default function DailyGoalsPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+        </div>
+      </TooltipProvider>
     </DashboardLayout>
   );
 }

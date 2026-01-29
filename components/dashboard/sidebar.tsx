@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useUpgrade } from '@/contexts/upgrade-context';
+import { useCurrentUserStatus } from '@/hooks/useUserStatus';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 // Remover ScrollArea para preservar posição de scroll manualmente
@@ -95,8 +96,12 @@ interface SidebarProps {
 
 export function Sidebar({ open, setOpen }: SidebarProps) {
   const { openUpgradeModal } = useUpgrade();
+  const { status: userStatus } = useCurrentUserStatus();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const isPro = userStatus?.isPremium ?? false;
+  const footerTitle = isPro ? 'Versão Pro' : 'Versão Free';
+  const footerDescription = isPro ? 'Recursos avançados de IA liberados' : 'Atualize para liberar recursos avançados de IA';
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     navigationSections.forEach(section => {
@@ -227,12 +232,26 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
       {/* Footer */}
       <div className="border-t p-4">
         {!collapsed && (
-          <div className="rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 p-3 transition-opacity duration-200">
-            <h3 className="text-sm font-medium font-urbanist">Versão Pro</h3>
-            <p className="text-xs text-muted-foreground mt-1 font-jakarta">
-              Recursos avançados de IA
-            </p>
-          </div>
+          <>
+            {isPro ? (
+              <div className="rounded-lg bg-gradient-to-r from-blue-700/10 to-blue-600/10 p-3 transition-opacity duration-200">
+                <h3 className="text-sm font-medium font-urbanist">{footerTitle}</h3>
+                <p className="text-xs text-muted-foreground mt-1 font-jakarta">
+                  {footerDescription}
+                </p>
+              </div>
+            ) : (
+              <a
+                href="https://pay.v1sofia.com/checkout"
+                className="block rounded-lg bg-gradient-to-r from-blue-700/10 to-blue-600/10 p-3 transition-opacity duration-200"
+              >
+                <h3 className="text-sm font-medium font-urbanist">{footerTitle}</h3>
+                <p className="text-xs text-muted-foreground mt-1 font-jakarta">
+                  {footerDescription}
+                </p>
+              </a>
+            )}
+          </>
         )}
       </div>
     </div>
