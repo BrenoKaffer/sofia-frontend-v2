@@ -452,7 +452,7 @@ function RealTimeMonitoringDashboard({
                 <p className="font-semibold">{riskMetrics.bankrollUsage.toFixed(1)}%</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Max Drawdown</p>
+                <p className="text-muted-foreground">Maior Queda da Banca (Max Drawdown)</p>
                 <p className="font-semibold text-red-400">
                   R$ {Math.abs(riskMetrics.maxDrawdown).toFixed(2)}
                 </p>

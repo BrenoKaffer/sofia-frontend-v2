@@ -262,3 +262,23 @@
 .highlight-active {
   z-index: 20;
 }
+
+.sofia-pill-progress-shimmer {
+  transform: translateX(-120%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: sofia-pill-shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sofia-pill-progress-shimmer {
+    animation: none;
+    opacity: 0.35;
+    transform: none;
+  }
+}
+
+@keyframes sofia-pill-shimmer {
+  to {
+    transform: translateX(120%);
+  }
+}

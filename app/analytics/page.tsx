@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { GradientAlert } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -457,10 +457,15 @@ export default function AnalyticsPage() {
                   <TrendingDown className="h-5 w-5 text-red-500 mr-1" />
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="text-sm font-medium cursor-help">Max Drawdown</span>
+                      <span className="text-sm font-medium cursor-help">Maior Queda da Banca</span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Maior queda do pico ao vale no período.</p>
+                      <div className="space-y-1">
+                        <p>Maior perda acumulada antes de recuperar.</p>
+                        <p className="text-xs text-muted-foreground">
+                          Max Drawdown: maior queda percentual entre um pico e um fundo.
+                        </p>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -472,10 +477,13 @@ export default function AnalyticsPage() {
                   <Activity className="h-5 w-5 text-blue-500 mr-1" />
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="text-sm font-medium cursor-help">Sharpe Ratio</span>
+                      <span className="text-sm font-medium cursor-help">Qualidade do Resultado</span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Quanto retorno você teve pelo risco que correu.</p>
+                      <div className="space-y-1">
+                        <p>Quanto retorno você teve para o risco assumido.</p>
+                        <p className="text-xs text-muted-foreground">Sharpe Ratio: retorno ajustado ao risco.</p>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -572,20 +580,30 @@ export default function AnalyticsPage() {
                             <TableHead>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="cursor-help">Max Drawdown</span>
+                                  <span className="cursor-help">Maior Queda</span>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Maior queda do pico ao vale no período.</p>
+                                  <div className="space-y-1">
+                                    <p>Maior perda acumulada antes de recuperar.</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Maior Queda da Banca (Max Drawdown).
+                                    </p>
+                                  </div>
                                 </TooltipContent>
                               </Tooltip>
                             </TableHead>
                             <TableHead>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="cursor-help">Sharpe Ratio</span>
+                                  <span className="cursor-help">Qualidade do Resultado</span>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Quanto retorno você teve pelo risco que correu.</p>
+                                  <div className="space-y-1">
+                                    <p>Quanto retorno você teve para o risco assumido.</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Qualidade do Resultado (Sharpe Ratio).
+                                    </p>
+                                  </div>
                                 </TooltipContent>
                               </Tooltip>
                             </TableHead>
@@ -764,24 +782,21 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Sugestão baseada nos dados:</strong> considerar aumentar a exposição em Fibonacci em até +10% e manter Dozens ativa.
-                    </AlertDescription>
-                  </Alert>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Sugestão baseada nos dados:</strong> considerar pausar Martingale por 24h ou reduzir stake até o drawdown voltar a um patamar mais seguro.
-                    </AlertDescription>
-                  </Alert>
-                  <Alert>
-                    <TrendingUp className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Sugestão baseada nos dados:</strong> considerar aumentar a frequência de sinais na roleta Evolution, mantendo limite de risco.
-                    </AlertDescription>
-                  </Alert>
+                  <GradientAlert
+                    variant="success"
+                    title="Sugestão baseada nos dados:"
+                    description="considerar aumentar a exposição em Fibonacci em até +10% e manter Dozens ativa."
+                  />
+                  <GradientAlert
+                    variant="warning"
+                    title="Sugestão baseada nos dados:"
+                    description="considerar pausar Martingale por 24h ou reduzir stake até o drawdown voltar a um patamar mais seguro."
+                  />
+                  <GradientAlert
+                    variant="information"
+                    title="Sugestão baseada nos dados:"
+                    description="considerar aumentar a frequência de sinais na roleta Evolution, mantendo limite de risco."
+                  />
                 </div>
               </CardContent>
             </Card>

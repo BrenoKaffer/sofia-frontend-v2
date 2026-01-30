@@ -81,6 +81,109 @@ interface StrategyOption {
   name: string;
 }
 
+const DASHBOARD_USE_MOCK_DATA =
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' || process.env.USE_MOCK_DATA === 'true';
+
+const DASHBOARD_MOCK_TABLES: Array<{ id: string; name: string }> = [
+  { id: 'pragmatic-mega-roulette', name: 'Mega Roulette' },
+  { id: 'pragmatic-brazilian', name: 'Roleta Brasileira' },
+  { id: 'evolution-immersive', name: 'Immersive Roulette' },
+  { id: 'evolution-live', name: 'Roleta ao Vivo' },
+];
+
+const DASHBOARD_MOCK_STRATEGIES: StrategyOption[] = [
+  { id: 'martingale-classico', name: 'Martingale Clássico' },
+  { id: 'fibonacci-avancado', name: 'Fibonacci Avançado' },
+  { id: 'dalembert', name: "D'Alembert" },
+  { id: 'vizinhanca-zero', name: 'Vizinhança do Zero' },
+];
+
+function dashboardMockRandomInt(min: number, max: number) {
+  const lo = Math.ceil(min);
+  const hi = Math.floor(max);
+  return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+}
+
+function dashboardMockPick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function dashboardMockUniqueNumbers(count: number, min: number, max: number) {
+  const out = new Set<number>();
+  const target = Math.max(0, Math.min(count, max - min + 1));
+  while (out.size < target) out.add(dashboardMockRandomInt(min, max));
+  return Array.from(out);
+}
+
+function dashboardCreateMockKpis(now: number): KpiData[] {
+  return DASHBOARD_MOCK_STRATEGIES.map((s, idx) => {
+    const baseSignals = 120 + idx * 35;
+    const total = baseSignals + dashboardMockRandomInt(0, 18);
+    const hitRate = 68 + idx * 4 + dashboardMockRandomInt(-2, 3);
+    const wins = Math.max(0, Math.round((total * hitRate) / 100));
+    const losses = Math.max(0, total - wins);
+    const profit = (wins - losses) * (10 + idx * 3) + dashboardMockRandomInt(-120, 180);
+    return {
+      strategy_id: s.id,
+      total_signals_generated: total,
+      successful_signals: wins,
+      failed_signals: losses,
+      assertiveness_rate_percent: Math.max(0, Math.min(100, hitRate)),
+      total_net_profit_loss: profit,
+      last_updated: new Date(now).toISOString(),
+    };
+  });
+}
+
+function dashboardCreateMockSignals(now: number): GeneratedSignal[] {
+  return Array.from({ length: 14 }).map((_, i) => {
+    const createdAt = new Date(now - i * 45_000);
+    const expiresAt = new Date(createdAt.getTime() + 90_000);
+    const strategy = DASHBOARD_MOCK_STRATEGIES[i % DASHBOARD_MOCK_STRATEGIES.length];
+    const table = DASHBOARD_MOCK_TABLES[i % DASHBOARD_MOCK_TABLES.length];
+    const bets = dashboardMockUniqueNumbers(6, 0, 36);
+    const confidence = 62 + (i % 4) * 9 + dashboardMockRandomInt(-2, 3);
+    return {
+      id: `mock-signal-${createdAt.getTime()}-${i}`,
+      strategy_name: strategy.name,
+      table_id: table.id,
+      suggested_bets: bets,
+      suggested_units: 1 + (i % 3),
+      confidence_level: confidence,
+      confidence_score: confidence,
+      confidence_factors: {
+        strategy_performance: 72 + (i % 5),
+        table_performance: 68 + (i % 7),
+        pattern_strength: 70 + (i % 6),
+        data_volume: 74 + (i % 4),
+        time_factor: 66 + (i % 8),
+        consistency: 71 + (i % 3),
+      },
+      timestamp_generated: createdAt.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      is_validated: i % 3 === 0,
+      type: 'pattern',
+      message: i % 2 === 0 ? 'Padrão identificado com alta recorrência recente.' : 'Oportunidade consistente nos últimos giros.',
+      strategy_id: strategy.id,
+      bet_numbers: bets,
+      expected_return: dashboardMockRandomInt(8, 22),
+      status: expiresAt.getTime() > now ? 'active' : 'expired',
+    };
+  });
+}
+
+function dashboardCreateMockSpins(now: number): RouletteSpin[] {
+  return Array.from({ length: 60 }).map((_, i) => {
+    const ts = new Date(now - i * 30_000);
+    return {
+      id: `mock-spin-${ts.getTime()}-${i}`,
+      table_id: dashboardMockPick(DASHBOARD_MOCK_TABLES).id,
+      spin_number: dashboardMockRandomInt(0, 36),
+      spin_timestamp: ts.toISOString(),
+    };
+  });
+}
+
 // Dados dinâmicos baseados no backend
 
 export default function DashboardPage() {
@@ -93,6 +196,7 @@ export default function DashboardPage() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const lastActivityRef = useRef<number>(Date.now());
   const loadedUserRef = useRef<string | null>(null);
+  const mockInitializedRef = useRef(false);
   // Assinar sinais em tempo real e filtrar por mesa ativa (se houver)
   const { signals: realtimeSignals, status: realtimeStatus } = useRealtimeSignals({ 
     limit: 50,
@@ -267,6 +371,10 @@ export default function DashboardPage() {
 
   // Mesclar sinais em tempo real com os carregados inicialmente
   useEffect(() => {
+    if (DASHBOARD_USE_MOCK_DATA) {
+      setConnectionStatus('connected');
+      return;
+    }
     try {
       if (Array.isArray(realtimeSignals) && realtimeSignals.length > 0) {
         setLiveSignalsData((prev) => {
@@ -641,8 +749,121 @@ export default function DashboardPage() {
     }
   }, [user, isLoading, router]);
 
+  useEffect(() => {
+    if (!DASHBOARD_USE_MOCK_DATA) return;
+    if (!user || isLoading) return;
+    if (mockInitializedRef.current) return;
+
+    mockInitializedRef.current = true;
+
+    const now = Date.now();
+    const strategies = DASHBOARD_MOCK_STRATEGIES;
+    const map: Record<string, string> = {};
+    for (const s of strategies) map[s.id] = s.name;
+
+    const kpis = dashboardCreateMockKpis(now);
+    const signals = dashboardCreateMockSignals(now);
+    const spins = dashboardCreateMockSpins(now);
+
+    setAvailableStrategies(strategies);
+    setStrategyNameById(map);
+    setActivateStrategyId(strategies[0]?.id || '');
+    setKpisData(kpis);
+    setLiveSignalsData(signals);
+    setActiveSignal(signals[0] || null);
+    setRouletteHistoryData(spins);
+    setLatestRouletteSpin(spins[0] || null);
+    setActiveRouletteStatus({ table_id: DASHBOARD_MOCK_TABLES[0]?.id || 'pragmatic-mega-roulette', status: 'active' });
+    setMonitoredTables(DASHBOARD_MOCK_TABLES.map((t) => t.id));
+    setConnectionStatus('connected');
+    setLoadingData(false);
+    setLoadingSignals(false);
+    setLoadingStats(false);
+    setError(null);
+
+    const signalsInterval = setInterval(() => {
+      const tickNow = Date.now();
+      const strategy = dashboardMockPick(DASHBOARD_MOCK_STRATEGIES);
+      const table = dashboardMockPick(DASHBOARD_MOCK_TABLES);
+      const bets = dashboardMockUniqueNumbers(6, 0, 36);
+      const createdAt = new Date(tickNow);
+      const expiresAt = new Date(tickNow + 90_000);
+      const nextSignal: GeneratedSignal = {
+        id: `mock-signal-${createdAt.getTime()}-${dashboardMockRandomInt(1000, 9999)}`,
+        strategy_name: strategy.name,
+        table_id: table.id,
+        suggested_bets: bets,
+        suggested_units: dashboardMockRandomInt(1, 3),
+        confidence_level: dashboardMockRandomInt(65, 92),
+        confidence_score: dashboardMockRandomInt(65, 92),
+        confidence_factors: {
+          strategy_performance: dashboardMockRandomInt(70, 90),
+          table_performance: dashboardMockRandomInt(65, 88),
+          pattern_strength: dashboardMockRandomInt(68, 92),
+          data_volume: dashboardMockRandomInt(70, 90),
+          time_factor: dashboardMockRandomInt(60, 85),
+          consistency: dashboardMockRandomInt(68, 90),
+        },
+        timestamp_generated: createdAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        is_validated: dashboardMockRandomInt(0, 1) === 1,
+        type: 'pattern',
+        message: 'Atualização automática (modo demo).',
+        strategy_id: strategy.id,
+        bet_numbers: bets,
+        expected_return: dashboardMockRandomInt(8, 22),
+        status: 'active',
+      };
+
+      setLiveSignalsData((prev) => [nextSignal, ...prev].slice(0, 100));
+      setActiveSignal(nextSignal);
+    }, 6000);
+
+    const rouletteInterval = setInterval(() => {
+      const tickNow = Date.now();
+      const ts = new Date(tickNow);
+      const nextSpin: RouletteSpin = {
+        id: `mock-spin-${ts.getTime()}-${dashboardMockRandomInt(1000, 9999)}`,
+        table_id: dashboardMockPick(DASHBOARD_MOCK_TABLES).id,
+        spin_number: dashboardMockRandomInt(0, 36),
+        spin_timestamp: ts.toISOString(),
+      };
+      setRouletteHistoryData((prev) => [nextSpin, ...(Array.isArray(prev) ? prev : [])].slice(0, 100));
+      setLatestRouletteSpin(nextSpin);
+    }, 9000);
+
+    const kpisInterval = setInterval(() => {
+      const tickNow = Date.now();
+      setKpisData((prev) => {
+        const current = Array.isArray(prev) && prev.length > 0 ? prev : dashboardCreateMockKpis(tickNow);
+        return current.map((k) => {
+          const drift = dashboardMockRandomInt(-40, 55);
+          const nextProfit = Number(k.total_net_profit_loss) + drift;
+          const nextTotal = Number(k.total_signals_generated) + dashboardMockRandomInt(0, 3);
+          const nextWins = Math.max(0, Math.round((nextTotal * Number(k.assertiveness_rate_percent)) / 100));
+          const nextLosses = Math.max(0, nextTotal - nextWins);
+          return {
+            ...k,
+            total_net_profit_loss: nextProfit,
+            total_signals_generated: nextTotal,
+            successful_signals: nextWins,
+            failed_signals: nextLosses,
+            last_updated: new Date(tickNow).toISOString(),
+          };
+        });
+      });
+    }, 45_000);
+
+    return () => {
+      clearInterval(signalsInterval);
+      clearInterval(rouletteInterval);
+      clearInterval(kpisInterval);
+    };
+  }, [user, isLoading]);
+
   // Efeito para carregar dados iniciais do backend
   useEffect(() => {
+    if (DASHBOARD_USE_MOCK_DATA) return;
     console.log('🔄 useEffect executado - carregando dados reais!');
     console.log('👤 User:', user);
     console.log('⏳ isLoading:', isLoading);
@@ -794,6 +1015,7 @@ export default function DashboardPage() {
 
   // Atualizações periódicas de dados
   useEffect(() => {
+    if (DASHBOARD_USE_MOCK_DATA) return;
     if (user && !isLoading) {
       // Atualizar KPIs a cada 5 minutos
       const kpisInterval = setInterval(() => {
@@ -857,6 +1079,7 @@ export default function DashboardPage() {
 
   // Atualização periódica do status da roleta
   useEffect(() => {
+    if (DASHBOARD_USE_MOCK_DATA) return;
     if (user) {
       const updateRouletteStatus = async () => {
         const status = await fetchRouletteStatus();
@@ -1391,7 +1614,7 @@ export default function DashboardPage() {
                     countdown={countdown} 
                     progressValue={progressValue} 
                     loading={loadingSignals}
-                    realtimeStatus={toUiRealtimeStatus(realtimeStatus)}
+                    realtimeStatus={DASHBOARD_USE_MOCK_DATA ? 'connected' : toUiRealtimeStatus(realtimeStatus)}
                     onGoToTable={(signal) => setSelectedActiveTable({
                       tableId: signal.table_id,
                       strategyName: signal.strategy_id,

@@ -29,7 +29,7 @@ function generateMockSignals(limit: number = 50, tableId?: string | null) {
   
   // Verificar se é hora de gerar um novo sinal
   if (currentTime - lastSignalGeneration > SIGNAL_GENERATION_INTERVAL || signalCache.length === 0) {
-    console.log('🎯 Gerando novo sinal mock...');
+    console.log('Gerando novo sinal mock...');
     
     const tables = [
       'pragmatic-brazilian-roulette',
@@ -99,7 +99,7 @@ function generateMockSignals(limit: number = 50, tableId?: string | null) {
     signalCache = signalCache.slice(0, 10);
     lastSignalGeneration = currentTime;
     
-    console.log(`✅ Novo sinal gerado: ${newSignal.id} com números [${suggestedBets.join(', ')}]`);
+    console.log(`Novo sinal gerado: ${newSignal.id} com números [${suggestedBets.join(', ')}]`);
   }
   
   // Filtrar sinais muito antigos (manter sinais expirados por mais tempo para exibição contínua)
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
       table_id: searchParams.get('table_id') || undefined
     };
 
-    console.log('🚀 Buscando sinais recentes do backend...');
+    console.log('Buscando sinais recentes do backend...');
 
     try {
       // Tentar buscar dados do backend real
@@ -148,11 +148,11 @@ export async function GET(request: NextRequest) {
         table_id: filters.table_id
       });
 
-      console.log('✅ Dados recebidos do backend SOFIA');
+      console.log('Dados recebidos do backend SOFIA');
       return NextResponse.json(backendResponse);
 
     } catch (backendError: any) {
-      console.warn('⚠️ Backend não disponível, usando dados mock:', backendError.message);
+      console.warn('Backend não disponível, usando dados mock:', backendError.message);
       
       // Fallback para dados mock
       const mockSignals = generateMockSignals(filters.limit || 50, filters.table_id);

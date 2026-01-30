@@ -14,6 +14,7 @@ import { GradientAlert } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DestinationCard } from '@/components/ui/card-21';
 import { 
   Target, 
   TrendingUp, 
@@ -26,7 +27,6 @@ import {
   Award,
   Plus,
   MoreVertical,
-  Shield,
   Lightbulb,
   Pencil,
   Trash2
@@ -96,38 +96,152 @@ const weeklyProcessProgress = [
   { day: 'Dom', planned: 4, completed: 4, achieved: true }
 ];
 
-const achievements = [
+const levels = [
   {
-    id: 1,
-    title: 'Sequência de 3 dias',
-    description: 'Atingiu a meta por 3 dias consecutivos',
-    icon: <Flame className="h-6 w-6 text-orange-500" />,
+    id: 'starter',
     unlocked: true,
-    date: '15/01/2024'
+    imageUrl: '/wallpaper_starter.png',
+    location: 'Starter',
+    flag: '🌱',
+    stats: 'Seu estado inicial. Onde tudo começa.',
+    href: '/daily-goals',
+    gradientFrom: '#0b2a1a',
+    gradientTo: '#071c12'
   },
   {
-    id: 2,
-    title: 'Meta Superada',
-    description: 'Superou a meta diária em 50%',
-    icon: <TrendingUp className="h-6 w-6 text-green-600" />,
-    unlocked: true,
-    date: '12/01/2024'
-  },
-  {
-    id: 3,
-    title: 'Semana Perfeita',
-    description: 'Atingiu todas as metas da semana',
-    icon: <Award className="h-6 w-6 text-blue-600" />,
+    id: 'bronze',
     unlocked: false,
-    date: null
+    imageUrl: '/wallpaper_bronze.png',
+    location: 'Bronze',
+    flag: '🥉',
+    stats: 'Primeiro grande marco de consistência.',
+    href: '/daily-goals',
+    gradientFrom: '#3C240C',
+    gradientTo: '#110A03'
   },
   {
-    id: 4,
-    title: 'Disciplina Total',
-    description: 'Não ultrapassou limites por 7 dias',
-    icon: <Shield className="h-6 w-6 text-purple-600" />,
+    id: 'gold',
+    unlocked: false,
+    imageUrl: '/wallpaper_gold.png',
+    location: 'Gold',
+    flag: '🥇',
+    stats: 'Elite em formação. Resultados sólidos.',
+    href: '/daily-goals',
+    gradientFrom: '#3F330E',
+    gradientTo: '#120E03'
+  },
+  {
+    id: 'platinum',
+    unlocked: false,
+    imageUrl: '/walppaper_platinum.png',
+    location: 'Platinum',
+    flag: '💎',
+    stats: 'Excelência comprovada e recorrente.',
+    href: '/daily-goals',
+    gradientFrom: '#2F3540',
+    gradientTo: '#0F1216'
+  },
+  {
+    id: 'black',
+    unlocked: false,
+    imageUrl: '/wallpaper_black.png',
+    location: 'Black',
+    flag: '♠️',
+    stats: 'O topo da cadeia alimentar.',
+    href: '/daily-goals',
+    gradientFrom: '#2E2E2E',
+    gradientTo: '#050505'
+  },
+  {
+    id: 'diamond',
+    unlocked: false,
+    imageUrl: '/wallpaper_diamond.png',
+    location: 'Diamond',
+    flag: '🏆',
+    stats: 'Lendário. Poucos chegam aqui.',
+    href: '/daily-goals',
+    gradientFrom: '#0B1A33',
+    gradientTo: '#02050C'
+  },
+  {
+    id: 'sapphire',
+    unlocked: false,
+    imageUrl: '/wallpaper_sapphire.png',
+    location: 'Sapphire',
+    flag: '💠',
+    stats: 'Mestria absoluta sobre o mercado.',
+    href: '/daily-goals',
+    gradientFrom: '#0F172A',
+    gradientTo: '#020617'
+  }
+];
+
+const milestones = [
+  {
+    id: 'm1',
     unlocked: true,
-    date: '10/01/2024'
+    imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2015&auto=format&fit=crop', // Abstract start
+    location: 'Primeiro Login',
+    flag: '👋',
+    stats: 'Você deu o primeiro passo.',
+    href: '/daily-goals',
+    gradientFrom: '#475569',
+    gradientTo: '#0f172a'
+  },
+  {
+    id: 'm2',
+    unlocked: true,
+    imageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop', // First step/action
+    location: 'Primeiro Passo',
+    flag: '🦶',
+    stats: 'Configurou sua primeira meta.',
+    href: '/daily-goals',
+    gradientFrom: '#475569',
+    gradientTo: '#0f172a'
+  },
+  {
+    id: 'm3',
+    unlocked: true,
+    imageUrl: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=2068&auto=format&fit=crop', // Returning
+    location: 'Você Voltou',
+    flag: '🔙',
+    stats: 'Retornou no dia seguinte.',
+    href: '/daily-goals',
+    gradientFrom: '#475569',
+    gradientTo: '#0f172a'
+  },
+  {
+    id: 'm4',
+    unlocked: false,
+    imageUrl: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=2070&auto=format&fit=crop', // Consistency
+    location: 'Constância Inicial',
+    flag: '📅',
+    stats: '3 dias seguidos de metas batidas.',
+    href: '/daily-goals',
+    gradientFrom: '#475569',
+    gradientTo: '#0f172a'
+  },
+  {
+    id: 'm5',
+    unlocked: false,
+    imageUrl: 'https://images.unsplash.com/photo-1550029402-226115b7c579?q=80&w=2070&auto=format&fit=crop', // Presence
+    location: 'Presença',
+    flag: '📍',
+    stats: '5 dias de login na mesma semana.',
+    href: '/daily-goals',
+    gradientFrom: '#475569',
+    gradientTo: '#0f172a'
+  },
+  {
+    id: 'm6',
+    unlocked: false,
+    imageUrl: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=2070&auto=format&fit=crop', // Routine
+    location: 'Rotina em Formação',
+    flag: '🔄',
+    stats: 'Completou sua primeira semana perfeita.',
+    href: '/daily-goals',
+    gradientFrom: '#475569',
+    gradientTo: '#0f172a'
   }
 ];
 
@@ -203,8 +317,17 @@ export default function DailyGoalsPage() {
     "Bom dia. Disciplina hoje protege sua banca amanhã."
   );
   const [showMotivationalAlert, setShowMotivationalAlert] = useState(false);
+  const [isMotivationalAlertDismissed, setIsMotivationalAlertDismissed] = useState(false);
   const [currentStreak] = useState(3);
   const [totalGoalsCompleted] = useState(12);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const dismissed = window.sessionStorage.getItem('daily_goals_motivation_dismissed') === '1';
+      setIsMotivationalAlertDismissed(dismissed);
+    } catch { }
+  }, []);
 
   useEffect(() => {
     const fetchPrefs = async () => {
@@ -581,27 +704,35 @@ export default function DailyGoalsPage() {
           </div>
         </div>
 
-        <GradientAlert
-          variant={showMotivationalAlert ? 'success' : 'information'}
-          title={
-            <div className="flex w-full items-start justify-between gap-3">
-              <span className="flex-1 font-medium">
-                {showMotivationalAlert ? motivationalMessage : getMotivationalMessage()}
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Ajuda">
-                    <Lightbulb className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Cumprir essas metas reforça disciplina e reduz risco na Gestão de Banca.
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          }
-          onClose={showMotivationalAlert ? () => setShowMotivationalAlert(false) : undefined}
-        />
+        {(!isMotivationalAlertDismissed || showMotivationalAlert) && (
+          <GradientAlert
+            variant={showMotivationalAlert ? 'success' : 'information'}
+            title={
+              <div className="flex w-full items-start justify-between gap-3">
+                <span className="flex-1 font-medium">
+                  {showMotivationalAlert ? motivationalMessage : getMotivationalMessage()}
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="Ajuda">
+                      <Lightbulb className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Cumprir essas metas reforça disciplina e reduz risco na Gestão de Banca.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            }
+            onClose={() => {
+              setShowMotivationalAlert(false);
+              setIsMotivationalAlertDismissed(true);
+              try {
+                window.sessionStorage.setItem('daily_goals_motivation_dismissed', '1');
+              } catch { }
+            }}
+          />
+        )}
 
         {/* Cards de Resumo */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -979,48 +1110,65 @@ export default function DailyGoalsPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="achievements" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Conquistas</CardTitle>
-                <CardDescription>
-                  Suas conquistas e marcos alcançados
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {achievements.map((achievement) => (
-                    <div
-                      key={achievement.id}
-                      className={`p-4 border rounded-lg ${
-                        achievement.unlocked 
-                          ? 'border-green-600 bg-green-100 dark:border-green-700 dark:bg-green-900/20' 
-                          : 'border-slate-600 bg-slate-100 dark:border-slate-700 dark:bg-slate-900/20 opacity-80'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5">{achievement.icon}</div>
-                        <div className="flex-1">
-                          <h4 className="font-medium">{achievement.title}</h4>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {achievement.description}
-                          </p>
-                          {achievement.unlocked ? (
-                            <Badge variant="outline" className="text-green-600">
-                              Desbloqueado em {achievement.date}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">
-                              Bloqueado
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="achievements" className="space-y-8">
+            {/* Seção de Níveis (Status) */}
+            <div className="space-y-4">
+              <div className="flex flex-col space-y-1.5 px-1">
+                <h3 className="text-xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                  🔰 Níveis (Status)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Definem seu nível atual. Evolução lenta e consistente.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 justify-items-center">
+                {levels.map((level) => (
+                  <div key={level.id} className="w-full max-w-[320px] h-[450px]">
+                    <DestinationCard
+                      imageUrl={level.imageUrl}
+                      location={level.location}
+                      flag={level.flag}
+                      stats={`${level.stats}${level.unlocked ? '' : ' • Bloqueado'}`}
+                      href={level.href}
+                      gradientFrom={level.gradientFrom}
+                      gradientTo={level.gradientTo}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div className="border-t border-slate-200 dark:border-slate-800" />
+
+            {/* Seção de Marcos (Progresso) */}
+            <div className="space-y-4">
+              <div className="flex flex-col space-y-1.5 px-1">
+                <h3 className="text-xl font-semibold leading-none tracking-tight flex items-center gap-2">
+                  ✦ Marcos (Progresso)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Sinais de consistência e presença. Pequenas vitórias diárias.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 justify-items-center">
+                {milestones.map((milestone) => (
+                  <div key={milestone.id} className="w-full max-w-[320px] h-[450px]">
+                    <DestinationCard
+                      imageUrl={milestone.imageUrl}
+                      location={milestone.location}
+                      flag={milestone.flag}
+                      stats={`${milestone.stats}${milestone.unlocked ? '' : ' • Bloqueado'}`}
+                      href={milestone.href}
+                      gradientFrom={milestone.gradientFrom}
+                      gradientTo={milestone.gradientTo}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">

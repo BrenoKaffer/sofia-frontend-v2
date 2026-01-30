@@ -18,6 +18,8 @@ const publicPaths = [
 ]
 
 const proOnlyPaths = [
+  '/builder',
+  '/strategy-builder',
   '/automation',
   '/betting',
   '/analytics',
@@ -199,6 +201,10 @@ export const config = {
     '/auth/callback',
     '/dashboard',
     '/dashboard/:path*',
+    '/builder',
+    '/builder/:path*',
+    '/strategy-builder',
+    '/strategy-builder/:path*',
     '/automation/:path*',
     '/betting/:path*',
     '/analytics/:path*',

@@ -23,7 +23,6 @@ const bankrollData = {
 };
 
 const PROFIT_SESSIONS_STORAGE_KEY = 'sofia:profit:sessions:v1';
-const BANKROLL_TRANSACTIONS_STORAGE_KEY = 'sofia:bankroll:transactions:v1';
 
 const bankrollHistory = [
   { date: '01/01', value: 1000 },
@@ -61,18 +60,16 @@ type AuditRow = AuditEntry & {
   balance: number;
 };
 
-const seedBankrollTransactions: AuditEntry[] = [
-  {
-    id: 'seed-deposit',
-    createdAt: '2024-01-14T10:00:00.000Z',
-    type: 'deposit',
-    amount: 500,
-    description: 'Depósito inicial',
-    source: 'bankroll',
-  },
-];
-
 type RiskStatus = 'ok' | 'risk' | 'pause';
+
+function parseNumeric(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim().length) {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
 
 function formatAuditDate(createdAt: string) {
   const date = new Date(createdAt);
@@ -94,6 +91,7 @@ export default function BankrollPage() {
   const [autoStopLoss, setAutoStopLoss] = useState(true);
   const [autoTakeProfit, setAutoTakeProfit] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isBankrollSyncing, setIsBankrollSyncing] = useState(false);
 
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
@@ -106,51 +104,59 @@ export default function BankrollPage() {
   const [auditPeriodFilter, setAuditPeriodFilter] = useState<'all' | '7d' | '30d' | '90d'>('all');
 
   useEffect(() => {
-    const fetchPreferences = async () => {
+    let cancelled = false;
+    const load = async () => {
       try {
-        const res = await fetch('/api/user-preferences');
-        if (!res.ok) throw new Error('Prefetch error');
-        const prefs = await res.json();
+        const [settingsRes, txRes] = await Promise.all([
+          fetch('/api/bankroll/settings'),
+          fetch('/api/bankroll/transactions?limit=200'),
+        ]);
 
-        setInitialBankroll(Number(prefs?.initial_bankroll ?? prefs?.initialBankroll ?? bankrollData.initialBankroll));
-        setStopLoss(Number(prefs?.stop_loss ?? prefs?.daily_stop_loss ?? 200));
-        setTakeProfit(Number(prefs?.take_profit ?? prefs?.daily_stop_gain ?? 300));
-        setMaxBetPercentage(Number(prefs?.max_bet_percentage ?? prefs?.maxBetPercentage ?? 5));
-        setAutoStopLoss(Boolean(prefs?.auto_stop_loss ?? true));
-        setAutoTakeProfit(Boolean(prefs?.auto_take_profit ?? true));
+        if (cancelled) return;
+
+        if (settingsRes.ok) {
+          const prefs = await settingsRes.json().catch(() => ({}));
+          setInitialBankroll(Number(prefs?.initial_bankroll ?? prefs?.initialBankroll ?? bankrollData.initialBankroll));
+          setStopLoss(Number(prefs?.stop_loss ?? prefs?.daily_stop_loss ?? 200));
+          setTakeProfit(Number(prefs?.take_profit ?? prefs?.daily_stop_gain ?? 300));
+          setMaxBetPercentage(Number(prefs?.max_bet_percentage ?? prefs?.maxBetPercentage ?? 5));
+          setAutoStopLoss(Boolean(prefs?.auto_stop_loss ?? true));
+          setAutoTakeProfit(Boolean(prefs?.auto_take_profit ?? true));
+        }
+
+        if (txRes.ok) {
+          const payload = await txRes.json().catch(() => ({}));
+          const txs = Array.isArray(payload?.transactions) ? payload.transactions : [];
+          const normalized = txs
+            .map((tx: any) => {
+              const id = typeof tx?.id === 'string' ? tx.id : null;
+              const createdAt = typeof tx?.created_at === 'string' ? tx.created_at : null;
+              const type = typeof tx?.type === 'string' ? tx.type : null;
+              const amount = parseNumeric(tx?.amount);
+              const description = typeof tx?.description === 'string' && tx.description.trim().length ? tx.description : null;
+              if (!id || !createdAt || !type) return null;
+              if (type !== 'deposit' && type !== 'withdraw') return null;
+              if (!(amount !== null && Number.isFinite(amount) && amount !== 0)) return null;
+              return {
+                id,
+                createdAt,
+                type,
+                amount,
+                description: description ?? (type === 'withdraw' ? 'Saque' : 'Depósito'),
+                source: 'bankroll',
+              } satisfies AuditEntry;
+            })
+            .filter(Boolean) as AuditEntry[];
+          setBankrollTransactions(normalized.slice(0, 1000));
+        }
       } catch {
         // fallback silencioso
       }
     };
-    fetchPreferences();
-  }, []);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(BANKROLL_TRANSACTIONS_STORAGE_KEY);
-      if (!raw) {
-        setBankrollTransactions(seedBankrollTransactions);
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        setBankrollTransactions(seedBankrollTransactions);
-        return;
-      }
-      const normalized = parsed.filter((item) => {
-        if (!item || typeof item !== 'object') return false;
-        if (typeof item.id !== 'string') return false;
-        if (typeof item.createdAt !== 'string') return false;
-        if (typeof item.type !== 'string') return false;
-        if (typeof item.amount !== 'number' || !Number.isFinite(item.amount)) return false;
-        if (typeof item.description !== 'string') return false;
-        if (item.source !== 'bankroll') return false;
-        return item.type === 'deposit' || item.type === 'withdraw';
-      }) as AuditEntry[];
-      setBankrollTransactions(normalized);
-    } catch {
-      setBankrollTransactions(seedBankrollTransactions);
-    }
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -247,7 +253,7 @@ export default function BankrollPage() {
   const handleSaveSettings = async () => {
     setIsLoading(true);
     try {
-      await fetch('/api/user-preferences', {
+      await fetch('/api/bankroll/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -266,11 +272,25 @@ export default function BankrollPage() {
 
   const handleResetBankroll = () => {
     if (confirm('Tem certeza que deseja resetar a banca? Esta ação não pode ser desfeita.')) {
-      // Implementação real depende do backend
+      setIsBankrollSyncing(true);
+      fetch('/api/bankroll/reset', { method: 'POST' })
+        .then(async (res) => {
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(typeof err?.error === 'string' ? err.error : 'Erro ao resetar a banca');
+          }
+          setBankrollTransactions([]);
+        })
+        .catch((error: any) => {
+          alert(error?.message || 'Erro ao resetar a banca');
+        })
+        .finally(() => {
+          setIsBankrollSyncing(false);
+        });
     }
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
     if (!(amount > 0)) {
       alert('Valor inválido para saque');
@@ -280,52 +300,74 @@ export default function BankrollPage() {
       alert('Saldo insuficiente para saque');
       return;
     }
-    const now = new Date();
-    const entry: AuditEntry = {
-      id: `${now.getTime()}-${Math.random().toString(16).slice(2)}`,
-      createdAt: now.toISOString(),
-      type: 'withdraw',
-      amount: -amount,
-      description: 'Saque',
-      source: 'bankroll',
-    };
-    setBankrollTransactions((prev) => {
-      const next = [entry, ...prev].slice(0, 1000);
-      try {
-        localStorage.setItem(BANKROLL_TRANSACTIONS_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // noop
+    if (isBankrollSyncing) return;
+
+    setIsBankrollSyncing(true);
+    try {
+      const res = await fetch('/api/bankroll/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'withdraw', amount, description: 'Saque' }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err?.error === 'string' ? err.error : 'Erro ao registrar saque');
       }
-      return next;
-    });
-    setWithdrawAmount('');
+      const payload = await res.json().catch(() => ({}));
+      const tx = payload?.transaction;
+      const entry: AuditEntry = {
+        id: typeof tx?.id === 'string' ? tx.id : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        createdAt: typeof tx?.created_at === 'string' ? tx.created_at : new Date().toISOString(),
+        type: 'withdraw',
+        amount: parseNumeric(tx?.amount) ?? -Math.abs(amount),
+        description: typeof tx?.description === 'string' && tx.description.trim().length ? tx.description : 'Saque',
+        source: 'bankroll',
+      };
+      setBankrollTransactions((prev) => [entry, ...prev].slice(0, 1000));
+      setWithdrawAmount('');
+    } catch (error: any) {
+      alert(error?.message || 'Erro ao registrar saque');
+    } finally {
+      setIsBankrollSyncing(false);
+    }
   };
 
-  const handleDeposit = () => {
+  const handleDeposit = async () => {
     const amount = parseFloat(depositAmount);
     if (!(amount > 0)) {
       alert('Valor inválido para depósito');
       return;
     }
-    const now = new Date();
-    const entry: AuditEntry = {
-      id: `${now.getTime()}-${Math.random().toString(16).slice(2)}`,
-      createdAt: now.toISOString(),
-      type: 'deposit',
-      amount,
-      description: 'Depósito',
-      source: 'bankroll',
-    };
-    setBankrollTransactions((prev) => {
-      const next = [entry, ...prev].slice(0, 1000);
-      try {
-        localStorage.setItem(BANKROLL_TRANSACTIONS_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // noop
+    if (isBankrollSyncing) return;
+
+    setIsBankrollSyncing(true);
+    try {
+      const res = await fetch('/api/bankroll/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'deposit', amount, description: 'Depósito' }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err?.error === 'string' ? err.error : 'Erro ao registrar depósito');
       }
-      return next;
-    });
-    setDepositAmount('');
+      const payload = await res.json().catch(() => ({}));
+      const tx = payload?.transaction;
+      const entry: AuditEntry = {
+        id: typeof tx?.id === 'string' ? tx.id : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        createdAt: typeof tx?.created_at === 'string' ? tx.created_at : new Date().toISOString(),
+        type: 'deposit',
+        amount: parseNumeric(tx?.amount) ?? Math.abs(amount),
+        description: typeof tx?.description === 'string' && tx.description.trim().length ? tx.description : 'Depósito',
+        source: 'bankroll',
+      };
+      setBankrollTransactions((prev) => [entry, ...prev].slice(0, 1000));
+      setDepositAmount('');
+    } catch (error: any) {
+      alert(error?.message || 'Erro ao registrar depósito');
+    } finally {
+      setIsBankrollSyncing(false);
+    }
   };
 
   const currentPnl = currentBalance - initialBankroll;
@@ -451,7 +493,7 @@ export default function BankrollPage() {
                         <Button
                           onClick={handleDeposit}
                           variant="outline"
-                          disabled={!depositAmount || parseFloat(depositAmount) <= 0}
+                          disabled={isBankrollSyncing || !depositAmount || parseFloat(depositAmount) <= 0}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
@@ -471,7 +513,7 @@ export default function BankrollPage() {
                         <Button
                           onClick={handleWithdraw}
                           variant="outline"
-                          disabled={!withdrawAmount || parseFloat(withdrawAmount) <= 0}
+                          disabled={isBankrollSyncing || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
@@ -622,12 +664,12 @@ export default function BankrollPage() {
                       <Save className="h-4 w-4 mr-2" />
                       {isLoading ? 'Salvando...' : 'Salvar configurações'}
                     </Button>
-                    <Button variant="destructive" onClick={handleResetBankroll} className="flex-1">
+                    <Button variant="destructive" onClick={handleResetBankroll} className="flex-1" disabled={isBankrollSyncing}>
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Resetar banca
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Resetar banca: esta ação depende do backend</p>
+                  <p className="text-xs text-muted-foreground">Resetar banca remove depósitos/saques e mantém a banca inicial</p>
                 </div>
               </CardContent>
             </Card>

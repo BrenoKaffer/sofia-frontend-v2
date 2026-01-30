@@ -62,13 +62,30 @@ export default function RegistrosDePadroesPage() {
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   
   // Filtros
-  const [filters, setFilters] = useState<FiltersApplied>({
-    strategy: '',
-    table_id: '',
-    confidence_min: undefined,
-    status: '',
-    date_from: '',
-    date_to: ''
+  const [filters, setFilters] = useState<FiltersApplied>(() => {
+    const defaults: FiltersApplied = {
+      strategy: '',
+      table_id: '',
+      confidence_min: undefined,
+      status: '',
+      date_from: '',
+      date_to: ''
+    };
+
+    if (typeof window === 'undefined') return defaults;
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const strategy = String(params.get('strategy') || '').trim();
+      const table_id = String(params.get('table_id') || '').trim();
+      return {
+        ...defaults,
+        ...(strategy ? { strategy } : null),
+        ...(table_id ? { table_id } : null)
+      };
+    } catch {
+      return defaults;
+    }
   });
   
   // Paginação

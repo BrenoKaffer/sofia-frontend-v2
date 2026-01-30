@@ -369,15 +369,219 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
     router.replace('/builder')
   }, [templates, router])
 
-  const instanceByTemplateId = useMemo(() => {
-    const map: Record<string, any> = {}
+  const [enabledTableIds, setEnabledTableIds] = useState<string[]>([])
+  const [tablesDialogOpen, setTablesDialogOpen] = useState(false)
+  const [tablesDialogLoading, setTablesDialogLoading] = useState(false)
+  const [tablesDialogSaving, setTablesDialogSaving] = useState(false)
+  const [tablesDialogQuery, setTablesDialogQuery] = useState('')
+  const [tableOptions, setTableOptions] = useState<Array<{ id: string; name: string }>>([])
+  const [tablesDraftIds, setTablesDraftIds] = useState<string[]>([])
+
+  const refreshEnabledTables = useCallback(async () => {
+    try {
+      const resp = await fetch('/api/user-preferences', { cache: 'no-store' })
+      if (!resp.ok) return
+      const data = await resp.json().catch(() => ({} as any))
+      const list: any[] = Array.isArray((data as any)?.tables) ? (data as any).tables : []
+      const cleaned = Array.from(new Set<string>(list.map((x: any) => String(x).trim()).filter(Boolean)))
+      setEnabledTableIds(cleaned)
+    } catch { }
+  }, [])
+
+  useEffect(() => {
+    refreshEnabledTables()
+  }, [refreshEnabledTables])
+
+  const loadTableOptions = useCallback(async () => {
+    try {
+      setTablesDialogLoading(true)
+      const resp = await fetch('/api/roulette-tables', { cache: 'no-store' })
+      const raw = await resp.json().catch(() => null)
+      const list = Array.isArray(raw) ? raw : []
+      const normalized = list
+        .map((t: any) => ({ id: String(t?.id || '').trim(), name: String(t?.name || '').trim() }))
+        .filter((t: any) => Boolean(t.id) && Boolean(t.name))
+
+      if (normalized.length === 0) {
+        const fallbackResp = await fetch('/api/available-options', { cache: 'no-store' }).catch(() => null as any)
+        if (fallbackResp && fallbackResp.ok) {
+          const fallback = await fallbackResp.json().catch(() => null)
+          const tables = (fallback as any)?.tables
+          if (Array.isArray(tables)) {
+            normalized.push(
+              ...tables
+                .map((t: any) => ({ id: String(t?.id || '').trim(), name: String(t?.name || '').trim() }))
+                .filter((t: any) => Boolean(t.id) && Boolean(t.name))
+            )
+          }
+        }
+      }
+
+      const unique = Array.from(
+        new Map(normalized.map((t) => [t.id, t] as const)).values()
+      )
+
+      unique.sort((a, b) => a.name.localeCompare(b.name))
+      setTableOptions(unique)
+    } catch (e: any) {
+      toast.message('Falha ao carregar mesas.', { description: e?.message || String(e) })
+    } finally {
+      setTablesDialogLoading(false)
+    }
+  }, [])
+
+  const openTablesDialog = useCallback(() => {
+    setTablesDraftIds(enabledTableIds)
+    setTablesDialogQuery('')
+    setTablesDialogOpen(true)
+    loadTableOptions()
+  }, [enabledTableIds, loadTableOptions])
+
+  const saveTablesSelection = useCallback(async () => {
+    const cleaned = Array.from(new Set((Array.isArray(tablesDraftIds) ? tablesDraftIds : []).map(x => String(x).trim()).filter(Boolean)))
+    try {
+      setTablesDialogSaving(true)
+      const resp = await fetch('/api/user-preferences', { cache: 'no-store' })
+      const current = resp.ok ? await resp.json().catch(() => ({} as any)) : ({} as any)
+      const strategies = Array.isArray((current as any)?.strategies) ? (current as any).strategies.map((x: any) => String(x)) : []
+
+      const put = await fetch('/api/user-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategies, tables: cleaned })
+      })
+      const data = await put.json().catch(() => ({} as any))
+      if (!put.ok || (data as any)?.success === false) {
+        throw new Error(String((data as any)?.error || (data as any)?.message || put.statusText))
+      }
+
+      setEnabledTableIds(cleaned)
+      setTablesDialogOpen(false)
+      toast.success('Mesas atualizadas.')
+    } catch (e: any) {
+      toast.message('Falha ao salvar mesas.', { description: e?.message || String(e) })
+    } finally {
+      setTablesDialogSaving(false)
+    }
+  }, [tablesDraftIds])
+
+  const enabledTableIdSet = useMemo(() => {
+    return new Set(enabledTableIds.map(x => String(x).trim()).filter(Boolean))
+  }, [enabledTableIds])
+
+  const instancesByStrategySlug = useMemo(() => {
+    const map = new Map<string, any[]>()
     for (const inst of (Array.isArray(instances) ? instances : [])) {
-      const tableId = String((inst as any)?.table_id || '').trim()
-      if (!tableId) continue
-      if (!map[tableId]) map[tableId] = inst
+      const slug = String((inst as any)?.strategy_slug || '').trim()
+      if (!slug) continue
+      const list = map.get(slug)
+      if (list) list.push(inst)
+      else map.set(slug, [inst])
     }
     return map
   }, [instances])
+
+  type RecentSignalItem = {
+    id: string
+    table_id: string
+    strategy: string
+    bets: number[]
+    units: number
+    confidence: number | null
+    timestamp: string
+    message: string
+  }
+
+  const [openSignalsSlug, setOpenSignalsSlug] = useState<string | null>(null)
+  const [recentSignalsBySlug, setRecentSignalsBySlug] = useState<Record<string, { loading: boolean; error: string | null; items: RecentSignalItem[] }>>({})
+
+  const fetchRecentSignalsForStrategy = useCallback(async (params: { strategySlug: string; tableIds: string[]; templateName?: string }) => {
+    const strategySlug = String(params.strategySlug || '').trim()
+    if (!strategySlug) return
+
+    const tableIdSet = new Set((Array.isArray(params.tableIds) ? params.tableIds : []).map(x => String(x).trim()).filter(Boolean))
+    const templateName = String(params.templateName || '').trim()
+
+    setRecentSignalsBySlug(prev => ({
+      ...(prev || {}),
+      [strategySlug]: {
+        loading: true,
+        error: null,
+        items: (prev || {})[strategySlug]?.items || []
+      }
+    }))
+
+    try {
+      const resp = await fetch(`/api/signals/recent?limit=${encodeURIComponent('50')}`, { cache: 'no-store' })
+      const payload = await resp.json().catch(() => ({} as any))
+      const rawList: any[] = Array.isArray((payload as any)?.data)
+        ? (payload as any).data
+        : Array.isArray(payload)
+          ? payload
+          : []
+
+      const filteredByTable = tableIdSet.size > 0
+        ? rawList.filter((s: any) => tableIdSet.has(String(s?.table_id || '').trim()))
+        : rawList
+
+      const slugLower = strategySlug.toLowerCase()
+      const nameLower = templateName ? templateName.toLowerCase() : ''
+
+      const matchesStrategy = (s: any) => {
+        const v1 = String(s?.strategy_slug || '').trim().toLowerCase()
+        const v2 = String(s?.strategy_id || '').trim().toLowerCase()
+        const v3 = String(s?.strategy || '').trim().toLowerCase()
+        const v4 = String(s?.strategy_name || '').trim().toLowerCase()
+        if (v1 && v1 === slugLower) return true
+        if (v2 && v2 === slugLower) return true
+        if (v3 && v3 === slugLower) return true
+        if (v4 && v4 === slugLower) return true
+        if (nameLower && v4 && v4 === nameLower) return true
+        return false
+      }
+
+      const byStrategy = filteredByTable.filter(matchesStrategy)
+      const effective = byStrategy.length > 0 ? byStrategy : filteredByTable
+
+      const normalized: RecentSignalItem[] = effective.slice(0, 6).map((s: any, idx: number) => {
+        const timestamp = String(s?.timestamp_generated || s?.created_at || s?.timestamp || '').trim() || new Date().toISOString()
+        const strategy = String(s?.strategy_name || s?.strategy_slug || s?.strategy_id || s?.strategy || '').trim() || strategySlug
+        const table_id = String(s?.table_id || '').trim()
+        const betsRaw = Array.isArray(s?.suggested_bets) ? s.suggested_bets : Array.isArray(s?.bet_numbers) ? s.bet_numbers : []
+        const bets = (Array.isArray(betsRaw) ? betsRaw : []).map((x: any) => Number(x)).filter((n: number) => Number.isFinite(n))
+        const units = Number.isFinite(Number(s?.suggested_units)) ? Number(s.suggested_units) : Number.isFinite(Number(s?.units)) ? Number(s.units) : 1
+        const confidence = Number.isFinite(Number(s?.confidence_level))
+          ? Number(s.confidence_level)
+          : Number.isFinite(Number(s?.confidence))
+            ? Number(s.confidence)
+            : Number.isFinite(Number(s?.confidence_score))
+              ? Math.round(Number(s.confidence_score) * 100)
+              : null
+        const message = String(s?.message || '').trim()
+        const id = String(s?.id || '').trim() || `signal_${strategySlug}_${timestamp}_${idx}`
+
+        return { id, table_id, strategy, bets, units, confidence, timestamp, message }
+      })
+
+      setRecentSignalsBySlug(prev => ({
+        ...(prev || {}),
+        [strategySlug]: {
+          loading: false,
+          error: null,
+          items: normalized
+        }
+      }))
+    } catch (e: any) {
+      setRecentSignalsBySlug(prev => ({
+        ...(prev || {}),
+        [strategySlug]: {
+          loading: false,
+          error: e?.message || String(e),
+          items: (prev || {})[strategySlug]?.items || []
+        }
+      }))
+    }
+  }, [])
 
   const filteredTemplates = useMemo(() => {
     const query = String(templateQuery || '').trim().toLowerCase()
@@ -466,7 +670,10 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       })
       const data = await resp.json().catch(() => ({}))
       if (!resp.ok || (data as any)?.success === false) {
-        toast.message('Falha ao publicar.', { description: String((data as any)?.error || resp.statusText) })
+        const err = String((data as any)?.error || resp.statusText)
+        const details = String((data as any)?.details || '').trim()
+        const hint = err.includes('BACKEND_API_KEY') ? (details || 'Defina BACKEND_API_KEY no ambiente do frontend.') : ''
+        toast.message('Falha ao publicar.', { description: hint ? `${err} — ${hint}` : err })
         return { ok: false }
       }
     } catch (e: any) {
@@ -504,38 +711,101 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       const published = await ensureTemplatePublished(tpl)
       if (!published.ok || !published.slug) return
 
-      const existing = instanceByTemplateId[templateId]
-      if (existing?.id) {
-        const resp = await fetch('/api/strategy-instances', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: existing.id,
-            enabled,
-            params: (existing?.params && typeof existing.params === 'object') ? existing.params : null
+      const resolveTargetTableIds = async (): Promise<string[]> => {
+        try {
+          const resp = await fetch('/api/user-preferences', { cache: 'no-store' })
+          if (resp.ok) {
+            const data = await resp.json().catch(() => ({} as any))
+            const list: any[] = Array.isArray((data as any)?.tables) ? (data as any).tables : []
+            const cleaned = Array.from(new Set<string>(list.map((x: any) => String(x).trim()).filter(Boolean)))
+            if (cleaned.length > 0) return cleaned
+          }
+        } catch { }
+
+        const inferred = Array.from(
+          new Set(
+            (Array.isArray(instances) ? instances : [])
+              .filter((i: any) => Boolean(i?.enabled))
+              .map((i: any) => String(i?.table_id || '').trim())
+              .filter(Boolean)
+          )
+        )
+        if (inferred.length > 0) return inferred
+
+        try {
+          const resp = await fetch('/api/available-options', { cache: 'no-store' })
+          if (resp.ok) {
+            const data = await resp.json().catch(() => ({} as any))
+            const defaults = (data as any)?.default_preferences?.tables
+            if (Array.isArray(defaults)) {
+              const cleaned = Array.from(new Set<string>((defaults as any[]).map((x: any) => String(x).trim()).filter(Boolean)))
+              if (cleaned.length > 0) return cleaned
+            }
+          }
+        } catch { }
+
+        return []
+      }
+
+      const strategySlug = String(published.slug).trim()
+      const currentInstances = instancesByStrategySlug.get(strategySlug) || []
+      const byTableId = new Map<string, any>()
+      for (const inst of currentInstances) {
+        const tableId = String((inst as any)?.table_id || '').trim()
+        if (tableId) byTableId.set(tableId, inst)
+      }
+
+      const targetTableIds = enabled
+        ? await resolveTargetTableIds()
+        : Array.from(new Set(currentInstances.map((i: any) => String(i?.table_id || '').trim()).filter(Boolean)))
+
+      if (enabled && targetTableIds.length === 0) {
+        toast.message('Nenhuma mesa selecionada.', { description: 'Selecione as mesas onde a estratégia vai rodar.' })
+        openTablesDialog()
+        return
+      }
+
+      const ops = targetTableIds.map(async (tableId) => {
+        const existing = byTableId.get(String(tableId).trim())
+        if (existing?.id) {
+          const resp = await fetch('/api/strategy-instances', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: existing.id,
+              enabled,
+              params: (existing?.params && typeof existing.params === 'object') ? existing.params : null
+            })
           })
-        })
-        const data = await resp.json().catch(() => ({}))
-        if (!resp.ok || !(data as any)?.ok) {
-          toast.message('Falha ao atualizar instância.', { description: String((data as any)?.error || resp.statusText) })
+          const data = await resp.json().catch(() => ({}))
+          if (!resp.ok || !(data as any)?.ok) {
+            throw new Error(String((data as any)?.error || resp.statusText))
+          }
           return
         }
-      } else {
+
+        if (!enabled) return
         const resp = await fetch('/api/strategy-instances', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            table_id: templateId,
-            strategy_slug: published.slug,
-            enabled,
+            table_id: tableId,
+            strategy_slug: strategySlug,
+            enabled: true,
             params: null
           })
         })
         const data = await resp.json().catch(() => ({}))
         if (!resp.ok || !(data as any)?.ok) {
-          toast.message('Falha ao criar instância.', { description: String((data as any)?.error || resp.statusText) })
-          return
+          throw new Error(String((data as any)?.error || resp.statusText))
         }
+      })
+
+      try {
+        await Promise.all(ops)
+      } catch (e: any) {
+        toast.message('Falha ao atualizar instâncias.', { description: e?.message || String(e) })
+        return
       }
 
       await refreshInstances()
@@ -548,7 +818,10 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
         })
         const data = await toggle.json().catch(() => ({}))
         if (!toggle.ok || (data as any)?.success === false) {
-          toast.message('Instância atualizada, mas falhou no backend.', { description: String((data as any)?.error || toggle.statusText) })
+          const err = String((data as any)?.error || toggle.statusText)
+          const details = String((data as any)?.details || '').trim()
+          const hint = err.includes('BACKEND_API_KEY') ? (details || 'Defina BACKEND_API_KEY no ambiente do frontend.') : ''
+          toast.message('Instância atualizada, mas falhou no backend.', { description: hint ? `${err} — ${hint}` : err })
           return
         }
       } catch (e: any) {
@@ -557,6 +830,12 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       }
 
       toast.success(enabled ? 'Estratégia ativada.' : 'Estratégia desativada.')
+      if (enabled) {
+        setOpenSignalsSlug(strategySlug)
+        fetchRecentSignalsForStrategy({ strategySlug, tableIds: targetTableIds, templateName: String(tpl?.name || '').trim() })
+      } else if (openSignalsSlug === strategySlug) {
+        setOpenSignalsSlug(null)
+      }
     } finally {
       setBusyTemplateIds(prev => {
         const next = { ...(prev || {}) }
@@ -1006,17 +1285,29 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
       return
     }
 
-    const existingInstance = instanceByTemplateId[String(templateId).trim()]
-    try {
-      if (existingInstance?.enabled) {
-        await setTemplateEnabled(tpl, false)
-      }
-    } catch { }
+    const strategySlug = String(tpl?.published_strategy_slug || '').trim()
+    const relatedInstances = strategySlug ? (instancesByStrategySlug.get(strategySlug) || []) : []
 
-    if (existingInstance?.id) {
+    if (strategySlug) {
       try {
-        await fetch(`/api/strategy-instances?id=${encodeURIComponent(String(existingInstance.id))}`, { method: 'DELETE' })
+        await fetch('/api/dynamic-strategies/toggle', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: strategySlug, enabled: false, reason: 'Template removido via Builder' })
+        })
       } catch { }
+    }
+
+    if (relatedInstances.length > 0) {
+      const ops = relatedInstances
+        .map((inst: any) => String(inst?.id || '').trim())
+        .filter(Boolean)
+        .map(async (id: string) => {
+          try {
+            await fetch(`/api/strategy-instances?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+          } catch { }
+        })
+      await Promise.all(ops)
     }
 
     try {
@@ -2135,9 +2426,22 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                         Atualizar
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={showHidden} onCheckedChange={(v) => setShowHidden(Boolean(v))} />
-                      <span className="text-sm text-muted-foreground">Mostrar ocultas</span>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                      <div className="flex items-center gap-2">
+                        <Switch checked={showHidden} onCheckedChange={(v) => setShowHidden(Boolean(v))} />
+                        <span className="text-sm text-muted-foreground">Mostrar ocultas</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          Mesas selecionadas: {enabledTableIds.length}
+                        </span>
+                        <Button size="sm" variant="outline" onClick={openTablesDialog}>
+                          Configurar mesas
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={refreshEnabledTables} aria-label="Recarregar mesas selecionadas">
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -2150,8 +2454,24 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
                     <div className="space-y-2">
                       {filteredTemplates.map((tpl: any) => {
                         const templateId = getTemplateId(tpl)
-                        const inst = templateId ? instanceByTemplateId[templateId] : null
-                        const enabled = Boolean(inst?.enabled)
+                        const slug = String(tpl?.published_strategy_slug || '').trim()
+                        const insts = slug ? (instancesByStrategySlug.get(slug) || []) : []
+                        const eligible = enabledTableIdSet.size > 0
+                          ? insts.filter((i: any) => enabledTableIdSet.has(String(i?.table_id || '').trim()))
+                          : insts
+                        const enabledTableCount = new Set(
+                          eligible
+                            .filter((i: any) => Boolean(i?.enabled))
+                            .map((i: any) => String(i?.table_id || '').trim())
+                            .filter(Boolean)
+                        ).size
+                        const enabledTableIdsForStrategy = Array.from(new Set(
+                          eligible
+                            .filter((i: any) => Boolean(i?.enabled))
+                            .map((i: any) => String(i?.table_id || '').trim())
+                            .filter(Boolean)
+                        ))
+                        const enabled = enabledTableCount > 0
                         const origin = getTemplateOrigin(tpl)
                         const author = getTemplateAuthorName(tpl)
                         const hidden = isTemplateHidden(tpl)
@@ -2166,63 +2486,152 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
 
                         return (
                           <Card key={templateId || tpl.template_key || tpl.name}>
-                            <CardContent className="py-3 flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="font-medium flex items-center gap-2">
-                                  <span className="truncate">{tpl.name}</span>
-                                  <Badge variant="outline">{originLabel}</Badge>
-                                  {hidden ? <Badge variant="secondary">Oculta</Badge> : null}
-                                  {enabled ? <Badge>Ativa</Badge> : <Badge variant="secondary">Pausada</Badge>}
+                            <CardContent className="py-3 space-y-2">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="font-medium flex items-center gap-2">
+                                    <span className="truncate">{tpl.name}</span>
+                                    <Badge variant="outline">{originLabel}</Badge>
+                                    {hidden ? <Badge variant="secondary">Oculta</Badge> : null}
+                                    {enabled ? <Badge>Ativa ({enabledTableCount})</Badge> : <Badge variant="secondary">Pausada</Badge>}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {tpl.description || 'Estratégia do Builder'} &bull; {author}
+                                    {tpl.is_published && tpl.published_strategy_slug ? ` • ${tpl.published_strategy_slug}` : ''}
+                                  </div>
                                 </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {tpl.description || 'Estratégia do Builder'} &bull; {author}
-                                  {tpl.is_published && tpl.published_strategy_slug ? ` • ${tpl.published_strategy_slug}` : ''}
+
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant={enabled ? 'secondary' : 'default'}
+                                    onClick={() => setTemplateEnabled(tpl, !enabled)}
+                                    disabled={isBusy}
+                                  >
+                                    {enabled ? 'Desativar' : 'Ativar'}
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" aria-label="Mais ações">
+                                        <MoreVertical className="h-5 w-5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => editTemplate(tpl)}>
+                                        <Edit3 className="mr-2 h-4 w-4" />
+                                        Abrir no canvas
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => duplicateTemplate(tpl)}>
+                                        <Puzzle className="mr-2 h-4 w-4" />
+                                        Duplicar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => exportTemplateFile(tpl)}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Baixar JSON
+                                      </DropdownMenuItem>
+                                      {enabledTableIdsForStrategy.length > 0 ? (
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            const url = new URL('/registros-de-padroes', window.location.origin)
+                                            url.searchParams.set('strategy', slug)
+                                            url.searchParams.set('table_id', enabledTableIdsForStrategy[0])
+                                            router.push(`${url.pathname}?${url.searchParams.toString()}`)
+                                          }}
+                                        >
+                                          <ChevronRight className="mr-2 h-4 w-4" />
+                                          Ver sinais
+                                        </DropdownMenuItem>
+                                      ) : null}
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => setTemplateHidden(tpl, !hidden)}>
+                                        {hidden ? 'Mostrar na lista' : 'Ocultar da lista'}
+                                      </DropdownMenuItem>
+                                      {canDelete ? (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDeleteId(templateId)}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Excluir
+                                          </DropdownMenuItem>
+                                        </>
+                                      ) : null}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant={enabled ? 'secondary' : 'default'}
-                                  onClick={() => setTemplateEnabled(tpl, !enabled)}
-                                  disabled={isBusy}
+                              {slug && enabledTableIdsForStrategy.length > 0 ? (
+                                <Collapsible
+                                  open={openSignalsSlug === slug}
+                                  onOpenChange={(open) => {
+                                    if (open) {
+                                      setOpenSignalsSlug(slug)
+                                      fetchRecentSignalsForStrategy({ strategySlug: slug, tableIds: enabledTableIdsForStrategy, templateName: String(tpl?.name || '').trim() })
+                                    } else if (openSignalsSlug === slug) {
+                                      setOpenSignalsSlug(null)
+                                    }
+                                  }}
                                 >
-                                  {enabled ? 'Desativar' : 'Ativar'}
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" aria-label="Mais ações">
-                                      <MoreVertical className="h-5 w-5" />
+                                  <div className="flex items-center gap-2">
+                                    <CollapsibleTrigger asChild>
+                                      <Button size="sm" variant="outline">
+                                        Últimos sinais
+                                      </Button>
+                                    </CollapsibleTrigger>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        const url = new URL('/registros-de-padroes', window.location.origin)
+                                        url.searchParams.set('strategy', slug)
+                                        url.searchParams.set('table_id', enabledTableIdsForStrategy[0])
+                                        router.push(`${url.pathname}?${url.searchParams.toString()}`)
+                                      }}
+                                    >
+                                      Ver registros
                                     </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => editTemplate(tpl)}>
-                                      <Edit3 className="mr-2 h-4 w-4" />
-                                      Abrir no canvas
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => duplicateTemplate(tpl)}>
-                                      <Puzzle className="mr-2 h-4 w-4" />
-                                      Duplicar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => exportTemplateFile(tpl)}>
-                                      <Download className="mr-2 h-4 w-4" />
-                                      Baixar JSON
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => setTemplateHidden(tpl, !hidden)}>
-                                      {hidden ? 'Mostrar na lista' : 'Ocultar da lista'}
-                                    </DropdownMenuItem>
-                                    {canDelete ? (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem className="text-destructive" onClick={() => setConfirmDeleteId(templateId)}>
-                                          <Trash2 className="mr-2 h-4 w-4" />
-                                          Excluir
-                                        </DropdownMenuItem>
-                                      </>
-                                    ) : null}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => fetchRecentSignalsForStrategy({ strategySlug: slug, tableIds: enabledTableIdsForStrategy, templateName: String(tpl?.name || '').trim() })}
+                                    >
+                                      Atualizar sinais
+                                    </Button>
+                                  </div>
+                                  <CollapsibleContent>
+                                    <div className="mt-2 rounded-md border bg-muted/20 p-3 text-sm">
+                                      {recentSignalsBySlug[slug]?.loading ? (
+                                        <div className="text-muted-foreground">Carregando...</div>
+                                      ) : recentSignalsBySlug[slug]?.error ? (
+                                        <div className="text-destructive">Falha ao carregar sinais</div>
+                                      ) : (recentSignalsBySlug[slug]?.items || []).length === 0 ? (
+                                        <div className="text-muted-foreground">Nenhum sinal recente para as mesas ativas.</div>
+                                      ) : (
+                                        <div className="space-y-2">
+                                          {(recentSignalsBySlug[slug]?.items || []).map((s) => (
+                                            <div key={s.id} className="flex flex-col gap-0.5">
+                                              <div className="flex flex-wrap items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">
+                                                  {new Date(s.timestamp).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                                                </span>
+                                                <Badge variant="outline" className="font-mono">{s.table_id || '-'}</Badge>
+                                                {s.confidence !== null ? (
+                                                  <Badge>{Math.round(s.confidence)}%</Badge>
+                                                ) : null}
+                                                {s.bets.length > 0 ? (
+                                                  <span className="text-xs text-muted-foreground">Números: {s.bets.join(', ')}</span>
+                                                ) : null}
+                                              </div>
+                                              {s.message ? (
+                                                <div className="text-xs text-muted-foreground">{s.message}</div>
+                                              ) : null}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              ) : null}
                             </CardContent>
                           </Card>
                         )
@@ -2260,6 +2669,98 @@ const [testReport, setTestReport] = useState<{ errors: string[]; logs: Array<{ s
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={tablesDialogOpen} onOpenChange={setTablesDialogOpen}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Mesas onde a estratégia vai rodar</DialogTitle>
+              <DialogDescription>Selecione as mesas para ativar estratégias no Builder.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <Input
+                  placeholder="Buscar mesa..."
+                  value={tablesDialogQuery}
+                  onChange={(e) => setTablesDialogQuery(e.target.value)}
+                  className="sm:w-[320px]"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setTablesDraftIds(tableOptions.map(t => t.id))}
+                    disabled={tablesDialogLoading}
+                  >
+                    Selecionar todas
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setTablesDraftIds([])}
+                    disabled={tablesDialogLoading}
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-md border">
+                <ScrollArea className="h-[360px]">
+                  <div className="p-3 space-y-2">
+                    {tablesDialogLoading ? (
+                      <div className="text-sm text-muted-foreground">Carregando mesas...</div>
+                    ) : tableOptions.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">Nenhuma mesa disponível.</div>
+                    ) : (
+                      tableOptions
+                        .filter((t) => {
+                          const q = String(tablesDialogQuery || '').trim().toLowerCase()
+                          if (!q) return true
+                          return t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q)
+                        })
+                        .sort((a, b) => {
+                          const aEnabled = tablesDraftIds.includes(a.id) ? 1 : 0
+                          const bEnabled = tablesDraftIds.includes(b.id) ? 1 : 0
+                          if (aEnabled !== bEnabled) return bEnabled - aEnabled
+                          return a.name.localeCompare(b.name)
+                        })
+                        .map((t) => {
+                          const checked = tablesDraftIds.includes(t.id)
+                          return (
+                            <div key={t.id} className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium truncate">{t.name}</div>
+                                <div className="text-xs text-muted-foreground truncate">{t.id}</div>
+                              </div>
+                              <Switch
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  const next = new Set(tablesDraftIds.map(x => String(x).trim()).filter(Boolean))
+                                  if (v) next.add(t.id)
+                                  else next.delete(t.id)
+                                  setTablesDraftIds(Array.from(next))
+                                }}
+                              />
+                            </div>
+                          )
+                        })
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Selecionadas: {tablesDraftIds.length}
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => router.push('/strategies')}>
+                Ir para Estratégias
+              </Button>
+              <Button onClick={saveTablesSelection} disabled={tablesDialogSaving}>
+                {tablesDialogSaving ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={isBuilderOpen} onOpenChange={setIsBuilderOpen}>
           <DialogContent className="max-w-6xl">

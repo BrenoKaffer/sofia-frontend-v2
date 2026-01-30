@@ -7,7 +7,7 @@ function generateMockSignalsHistory(searchParams: URLSearchParams) {
   const limit = parseInt(searchParams.get('limit') || '50');
   const offset = parseInt(searchParams.get('offset') || '0');
   const tableId = searchParams.get('table_id');
-  const strategyName = searchParams.get('strategy_name');
+  const strategyName = searchParams.get('strategy_name') || searchParams.get('strategy');
   
   const mockHistory = [];
   const tables = [

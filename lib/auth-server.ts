@@ -18,7 +18,7 @@ export interface AuthReturn {
 /**
  * Cria um cliente Supabase para uso no servidor
  */
-async function createSupabaseServerClient() {
+export async function createSupabaseServerClient() {
   const cookieStore = await cookies()
   
   return createServerClient(
