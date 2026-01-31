@@ -101,7 +101,7 @@ export function sofiaToast({
   message,
   variant = 'default',
   duration = 4000,
-  position = 'top-right',
+  position = 'bottom-right',
   action,
   secondaryAction,
   onDismiss,

@@ -101,7 +101,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const isPro = userStatus?.isPremium ?? false;
   const footerTitle = isPro ? 'Versão Pro' : 'Versão Free';
-  const footerDescription = isPro ? 'Recursos avançados de IA liberados' : 'Atualize para liberar recursos avançados de IA';
+  const footerDescription = isPro ? 'Recursos avançados de IA liberados' : 'Atualize e libere recursos avançados de IA';
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     navigationSections.forEach(section => {
@@ -234,7 +234,7 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
         {!collapsed && (
           <>
             {isPro ? (
-              <div className="rounded-lg bg-gradient-to-r from-blue-700/10 to-blue-600/10 p-3 transition-opacity duration-200">
+              <div className="rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 p-3 transition-opacity duration-200">
                 <h3 className="text-sm font-medium font-urbanist">{footerTitle}</h3>
                 <p className="text-xs text-muted-foreground mt-1 font-jakarta">
                   {footerDescription}
@@ -243,12 +243,14 @@ export function Sidebar({ open, setOpen }: SidebarProps) {
             ) : (
               <a
                 href="https://pay.v1sofia.com/checkout"
-                className="block rounded-lg bg-gradient-to-r from-blue-700/10 to-blue-600/10 p-3 transition-opacity duration-200"
+                className="shiny-free-card rounded-lg p-3 transition-opacity duration-200"
               >
-                <h3 className="text-sm font-medium font-urbanist">{footerTitle}</h3>
-                <p className="text-xs text-muted-foreground mt-1 font-jakarta">
-                  {footerDescription}
-                </p>
+                <span>
+                  <h3 className="text-sm font-medium font-urbanist">{footerTitle}</h3>
+                  <p className="text-[11px] text-muted-foreground mt-1 font-jakarta whitespace-nowrap">
+                    {footerDescription}
+                  </p>
+                </span>
               </a>
             )}
           </>

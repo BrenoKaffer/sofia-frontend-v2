@@ -28,6 +28,14 @@ class ApiClient {
   private defaultRetries = 3;
 
   constructor() {
+    const isBrowser = typeof window !== 'undefined';
+    if (isBrowser) {
+      this.baseUrl = `/api`;
+      this.publicBaseUrl = `/api/public`;
+      this.apiKey = process.env.NEXT_PUBLIC_API_KEY;
+      return;
+    }
+
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const explicitApiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
     const sofiaBackendUrl = process.env.SOFIA_BACKEND_URL;

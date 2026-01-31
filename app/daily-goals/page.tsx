@@ -180,7 +180,7 @@ const milestones = [
   {
     id: 'm1',
     unlocked: true,
-    imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2015&auto=format&fit=crop', // Abstract start
+    imageUrl: '/brasaos_login.png',
     location: 'Primeiro Login',
     flag: '👋',
     stats: 'Você deu o primeiro passo.',
@@ -191,7 +191,7 @@ const milestones = [
   {
     id: 'm2',
     unlocked: true,
-    imageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop', // First step/action
+    imageUrl: '/brasao_passo.png',
     location: 'Primeiro Passo',
     flag: '🦶',
     stats: 'Configurou sua primeira meta.',
@@ -202,7 +202,7 @@ const milestones = [
   {
     id: 'm3',
     unlocked: true,
-    imageUrl: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=2068&auto=format&fit=crop', // Returning
+    imageUrl: '/brasao_voltou.png',
     location: 'Você Voltou',
     flag: '🔙',
     stats: 'Retornou no dia seguinte.',
@@ -213,7 +213,7 @@ const milestones = [
   {
     id: 'm4',
     unlocked: false,
-    imageUrl: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=2070&auto=format&fit=crop', // Consistency
+    imageUrl: '/brasao_constância.png',
     location: 'Constância Inicial',
     flag: '📅',
     stats: '3 dias seguidos de metas batidas.',
@@ -224,7 +224,7 @@ const milestones = [
   {
     id: 'm5',
     unlocked: false,
-    imageUrl: 'https://images.unsplash.com/photo-1550029402-226115b7c579?q=80&w=2070&auto=format&fit=crop', // Presence
+    imageUrl: '/brasao_presença.png',
     location: 'Presença',
     flag: '📍',
     stats: '5 dias de login na mesma semana.',
@@ -235,7 +235,7 @@ const milestones = [
   {
     id: 'm6',
     unlocked: false,
-    imageUrl: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=2070&auto=format&fit=crop', // Routine
+    imageUrl: '/brasao_rotina.png',
     location: 'Rotina em Formação',
     flag: '🔄',
     stats: 'Completou sua primeira semana perfeita.',
@@ -1153,20 +1153,44 @@ export default function DailyGoalsPage() {
                 </p>
               </div>
               
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 justify-items-center">
-                {milestones.map((milestone) => (
-                  <div key={milestone.id} className="w-full max-w-[320px] h-[450px]">
-                    <DestinationCard
-                      imageUrl={milestone.imageUrl}
-                      location={milestone.location}
-                      flag={milestone.flag}
-                      stats={`${milestone.stats}${milestone.unlocked ? '' : ' • Bloqueado'}`}
-                      href={milestone.href}
-                      gradientFrom={milestone.gradientFrom}
-                      gradientTo={milestone.gradientTo}
-                    />
-                  </div>
-                ))}
+              <div className="grid grid-cols-3 gap-6">
+                {milestones.map((milestone) => {
+                  const statusLabel = milestone.unlocked ? 'Desbloqueado' : 'Bloqueado';
+                  return (
+                    <Tooltip key={milestone.id}>
+                      <TooltipTrigger asChild>
+                        <a
+                          href={milestone.href}
+                          className="group flex flex-col items-center gap-3 rounded-xl p-4 transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-900/40"
+                          aria-label={`${milestone.location} - ${statusLabel}`}
+                        >
+                          <div
+                            className={[
+                              'relative h-28 w-28 rounded-full border border-slate-200 bg-white/40 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/40',
+                              milestone.unlocked ? '' : 'opacity-50 grayscale'
+                            ].join(' ')}
+                          >
+                            <img
+                              src={milestone.imageUrl}
+                              alt={milestone.location}
+                              className="h-full w-full object-contain"
+                              loading="lazy"
+                            />
+                          </div>
+
+                          <div className="text-center">
+                            <p className="text-sm font-medium leading-tight">{milestone.location}</p>
+                            <p className="text-xs text-muted-foreground">{statusLabel}</p>
+                          </div>
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[260px]">
+                        <p className="font-medium">{milestone.location}</p>
+                        <p className="text-xs text-muted-foreground">{milestone.stats}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
               </div>
             </div>
           </TabsContent>

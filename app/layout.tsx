@@ -80,7 +80,7 @@ export default function RootLayout({
               {children}
               <SpeedInsights />
               <Analytics />
-              <Toaster position="top-right" />
+              <Toaster position="bottom-right" />
             </MonitoringProvider>
           </Providers>
         </ErrorBoundary>

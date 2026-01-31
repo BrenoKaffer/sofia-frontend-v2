@@ -744,6 +744,7 @@ export default function DashboardPage() {
 
   // Guard de autenticação para redirecionar usuários não logados
   useEffect(() => {
+    if (DASHBOARD_USE_MOCK_DATA) return;
     if (!isLoading && !user) {
       router.replace('/login');
     }
@@ -751,7 +752,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!DASHBOARD_USE_MOCK_DATA) return;
-    if (!user || isLoading) return;
+    if (isLoading) return;
     if (mockInitializedRef.current) return;
 
     mockInitializedRef.current = true;

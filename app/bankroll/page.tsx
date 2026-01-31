@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { sofiaToast } from '@/components/ui/sonner';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -293,11 +294,19 @@ export default function BankrollPage() {
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
     if (!(amount > 0)) {
-      alert('Valor inválido para saque');
+      sofiaToast({
+        variant: 'warning',
+        title: 'Valor inválido',
+        message: 'Informe um valor válido para saque.',
+      });
       return;
     }
     if (amount > currentBalance) {
-      alert('Saldo insuficiente para saque');
+      sofiaToast({
+        variant: 'warning',
+        title: 'Saldo insuficiente',
+        message: 'O valor do saque é maior que o saldo disponível.',
+      });
       return;
     }
     if (isBankrollSyncing) return;
@@ -325,8 +334,17 @@ export default function BankrollPage() {
       };
       setBankrollTransactions((prev) => [entry, ...prev].slice(0, 1000));
       setWithdrawAmount('');
+      sofiaToast({
+        variant: 'success',
+        title: 'Saque registrado',
+        message: `${Math.abs(amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} retirado com sucesso.`,
+      });
     } catch (error: any) {
-      alert(error?.message || 'Erro ao registrar saque');
+      sofiaToast({
+        variant: 'error',
+        title: 'Falha ao registrar saque',
+        message: error?.message || 'Erro ao registrar saque',
+      });
     } finally {
       setIsBankrollSyncing(false);
     }
@@ -335,7 +353,11 @@ export default function BankrollPage() {
   const handleDeposit = async () => {
     const amount = parseFloat(depositAmount);
     if (!(amount > 0)) {
-      alert('Valor inválido para depósito');
+      sofiaToast({
+        variant: 'warning',
+        title: 'Valor inválido',
+        message: 'Informe um valor válido para depósito.',
+      });
       return;
     }
     if (isBankrollSyncing) return;
@@ -363,8 +385,17 @@ export default function BankrollPage() {
       };
       setBankrollTransactions((prev) => [entry, ...prev].slice(0, 1000));
       setDepositAmount('');
+      sofiaToast({
+        variant: 'success',
+        title: 'Depósito registrado',
+        message: `${Math.abs(amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} adicionado com sucesso.`,
+      });
     } catch (error: any) {
-      alert(error?.message || 'Erro ao registrar depósito');
+      sofiaToast({
+        variant: 'error',
+        title: 'Falha ao registrar depósito',
+        message: error?.message || 'Erro ao registrar depósito',
+      });
     } finally {
       setIsBankrollSyncing(false);
     }
